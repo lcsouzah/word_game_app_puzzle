@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="game_services_project_id">341390997679</string>
+    <string name="leaderboard_easy">CgkIr_H04_cJEAIQAg</string>
+    <string name="leaderboard_medium">CgkIr_H04_cJEAIQAw</string>
+    <string name="leaderboard_hard">CgkIr_H04_cJEAIQBA</string>
 </resources>

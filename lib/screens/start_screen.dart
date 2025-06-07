@@ -1,3 +1,6 @@
+//start_screen.dart
+
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Import foundation for describeEnum
 
@@ -7,7 +10,7 @@ import '../utils/word_category.dart';
 import '../models/alphabet_game.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
+import 'package:games_services/games_services.dart'; // Import Game Services
 
 
 
@@ -82,6 +85,9 @@ class _StartScreenState extends State<StartScreen> {
   @override
   void initState() {
     super.initState();
+    _safeSignIn(); // // 👈 GAME SERVICE silent sign-in here
+
+
     if (widget.categories.isNotEmpty) {
       _selectedCategoryName = widget.categories.first.name;
     }
@@ -90,6 +96,14 @@ class _StartScreenState extends State<StartScreen> {
 
     // SoundManager.preloadSound(("tileMove"), "sounds/tile_move.mp3");
     // Preload other sounds as needed
+  }
+
+  void _safeSignIn() async {
+    try {
+      await GamesServices.signIn();
+    } catch (e) {
+      if (kDebugMode) print("Sign-in failed: $e");
+    }
   }
 
   void _initBannerAd() {
@@ -128,6 +142,7 @@ class _StartScreenState extends State<StartScreen> {
               scoringOption: _scoringOption,
               gameDuration: _selectedTime,
               wordList: selectedWordList,
+              difficulty: _selectedDifficulty.name.toLowerCase(),
             ),
       ),
     );
@@ -279,6 +294,41 @@ class _StartScreenState extends State<StartScreen> {
                   ),
                   // Add styling for the button as per new UI theme
                 ),
+
+
+
+                ElevatedButton(
+                  onPressed: () async {
+                    String leaderboardId;
+                    switch (_selectedDifficulty) {
+                      case DifficultyLevel.Easy:
+                        leaderboardId = 'CgkIr_H04_cJEAIQAg';
+                        break;
+                      case DifficultyLevel.Moderate:
+                        leaderboardId = 'CgkIr_H04_cJEAIQAw';
+                        break;
+                      case DifficultyLevel.Hard:
+                        leaderboardId = 'CgkIr_H04_cJEAIQBA';
+                        break;
+                    }
+
+                    try {
+                      await GamesServices.showLeaderboards(
+                        androidLeaderboardID: leaderboardId,
+                      );
+                    } catch (e) {
+                      if (kDebugMode) {
+                        print('Failed to open leaderboard: $e');
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Leaderboard not available. Check connection or Google Play Games setup.")),
+                      );
+                    }
+                  },
+                  child: const Text('View Leaderboard'),
+                ),
+
               ],
             ),
           ),
