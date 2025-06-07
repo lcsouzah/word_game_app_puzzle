@@ -1,8 +1,12 @@
+//safe_area.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/alphabet_game.dart';
+import '../utils/score_uploader.dart';
 import 'game_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+
 
 
 
@@ -10,12 +14,14 @@ class SafeAreaScreen extends StatefulWidget {
   final ScoringOption scoringOption;
   final int gameDuration;
   final List<String> wordList;
+  final String difficulty;
 
   const SafeAreaScreen({
     super.key,
     required this.scoringOption,
     required this.gameDuration,
     required this.wordList,
+    required this.difficulty,
   });
 
   @override
@@ -69,6 +75,31 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
     });
   }
 
+  void _endGame() {
+    _timer.cancel();
+
+    String difficultyString;
+    switch (widget.scoringOption) {
+      case ScoringOption.Horizontal:
+        difficultyString = 'easy';
+        break;
+      case ScoringOption.Vertical:
+        difficultyString = 'medium';
+        break;
+      case ScoringOption.Both:
+        difficultyString = 'hard';
+        break;
+    }
+
+    int finalScore = correctWords.length * 1000; // Example scoring logic
+    submitScore(score: finalScore, difficulty: difficultyString);
+
+    // Optional: show a dialog or transition to a summary screen
+    Navigator.pop(context);
+  }
+
+
+
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
@@ -76,9 +107,15 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
         if (_remainingTime > 0) {
           _remainingTime--;
         } else {
-          // Game over, navigate to a new screen or perform game over actions.
           _timer.cancel();
-          // For now, let's navigate back to the start screen when the timer reaches 0.
+
+          // ✅ Submit score
+          submitScore(
+            score: correctWords.length,
+            difficulty: widget.difficulty,
+          );
+
+          // Go back to start screen or show a dialog
           Navigator.pop(context);
         }
       });

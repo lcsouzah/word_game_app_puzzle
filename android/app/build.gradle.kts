@@ -32,8 +32,8 @@ android {
         applicationId = "com.word_game_app"
         minSdk = 23
         targetSdk = 34
-        versionCode = 8 // ← ✅ Add this! Must be > 7 to upload new version to Play Store
-        versionName = "1.0.2"
+        versionCode = 10 // ← ✅ Add this! Must be > 7 to upload new version to Play Store
+        versionName = "1.0.4"
     }
 
     signingConfigs {
@@ -59,4 +59,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+dependencies {
+    implementation("com.google.android.gms:play-services-games-v2:+")
 }
