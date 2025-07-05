@@ -1,0 +1,8 @@
+Doctor
+Nurse
+Teacher
+Chef
+Pilot
+Farmer
+Police
+Artist

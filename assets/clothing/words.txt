@@ -1,0 +1,8 @@
+Shirt
+Pants
+Dress
+Hat
+Shoes
+Jacket
+Socks
+Scarf

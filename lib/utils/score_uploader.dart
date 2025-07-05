@@ -1,4 +1,4 @@
-//score_upload.dart
+//Y:\word_game_app_puzzle\lib\utils\score_uploader.dart
 
 import 'package:games_services/games_services.dart';
 
@@ -15,9 +15,9 @@ void submitScore({
   if (leaderboardId != null) {
     GamesServices.submitScore(
       score: Score(
-      value : score,
-      androidLeaderboardID: leaderboardId,
-    )
+        value : score,
+          androidLeaderboardID: leaderboardId,
+        ),
     );
   }
 }

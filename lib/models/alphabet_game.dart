@@ -1,6 +1,3 @@
-//alphabet_game.dart
-
-
 import 'dart:math';
 
 enum ScoringOption {
@@ -11,50 +8,62 @@ enum ScoringOption {
 
 class AlphabetGame {
   List<String> letters = [];
-  final List<String> wordList;
+  final List<String> _originalWordList;
+  final List<String> _usedWords = [];
+  List<String> _availableWords = [];
   int emptyTileIndex = 0;
 
-  AlphabetGame(this.wordList) {
-
-
-    letters = _generateRandomLetters(wordList);
-
+  AlphabetGame(List<String> wordList)
+      : _originalWordList = List.from(wordList) {
+    _availableWords = List.from(_originalWordList)..shuffle();
+    letters = _generateRandomLetters();
   }
 
+  List<String> _generateRandomLetters() {
+    final Random random = Random();
 
-  List<String> _generateRandomLetters(List<String> wordList) {
-    Random random = Random();
-
-    // Filter the word list to words that are 15 characters or less
-    List<String> suitableWords = wordList.where((word) => word.length <= 15)
+    // Filter for words up to 15 characters and not already used
+    List<String> suitableWords = _availableWords
+        .where((word) => word.length <= 15 && !_usedWords.contains(word))
         .toList();
+
     if (suitableWords.isEmpty) {
-      return List.filled(
-          15, ' '); // Return a default list if no suitable words are found
+      print("⚠️ No more unused suitable words found. Resetting...");
+      resetWordPool();
+      suitableWords = _availableWords
+          .where((word) => word.length <= 15 && !_usedWords.contains(word))
+          .toList();
     }
 
-    // Select a random word from the suitable words
-    String selectedWord = suitableWords[random.nextInt(suitableWords.length)]
-        .trim();
+    String selectedWord = suitableWords[random.nextInt(suitableWords.length)].trim();
+    _usedWords.add(selectedWord);
+    _availableWords.remove(selectedWord);
 
-    // Create a list of letters from the word, filling the rest with random letters from the word
-    List<String> letters = selectedWord.split('')
-      ..addAll(
-          List.generate(
-              15 - selectedWord.length, (_) => selectedWord[random.nextInt(
-              selectedWord.length)])
-      );
+    List<String> result = selectedWord.split('');
+    while (result.length < 15) {
+      result.add(selectedWord[random.nextInt(selectedWord.length)]);
+    }
 
-    // Shuffle and place the letters in the grid
-    letters.shuffle();
-    letters.insert(emptyTileIndex, ' '); // Insert the empty space
+    result.shuffle();
+    result.insert(0, ' '); // Insert blank tile
+    emptyTileIndex = 0;
 
-    return letters;
+    print("📌 Selected word: $selectedWord");
+    print("🧩 Generated letters: $result");
+
+    return result;
   }
 
+  void generateNewLetters() {
+    letters = _generateRandomLetters();
+  }
 
+  void resetWordPool() {
+    _usedWords.clear();
+    _availableWords = List.from(_originalWordList)..shuffle();
+  }
 
-    bool moveTile(int index) {
+  bool moveTile(int index) {
     if (_isValidMove(index)) {
       letters[emptyTileIndex] = letters[index];
       letters[index] = ' ';
@@ -64,69 +73,45 @@ class AlphabetGame {
     return false;
   }
 
-
-
   bool _isValidMove(int index) {
-    if (letters[index] == letters[emptyTileIndex]) {
-      return false;
-    } else {
-      int rowDiff = (index ~/ 4) - (emptyTileIndex ~/ 4);
-      int colDiff = (index % 4) - (emptyTileIndex % 4);
-      return (rowDiff == 1 && colDiff == 0) ||
-          (rowDiff == -1 && colDiff == 0) ||
-          (rowDiff == 0 && colDiff == 1) ||
-          (rowDiff == 0 && colDiff == -1);
-    }
+    if (letters[index] == letters[emptyTileIndex]) return false;
+
+    int rowDiff = (index ~/ 4) - (emptyTileIndex ~/ 4);
+    int colDiff = (index % 4) - (emptyTileIndex % 4);
+    return (rowDiff == 1 && colDiff == 0) ||
+        (rowDiff == -1 && colDiff == 0) ||
+        (rowDiff == 0 && colDiff == 1) ||
+        (rowDiff == 0 && colDiff == -1);
   }
 
-
-
   String getWordVertical() {
-    const int gridSize = 4; // Assuming a 4x4 grid
+    const int gridSize = 4;
     String word = '';
-
     for (int col = 0; col < gridSize; col++) {
       for (int row = 0; row < gridSize; row++) {
         int index = row * gridSize + col;
         String letter = letters[index];
-        if (letter == ' ') {
-          return word; // Return the word immediately when a blank tile is encountered
-        }
+        if (letter == ' ') return word;
         word += letter;
       }
-    }
-    return word; // Returns the word formed by traversing vertically through columns
-  }
-
-
-
-  String getWord() {
-    String word = '';
-    // Assuming letters is a flat list representing a 4x4 grid row-wise.
-    for (String letter in letters) {
-      if (letter == ' ') { // If a blank tile is encountered, stop adding letters.
-        break;
-      }
-      word += letter; // Concatenate the letter to form a word.
     }
     return word;
   }
 
-
-  void clearWord() {
-    // Implement the logic to clear the tiles forming a word.
-    // Reset the letters at the positions forming the word.
-    for (int i = 0; i < letters.length; i++) {
-      if (letters[i] != ' ') {
-        letters[i] = ' ';
-      }
+  String getWord() {
+    String word = '';
+    for (String letter in letters) {
+      if (letter == ' ') break;
+      word += letter;
     }
+    return word;
   }
 
-
-  void generateNewLetters(List<String> wordList) {
-    // Call _generateRandomLetters to refill the board
-    letters = _generateRandomLetters(wordList);
-    // Optionally, you can add additional logic here if needed
+  void clearWord() {
+    for (int i = 0; i < letters.length; i++) {
+      if (i != emptyTileIndex) {
+        letters[i] = '';
+      }
+    }
   }
 }

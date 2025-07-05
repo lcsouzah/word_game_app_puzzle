@@ -1,4 +1,4 @@
-//safe_area.dart
+//Y:\word_game_app_puzzle\lib\screens\safe_area.dart
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -31,17 +31,21 @@ class SafeAreaScreen extends StatefulWidget {
 
 
 class _SafeAreaScreenState extends State<SafeAreaScreen> {
+  late int moveCounter;
   List<String> correctWords = [];
   late BannerAd _bannerAd;
   bool _isAdLoaded = false;
   late AlphabetGame game;
   late int _remainingTime;
   late Timer _timer;
+  bool _isPaused = false;
 
 
   @override
   void initState() {
     super.initState();
+    moveCounter = 1;
+    // Initialize the banner ad
     _bannerAd = BannerAd(
       adUnitId: 'ca-app-pub-2001371236360532/6515690897', // Replace with your ad unit ID
       size: AdSize.banner,
@@ -76,49 +80,106 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _endGame() {
-    _timer.cancel();
+    if (_timer.isActive) _timer.cancel();
 
-    String difficultyString;
-    switch (widget.scoringOption) {
-      case ScoringOption.Horizontal:
-        difficultyString = 'easy';
-        break;
-      case ScoringOption.Vertical:
-        difficultyString = 'medium';
-        break;
-      case ScoringOption.Both:
-        difficultyString = 'hard';
-        break;
-    }
+    int safeMoveCounter = moveCounter == 0 ? 1 : moveCounter;
+    int finalScore = (correctWords.length * 1000) ~/ safeMoveCounter;
 
-    int finalScore = correctWords.length * 1000; // Example scoring logic
-    submitScore(score: finalScore, difficulty: difficultyString);
+    submitScore(score: finalScore, difficulty: widget.difficulty);
 
-    // Optional: show a dialog or transition to a summary screen
-    Navigator.pop(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("⏰ Time's Up!"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text("🎯 You scored $finalScore points."),
+            const SizedBox(height: 12),
+            const Text(
+              "✅ Words You Got Right:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 150,
+              width: double.maxFinite,
+              child: Scrollbar(
+                child: ListView.builder(
+                  itemCount: correctWords.length,
+                  itemBuilder: (context, index) {
+                    return Text(
+                      "• ${correctWords[index]}",
+                      style: const TextStyle(fontSize: 16),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                  transitionDuration: const Duration(milliseconds: 500),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                  pageBuilder: (_, __, ___) => SafeAreaScreen(
+                    scoringOption: widget.scoringOption,
+                    gameDuration: widget.gameDuration,
+                    wordList: widget.wordList,
+                    difficulty: widget.difficulty,
+                  ),
+                ),
+              );
+            },
+            child: const Text("🔁 Play Again"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.of(context).pop(); // Go back to StartScreen
+            },
+            child: const Text("🏠 Back to Menu"),
+          ),
+        ],
+      ),
+    );
   }
+
+  void togglePause() {
+    setState(() {
+      _isPaused = !_isPaused;
+    });
+  }
+
+
+
 
 
 
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      setState(() {
+      if(!_isPaused){
         if (_remainingTime > 0) {
-          _remainingTime--;
-        } else {
-          _timer.cancel();
+          setState(() {
+            _remainingTime--;
+          });
+        }    else {
+              _endGame();
 
-          // ✅ Submit score
-          submitScore(
-            score: correctWords.length,
-            difficulty: widget.difficulty,
-          );
-
-          // Go back to start screen or show a dialog
-          Navigator.pop(context);
+          }
         }
-      });
     });
   }
 
@@ -137,12 +198,13 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: 3, // Adjust flex to manage space
+              flex: 4, // Adjust flex to manage space
               child: GameScreen(
                 game: game,
                 dictionary: widget.wordList,
                 onCorrectWord: onCorrectWord,
                 scoringOption: widget.scoringOption,
+                onPauseToggle: togglePause,
               ),
             ),
             // List of correct words with updated styling
@@ -197,6 +259,13 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _bannerAd.dispose();
+    super.dispose();
   }
 }
 
