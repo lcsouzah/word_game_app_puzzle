@@ -1,101 +1,42 @@
-//start_screen.dart
-
-
+//Y:\word_game_app_puzzle\lib\screens\start_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // Import foundation for describeEnum
+import 'package:flutter/foundation.dart';
+import 'package:games_services/games_services.dart';
 
+import '../models/alphabet_game.dart';
+import '../utils/word_category.dart';
 import '../utils/sound_manager.dart';
 import '../screens/safe_area.dart';
-import '../utils/word_category.dart';
-import '../models/alphabet_game.dart';
 
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:games_services/games_services.dart'; // Import Game Services
-
-
-
-
-
-enum DifficultyLevel {
-  Easy,
-  Moderate,
-  Hard,
-}
-String? _selectedCategory;
-List<WordCategory> _categories = [];
-
+enum DifficultyLevel { Easy, Moderate, Hard }
 
 class StartScreen extends StatefulWidget {
-  final List<String> easyWords;
-  final List<String> moderateWords;
-  final List<String> hardWords;
   final List<WordCategory> categories;
-  final VoidCallback toggleTheme; // Add this line
+  final VoidCallback toggleTheme;
 
   const StartScreen({
     super.key,
-    required this.easyWords,
-    required this.moderateWords,
-    required this.hardWords,
     required this.categories,
-    required this.toggleTheme, // Update this line
+    required this.toggleTheme,
   });
 
   @override
   _StartScreenState createState() => _StartScreenState();
 }
 
-
 class _StartScreenState extends State<StartScreen> {
-  // ... existing properties and methods ...
   String? _selectedCategoryName;
-
-  late BannerAd _bannerAd;
-  bool _isAdLoaded = false;
-
   DifficultyLevel _selectedDifficulty = DifficultyLevel.Easy;
-
-
   ScoringOption _scoringOption = ScoringOption.Horizontal;
-
-
-  late int _selectedTime = 180; // Default to 3 minutes
-
-
-  Widget _buildScoringOption(ScoringOption option) {
-    return Expanded(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Radio<ScoringOption>(
-            value: option,
-            groupValue: _scoringOption,
-            onChanged: _handleRadioValueChanged,
-          ),
-          Flexible( // This will prevent text from breaking into a new line
-            child: Text(
-              describeEnum(option), // Assuming describeEnum is properly imported//
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  late int _selectedTime = 180;
 
   @override
   void initState() {
     super.initState();
-    _safeSignIn(); // // 👈 GAME SERVICE silent sign-in here
-
-
+    _safeSignIn();
     if (widget.categories.isNotEmpty) {
       _selectedCategoryName = widget.categories.first.name;
     }
-
-    _initBannerAd();
-
-    // SoundManager.preloadSound(("tileMove"), "sounds/tile_move.mp3");
-    // Preload other sounds as needed
   }
 
   void _safeSignIn() async {
@@ -106,22 +47,18 @@ class _StartScreenState extends State<StartScreen> {
     }
   }
 
-  void _initBannerAd() {
-    _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-2001371236360532/6515690897',
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          setState(() {
-            _isAdLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-        },
-      ),
-    )..load();
+  List<String> _filterWordsByDifficulty(List<String> allWords, DifficultyLevel difficulty) {
+    return allWords.where((word) {
+      final length = word.length;
+      switch (difficulty) {
+        case DifficultyLevel.Easy:
+          return length < 5;
+        case DifficultyLevel.Moderate:
+          return length >= 5 && length <= 6;
+        case DifficultyLevel.Hard:
+          return length > 6;
+      }
+    }).toList();
   }
 
   void _handleRadioValueChanged(ScoringOption? value) {
@@ -133,220 +70,276 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   void _startGame() {
-    List<String> selectedWordList = _getSelectedWordList();
+    final selectedCategory = widget.categories.firstWhere(
+          (cat) => cat.name == _selectedCategoryName,
+    );
+
+    final filteredWords = _filterWordsByDifficulty(
+      selectedCategory.allWords,
+      _selectedDifficulty,
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            SafeAreaScreen(
-              scoringOption: _scoringOption,
-              gameDuration: _selectedTime,
-              wordList: selectedWordList,
-              difficulty: _selectedDifficulty.name.toLowerCase(),
-            ),
+        builder: (context) => SafeAreaScreen(
+          scoringOption: _scoringOption,
+          gameDuration: _selectedTime,
+          wordList: filteredWords,
+          difficulty: _selectedDifficulty.name.toLowerCase(),
+        ),
       ),
     );
   }
 
-  List<String> _getSelectedWordList() {
-    switch (_selectedDifficulty) {
-      case DifficultyLevel.Moderate:
-        return widget.moderateWords;
-      case DifficultyLevel.Hard:
-        return widget.hardWords;
-      default:
-        return widget.easyWords;
-    }
+  Widget _buildScoringOption(ScoringOption option) {
+    return Row(
+      children: [
+        Radio<ScoringOption>(
+          value: option,
+          groupValue: _scoringOption,
+          onChanged: _handleRadioValueChanged,
+        ),
+        Text(describeEnum(option)),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: const Text('Start Screen'),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.brightness_6), // or Icons.brightness_3 for dark mode icon
-            onPressed: widget.toggleTheme, // Use the toggleTheme function
-          ),
-            IconButton(
-            icon: Icon(
-              SoundManager.isMuted() ? Icons.volume_off : Icons.volume_up,
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/word_slide_startscreen.png'),
+                fit: BoxFit.cover,
+              ),
             ),
-            onPressed: () {
-              setState(() {
-                SoundManager.toggleMute();
-              });
-            },
           ),
-        ],
-      ),
 
-      body: Column(
+          // Title
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.05,
+            left: 0,
+            right: 0,
+            child: const Center(
+              child: Text(
+                "START SCREEN",
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+          ),
 
-        //mainAxisAlignment: MainAxisAlignment.center,
-        //crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          Expanded(
+          // Category Dropdown
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.364,
+            left: MediaQuery.of(context).size.width * 0.1285,
+            width: MediaQuery.of(context).size.width * 0.78,
+            height: 49,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.cyanAccent),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: DropdownButton<String>(
+                value: null ,
+                iconSize: 30,
+                isExpanded: true,
 
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
+                dropdownColor: Colors.transparent.withOpacity(0.8),
+                underline: const SizedBox(),
+                iconEnabledColor: Colors.cyanAccent,
+                icon: const Icon(Icons.arrow_drop_down),
+                style: const TextStyle(
+                  color: Colors.cyanAccent, fontSize: 30,
+                    fontWeight: FontWeight.bold,  ),
 
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedCategoryName = newValue;
+                  });
+                },
+                items: widget.categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category.name,
+                    child: Text(category.name),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
 
-                DropdownButton<String>(
-                  value: _selectedCategoryName,
-                  icon: const Icon(Icons.arrow_downward), // Optional icon
-                  elevation: 16,
-                  style: const TextStyle(color: Colors.deepPurple), // Customize your style
-                  underline: Container(
-                    height: 2,
-                    color: Colors.deepPurpleAccent,
+          // Difficulty Selector
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.505,
+            left: MediaQuery.of(context).size.width * 0.03,
+            width: MediaQuery.of(context).size.width * 0.95,
+            child: Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: DifficultyLevel.values.map((level) {
+                String label = level.toString().split('.').last;
+
+                return ChoiceChip(
+                  backgroundColor: Colors.deepPurple.shade400,
+                  shadowColor: Colors.red,
+                  selectedColor: Colors.deepPurple.shade300,
+                  selectedShadowColor: Colors.greenAccent,
+                  labelStyle: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  onChanged: (String? newValue) {
+                  elevation: 15,
+                  labelPadding: const EdgeInsets.all(5),
+                  label: Text(describeEnum(level)),
+                  selected: _selectedDifficulty == level,
+                  onSelected: (_) {
                     setState(() {
-                      _selectedCategoryName = newValue;
+                      _selectedDifficulty = level;
                     });
                   },
-                  items: widget.categories.map<DropdownMenuItem<String>>((WordCategory category) {
-                    return DropdownMenuItem<String>(
-                      value: category.name,
-                      child: Text(category.name),
-                    );
-                  }).toList(),
-                ),
+                );
+              }).toList(),
+            ),
+          ),
 
+          // Scoring Options Row
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.58,
+            left: MediaQuery.of(context).size.width * 0.001,
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: ScoringOption.values.map(_buildScoringOption).toList(),
+            ),
+          ),
 
-                // Updated difficulty selector with new styling
-                Wrap(
-                  spacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: DifficultyLevel.values.map((level) {
-                    String label = level.toString().split('.').last;
-                    return ChoiceChip(
-                      backgroundColor: Colors.deepPurple.shade200,
-                      shadowColor: Colors.red,
-                      selectedShadowColor: Colors.greenAccent,
-                      elevation: 15,
-                      label: Text(label),
-                      selected: _selectedDifficulty == level,
-                      selectedColor: Colors.deepPurple.shade300, // Your theme color here
-                      onSelected: (bool selected) {
-                        setState(() {
-                          _selectedDifficulty = level;
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const Padding(
-                    padding: EdgeInsets.symmetric( vertical: 30)
-                ),
-
-                 Text('SELECT SCORING OPTION:',
+          // Time Selector
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.65,
+            left: MediaQuery.of(context).size.width * 0.30,
+            width: MediaQuery.of(context).size.width * 0.35,
+            child: DropdownButton<int>(
+              iconSize: 24,
+              value: _selectedTime,
+              dropdownColor: Colors.black,
+              iconEnabledColor: Colors.orange,
+              style: const TextStyle(color: Colors.orangeAccent),
+              underline: Container(height: 3, width: 3, color: Colors.orange),
+              onChanged: (int? value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedTime = value;
+                  });
+                }
+              },
+              items: const [
+                DropdownMenuItem<int>(value: 60,  child: Text(
+                  "1 Minute",
                   style: TextStyle(
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.6),
-                        offset: const Offset(2, 2),
-                        blurRadius: 4,
-                      ),
-                    ],
-
-                    fontSize: 24,
-                    fontStyle: FontStyle.italic,
                     color: Colors.lightBlueAccent,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 3,
-                    // decorationThickness: 100,
+                    fontSize: 32,
+                    fontStyle: FontStyle.italic,
                   ),
+                ),),
+                DropdownMenuItem<int>(value: 120, child: Text(
+                    '2 Minutes',
+                  style: TextStyle(
+                    color: Colors.lightBlueAccent,
+                    fontSize: 32,
+                    fontStyle: FontStyle.italic,
                   ),
-
-                // Updated scoring option selector with RadioListTile
-                // Scoring Option Selector laid out horizontally
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: ScoringOption.values.map((option) {
-                    return _buildScoringOption(option);
-                  }).toList(),
-                ),
-                // Time selector remains the same
-                DropdownButton<int>(
-                  value: _selectedTime,
-                  onChanged: (int? value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedTime = value;
-                      });
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem<int>(value: 180, child: Text('3 Minutes')),
-                    DropdownMenuItem<int>(value: 240, child: Text('4 Minutes')),
-                    DropdownMenuItem<int>(value: 300, child: Text('5 Minutes')),
-                  ],
-                ),
-                ElevatedButton(
-                  onPressed: _startGame,
-                  child: const Text('Start Game',
-                    
+                )),
+                DropdownMenuItem<int>(value: 180, child: Text(
+                    '3 Minutes',
+                  style: TextStyle(
+                    color: Colors.lightBlueAccent,
+                    fontSize: 32,
+                    fontStyle: FontStyle.italic,
                   ),
-                  // Add styling for the button as per new UI theme
-                ),
-
-
-
-                ElevatedButton(
-                  onPressed: () async {
-                    String leaderboardId;
-                    switch (_selectedDifficulty) {
-                      case DifficultyLevel.Easy:
-                        leaderboardId = 'CgkIr_H04_cJEAIQAg';
-                        break;
-                      case DifficultyLevel.Moderate:
-                        leaderboardId = 'CgkIr_H04_cJEAIQAw';
-                        break;
-                      case DifficultyLevel.Hard:
-                        leaderboardId = 'CgkIr_H04_cJEAIQBA';
-                        break;
-                    }
-
-                    try {
-                      await GamesServices.showLeaderboards(
-                        androidLeaderboardID: leaderboardId,
-                      );
-                    } catch (e) {
-                      if (kDebugMode) {
-                        print('Failed to open leaderboard: $e');
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Leaderboard not available. Check connection or Google Play Games setup.")),
-                      );
-                    }
-                  },
-                  child: const Text('View Leaderboard'),
-                ),
-
+                )),
               ],
             ),
           ),
-          if (_isAdLoaded) // Show ad only if loaded
-            Container(
-              alignment: Alignment.center,
-              width: _bannerAd.size.width.toDouble(),
-              height: _bannerAd.size.height.toDouble(),
-              child: AdWidget(ad: _bannerAd),
+
+          // Start Game Button
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.748,
+            left: MediaQuery.of(context).size.width * 0.14,
+            width: MediaQuery.of(context).size.width * 0.72,
+            height: 63.5,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(5),
+                splashColor: Colors.orangeAccent.withOpacity(0.5),
+                highlightColor: Colors.orangeAccent.withOpacity(0.2),
+                onTap: _startGame,
+                child: const Text(""),
             ),
+          ),
+          ),
+
+          // Leaderboard Button
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.868,
+            left: MediaQuery.of(context).size.width * 0.135,
+            width: MediaQuery.of(context).size.width * 0.73,
+            height: 40,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(5),
+                splashColor: Colors.purpleAccent.withOpacity(0.5),
+                highlightColor: Colors.purpleAccent.withOpacity(0.2),
+
+                onTap: () async {
+                String leaderboardId = switch (_selectedDifficulty) {
+                  DifficultyLevel.Easy => 'CgkIr_H04_cJEAIQAg',
+                  DifficultyLevel.Moderate => 'CgkIr_H04_cJEAIQAw',
+                  DifficultyLevel.Hard => 'CgkIr_H04_cJEAIQBA',
+                };
+                try {
+                  await GamesServices.showLeaderboards(
+                    androidLeaderboardID: leaderboardId,
+                  );
+                } catch (e) {
+                  if (kDebugMode) print('Failed to open leaderboard: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Leaderboard not available.")),
+                  );
+                }
+              },
+              child: const Text(""),
+            ),
+          ),
+          ),
+
+          // Toggle Theme Button (top-right)
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.05,
+            right: 16,
+            child: IconButton(
+              onPressed: widget.toggleTheme,
+              icon: const Icon(Icons.brightness_6, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _bannerAd.dispose();
-    super.dispose();
   }
 }

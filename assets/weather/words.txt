@@ -1,0 +1,9 @@
+Sun
+Rain
+Snow
+Cloud
+Storm
+Wind
+Fog
+Hail
+Hurricane
