@@ -35,10 +35,11 @@ class ModeSelectionScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
-                splashColor: Colors.deepPurpleAccent.withOpacity(0.3),
-                highlightColor: Colors.deepPurple.withOpacity(0.2),
+                splashColor: Colors.deepPurpleAccent.withValues(alpha: 0.3),
+                highlightColor: Colors.deepPurple.withValues(alpha: 0.2),
                 onTap: () async {
                   final List<WordCategory> categories = await loadCategories();
+                  if (!context.mounted) return;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -51,12 +52,12 @@ class ModeSelectionScreen extends StatelessWidget {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.deepPurpleAccent.withOpacity(0.4), width: 1.5),
+                    border: Border.all(color: Colors.deepPurpleAccent.withValues(alpha: 0.4), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.deepPurpleAccent.withOpacity(0.15),
+                        color: Colors.deepPurpleAccent.withValues(alpha: 0.15),
                         blurRadius: 10,
                         spreadRadius: 2,
                         offset: const Offset(0, 0),
@@ -79,8 +80,8 @@ class ModeSelectionScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
-                splashColor: Colors.tealAccent.withOpacity(0.3),
-                highlightColor: Colors.teal.withOpacity(0.2),
+                splashColor: Colors.tealAccent.withValues(alpha: 0.3),
+                highlightColor: Colors.teal.withValues(alpha: 0.2),
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -92,12 +93,12 @@ class ModeSelectionScreen extends StatelessWidget {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
+                    color: Colors.white.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.tealAccent.withOpacity(0.4), width: 1.5),
+                    border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.tealAccent.withOpacity(0.15),
+                        color: Colors.tealAccent.withValues(alpha: 0.15),
                         blurRadius: 10,
                         spreadRadius: 2,
                         offset: const Offset(0, 0),
