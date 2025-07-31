@@ -19,3 +19,11 @@ Tooth
 Bladder
 Brain
 Neck
+Chest
+Hair
+Chin
+Cheeks
+Forehead
+Limbs
+Wrist
+Finger

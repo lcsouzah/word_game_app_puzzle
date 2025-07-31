@@ -6,3 +6,5 @@ Purple
 Black
 White
 Pink
+Orange
+Brown
