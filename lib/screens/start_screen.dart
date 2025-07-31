@@ -1,14 +1,20 @@
 //Y:\word_game_app_puzzle\lib\screens\start_screen.dart
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:games_services/games_services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+
+import'../utils/category_unlock_manager.dart';
 
 import '../models/alphabet_game.dart';
 import '../utils/word_category.dart';
-import '../utils/sound_manager.dart';
 import '../screens/safe_area.dart';
 
-enum DifficultyLevel { Easy, Moderate, Hard }
+enum DifficultyLevel { easy, moderate, hard }
 
 class StartScreen extends StatefulWidget {
   final List<WordCategory> categories;
@@ -21,13 +27,13 @@ class StartScreen extends StatefulWidget {
   });
 
   @override
-  _StartScreenState createState() => _StartScreenState();
+  StartScreenState createState() => StartScreenState();
 }
 
-class _StartScreenState extends State<StartScreen> {
+class StartScreenState extends State<StartScreen> {
   String? _selectedCategoryName;
-  DifficultyLevel _selectedDifficulty = DifficultyLevel.Easy;
-  ScoringOption _scoringOption = ScoringOption.Horizontal;
+  DifficultyLevel _selectedDifficulty = DifficultyLevel.easy;
+  ScoringOption _scoringOption = ScoringOption.horizontal;
   late int _selectedTime = 180;
 
   @override
@@ -51,11 +57,11 @@ class _StartScreenState extends State<StartScreen> {
     return allWords.where((word) {
       final length = word.length;
       switch (difficulty) {
-        case DifficultyLevel.Easy:
+        case DifficultyLevel.easy:
           return length < 5;
-        case DifficultyLevel.Moderate:
+        case DifficultyLevel.moderate:
           return length >= 5 && length <= 6;
-        case DifficultyLevel.Hard:
+        case DifficultyLevel.hard:
           return length > 6;
       }
     }).toList();
@@ -92,6 +98,93 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
+  Future<bool> isCategoryUnlocked (String categoryName) async {
+    return await CategoryUnlockManager.isCategoryUnlocked(categoryName);
+  }
+
+  Future<bool> _showRewardedAd() async {
+    final Completer<bool> completer = Completer();
+
+    RewardedAd.load(
+      adUnitId: "ca-app-pub-3940256099942544/5224354917",
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (RewardedAd ad) {
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad){
+              ad.dispose();
+              if (!completer.isCompleted) completer.complete(false);
+            },
+
+            onAdFailedToShowFullScreenContent: (ad, error) {
+              ad.dispose();
+              if (!completer.isCompleted) completer.complete(false);
+              },
+          );
+
+
+          ad.show(
+            onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+              if (!completer.isCompleted) completer.complete(true);
+              },
+            );
+          },
+
+
+          onAdFailedToLoad: (LoadAdError error) {
+          if (!completer.isCompleted) completer.complete(false);
+        },
+      ),
+    );
+
+          return completer.future;
+  }
+
+  void _promptUnlockCategory(String categoryName) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+        title: const Text( "🔒 Category Locked"),
+          content: const Text("Watch a short ad to unlock this category forever?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel')
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                bool rewarded = await _showRewardedAd(); // Step 4
+
+                if(!context.mounted) return;
+
+                if (rewarded) {
+                  await CategoryUnlockManager.unlockCategory(categoryName);
+                  if(!context.mounted) return;
+                  setState((){
+                    _selectedCategoryName = categoryName;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🎉 Category unlocked!')),
+                  );
+
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('❌ Ad not completed. Category still locked.')),
+                  );
+                }
+              },
+              child: const Text('Watch Ad')
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   Widget _buildScoringOption(ScoringOption option) {
     return Row(
       children: [
@@ -100,7 +193,7 @@ class _StartScreenState extends State<StartScreen> {
           groupValue: _scoringOption,
           onChanged: _handleRadioValueChanged,
         ),
-        Text(describeEnum(option)),
+        Text(option.name),
       ],
     );
   }
@@ -157,7 +250,7 @@ class _StartScreenState extends State<StartScreen> {
                 iconSize: 30,
                 isExpanded: true,
 
-                dropdownColor: Colors.transparent.withOpacity(0.8),
+                dropdownColor: Colors.transparent.withValues(alpha: 0.8),
                 underline: const SizedBox(),
                 iconEnabledColor: Colors.cyanAccent,
                 icon: const Icon(Icons.arrow_drop_down),
@@ -165,15 +258,41 @@ class _StartScreenState extends State<StartScreen> {
                   color: Colors.cyanAccent, fontSize: 30,
                     fontWeight: FontWeight.bold,  ),
 
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedCategoryName = newValue;
-                  });
+                onChanged: (String? newValue) async {
+                  if (newValue == null ) return;
+
+                  final unlocked = await CategoryUnlockManager.isCategoryUnlocked(newValue);
+
+                  if (unlocked) {
+                    setState((){
+                      _selectedCategoryName = newValue;
+                    });
+                  } else {
+                    _promptUnlockCategory(newValue); //_promptUnlockCategory implementation with Ad Unlock wire up the ad unlock prompt + logic
+                  }
                 },
+
+
                 items: widget.categories.map((category) {
                   return DropdownMenuItem<String>(
                     value: category.name,
-                    child: Text(category.name),
+                    child: FutureBuilder<bool>(
+                      future: CategoryUnlockManager.isCategoryUnlocked(category.name),
+                      builder: (context, snapshot) {
+                        final isUnlocked = snapshot.data ?? false;
+                        return Row(
+                          children: [
+                            Text(
+                              category.name,
+                              style: TextStyle(
+                                color: isUnlocked ? Colors.cyanAccent : Colors.redAccent,
+                              ),
+                            ),
+                            if (!isUnlocked) const Icon(Icons.lock, size:16, color: Colors.redAccent),
+                          ],
+                        );
+                      },
+                    ),
                   );
                 }).toList(),
               ),
@@ -189,7 +308,7 @@ class _StartScreenState extends State<StartScreen> {
               spacing: 8,
               alignment: WrapAlignment.center,
               children: DifficultyLevel.values.map((level) {
-                String label = level.toString().split('.').last;
+                String _ = level.toString().split('.').last;
 
                 return ChoiceChip(
                   backgroundColor: Colors.deepPurple.shade400,
@@ -203,7 +322,7 @@ class _StartScreenState extends State<StartScreen> {
                   ),
                   elevation: 15,
                   labelPadding: const EdgeInsets.all(5),
-                  label: Text(describeEnum(level)),
+                  label: Text(level.name),
                   selected: _selectedDifficulty == level,
                   onSelected: (_) {
                     setState(() {
@@ -285,8 +404,8 @@ class _StartScreenState extends State<StartScreen> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(5),
-                splashColor: Colors.orangeAccent.withOpacity(0.5),
-                highlightColor: Colors.orangeAccent.withOpacity(0.2),
+                splashColor: Colors.orangeAccent.withValues(alpha: 0.5),
+                highlightColor: Colors.orangeAccent.withValues(alpha: 0.2),
                 onTap: _startGame,
                 child: const Text(""),
             ),
@@ -304,18 +423,23 @@ class _StartScreenState extends State<StartScreen> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(5),
-                splashColor: Colors.purpleAccent.withOpacity(0.5),
-                highlightColor: Colors.purpleAccent.withOpacity(0.2),
+                splashColor: Colors.purpleAccent.withValues(alpha: 0.5),
+                highlightColor: Colors.purpleAccent.withValues(alpha: 0.2),
 
                 onTap: () async {
                 String leaderboardId = switch (_selectedDifficulty) {
-                  DifficultyLevel.Easy => 'CgkIr_H04_cJEAIQAg',
-                  DifficultyLevel.Moderate => 'CgkIr_H04_cJEAIQAw',
-                  DifficultyLevel.Hard => 'CgkIr_H04_cJEAIQBA',
+                  DifficultyLevel.easy => 'CgkIr_H04_cJEAIQAg',
+                  DifficultyLevel.moderate => 'CgkIr_H04_cJEAIQAw',
+                  DifficultyLevel.hard => 'CgkIr_H04_cJEAIQBA',
                 };
                 try {
                   await GamesServices.showLeaderboards(
                     androidLeaderboardID: leaderboardId,
+                  );
+
+                  if(!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Showing leaderboard.")),
                   );
                 } catch (e) {
                   if (kDebugMode) print('Failed to open leaderboard: $e');
