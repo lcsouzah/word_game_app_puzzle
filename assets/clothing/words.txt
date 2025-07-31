@@ -6,3 +6,16 @@ Shoes
 Jacket
 Socks
 Scarf
+Hoodie
+Skirt
+Pajamas
+Bikini
+Bathrobe
+Boot
+Suit
+Shorts
+Gloves
+Slippers
+Belt
+Raincoat
+Pullover
