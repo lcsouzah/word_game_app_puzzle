@@ -2,13 +2,12 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/alphabet_game.dart';
 import '../utils/score_uploader.dart';
+import '../utils/pause_manager.dart';
 import 'game_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
-
-
 
 class SafeAreaScreen extends StatefulWidget {
   final ScoringOption scoringOption;
@@ -25,12 +24,13 @@ class SafeAreaScreen extends StatefulWidget {
   });
 
   @override
-  _SafeAreaScreenState createState() => _SafeAreaScreenState();
+  SafeAreaScreenState createState() => SafeAreaScreenState();
 }
 
-
-
-class _SafeAreaScreenState extends State<SafeAreaScreen> {
+class SafeAreaScreenState extends State<SafeAreaScreen> {
+  final GlobalKey<GameScreenState> _gameScreenKey = GlobalKey();
+  int _adUsesThisMatch = 0;
+  final int _maxAdUsesPerMatch = 2;
   late int moveCounter;
   List<String> correctWords = [];
   late BannerAd _bannerAd;
@@ -38,16 +38,20 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
   late AlphabetGame game;
   late int _remainingTime;
   late Timer _timer;
-  bool _isPaused = false;
-
+  RewardedAd? _rewardedAd;
+  bool _isAdLoading = false;
 
   @override
   void initState() {
     super.initState();
     moveCounter = 1;
-    // Initialize the banner ad
+    _loadRewardedAd();
+
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+    pauseManager.addListener(_onPauseStateChanged);
+
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-2001371236360532/6515690897', // Replace with your ad unit ID
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -57,23 +61,89 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
           });
         },
         onAdFailedToLoad: (ad, error) {
-          // Handle the error
           ad.dispose();
         },
       ),
     )..load();
+
     game = AlphabetGame(widget.wordList);
     _remainingTime = widget.gameDuration;
     _startTimer();
   }
 
-
-  void onCorrectWord(String word) {
-    addCorrectWord(word);
+  void _onPauseStateChanged() {
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+    if (pauseManager.isPaused) {
+      _pauseTimer();
+    } else {
+      _resumeTimer();
+    }
   }
 
+  void _loadRewardedAd() {
+    if (_isAdLoading) return;
+    _isAdLoading = true;
 
-  void addCorrectWord(String word) {
+    RewardedAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isAdLoading = false;
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('Failed to load rewarded ad: $error');
+          _isAdLoading = false;
+        },
+      ),
+    );
+  }
+
+  void _showRewardedAdForHints() {
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+
+    if (_rewardedAd == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ad not ready. Try again later.')),
+      );
+      return;
+    }
+
+    pauseManager.pause(PauseReason.ad);
+    pauseManager.pause(PauseReason.manual);
+
+    _rewardedAd!.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        setState(() {
+          _adUsesThisMatch++;
+          pauseManager.forceResume();
+          pauseManager.resume(PauseReason.ad);
+        });
+
+        (_gameScreenKey.currentState as dynamic)?.addHints(3);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('+3 hints unlocked')),
+        );
+      },
+    );
+
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        pauseManager.resume(PauseReason.ad);
+        _loadRewardedAd();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        pauseManager.resume(PauseReason.ad);
+        ad.dispose();
+      },
+    );
+
+    _rewardedAd = null;
+  }
+
+  void onCorrectWord(String word) {
     setState(() {
       correctWords.add(word);
     });
@@ -122,16 +192,14 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(context);
               Navigator.pushReplacement(
                 context,
                 PageRouteBuilder(
                   transitionDuration: const Duration(milliseconds: 500),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
                   },
                   pageBuilder: (_, __, ___) => SafeAreaScreen(
                     scoringOption: widget.scoringOption,
@@ -146,8 +214,8 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.of(context).pop(); // Go back to StartScreen
+              Navigator.pop(context);
+              Navigator.of(context).pop();
             },
             child: const Text("🏠 Back to Menu"),
           ),
@@ -156,35 +224,40 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
     );
   }
 
-  void togglePause() {
-    setState(() {
-      _isPaused = !_isPaused;
+  void _pauseTimer() {
+    if (_timer.isActive) {
+      _timer.cancel();
+    }
+  }
+
+  void _resumeTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        _endGame();
+      }
     });
   }
 
-
-
-
-
-
-
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      if(!_isPaused){
-        if (_remainingTime > 0) {
-          setState(() {
-            _remainingTime--;
-          });
-        }    else {
-              _endGame();
-
-          }
-        }
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        _endGame();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final pauseManager = Provider.of<PauseManager>(context);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
@@ -192,27 +265,78 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
           'Word Game',
           style: TextStyle(color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.pause),
+            tooltip: "Pause",
+            onPressed: () {
+              final pauseManager = Provider.of<PauseManager>(context, listen: false);
+              pauseManager.pause(PauseReason.manual);
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,  // 🔒 disables outside-tap to dismiss
+                builder: (context) => AlertDialog(
+                  title: const Text('Game Paused'),
+                  content: const Text("What would you like to do?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        pauseManager.resume(PauseReason.manual);
+                      },
+                      child: const Text('Resume'),
+                    ),
+                   TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context); // back to menu
+                    },
+                    child: const Text('Exit'),
+                   ),
+                  ],
+                ),
+              );
+
+            },
+          ),
+        ],
       ),
+
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: 4, // Adjust flex to manage space
-              child: GameScreen(
+              flex: 4,
+              child: IgnorePointer(
+                ignoring: pauseManager.isPaused,
+                child: GameScreen(
+                key: _gameScreenKey,
                 game: game,
                 dictionary: widget.wordList,
                 onCorrectWord: onCorrectWord,
                 scoringOption: widget.scoringOption,
-                onPauseToggle: togglePause,
+                onPauseToggle: () {
+                  if (pauseManager.isPaused &&
+                      pauseManager.pauseReason == PauseReason.manual) {
+                    pauseManager.resume(PauseReason.manual);
+                  } else {
+                    pauseManager.pause(PauseReason.manual);
+                  }
+                },
+                maxHints: 3,
+                onRewardedAdRequest: _showRewardedAdForHints,
+                adUsesThisMatch: _adUsesThisMatch,
+                maxAdUsesPerMatch: _maxAdUsesPerMatch,
+                ),
               ),
             ),
-            // List of correct words with updated styling
             Expanded(
-              flex: 1, // Adjust flex to manage space
+              flex: 1,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                color: Colors.white60, // New background color for correct words list
+                color: Colors.white60,
                 child: ListView.builder(
                   itemCount: correctWords.length,
                   itemBuilder: (context, index) {
@@ -220,27 +344,25 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
                       margin: const EdgeInsets.all(4.0),
                       padding: const EdgeInsets.all(2.0),
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          width: 2,
-                        ),
-                        color: Colors.yellowAccent.shade100, // Individual item background color
-                        borderRadius: BorderRadius.circular(5.0), // Rounded corners for ListTile
+                        border: Border.all(width: 2),
+                        color: Colors.yellowAccent.shade100,
+                        borderRadius: BorderRadius.circular(5.0),
                       ),
                       child: Text(
                         correctWords[index],
                         style: const TextStyle(
-                          fontSize: 18, // Larger font size for correct words
-                          color: Colors.black, // Text color for correct words
-                          fontWeight: FontWeight.bold, // Bold text style
+                          fontSize: 18,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
                         ),
-                        textAlign: TextAlign.center, // Center align text
+                        textAlign: TextAlign.center,
                       ),
                     );
                   },
                 ),
               ),
             ),
-            // Time remaining and ads container unchanged
+
             Container(
               padding: const EdgeInsets.all(16.0),
               child: Text(
@@ -263,17 +385,11 @@ class _SafeAreaScreenState extends State<SafeAreaScreen> {
 
   @override
   void dispose() {
+    Provider.of<PauseManager>(context, listen: false)
+        .removeListener(_onPauseStateChanged);
     _timer.cancel();
     _bannerAd.dispose();
     super.dispose();
   }
 }
-
-
-
-
-
-
-
-
 
