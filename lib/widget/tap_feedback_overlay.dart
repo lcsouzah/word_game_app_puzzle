@@ -47,7 +47,7 @@ class _TouchFeedbackOverlayState extends State<TouchFeedbackOverlay> {
                 height: 30,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.cyanAccent.withOpacity(0.3),
+                  color: Colors.cyanAccent.withValues(alpha: 0.3),
                 ),
               ),
             ),
