@@ -1,9 +1,11 @@
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
+
 enum ScoringOption {
-  Horizontal,
-  Vertical,
-  Both,
+  horizontal,
+  vertical,
+  both,
 }
 
 class AlphabetGame {
@@ -28,7 +30,7 @@ class AlphabetGame {
         .toList();
 
     if (suitableWords.isEmpty) {
-      print("⚠️ No more unused suitable words found. Resetting...");
+      debugPrint("⚠️ No more unused suitable words found. Resetting...");
       resetWordPool();
       suitableWords = _availableWords
           .where((word) => word.length <= 15 && !_usedWords.contains(word))
@@ -48,8 +50,8 @@ class AlphabetGame {
     result.insert(0, ' '); // Insert blank tile
     emptyTileIndex = 0;
 
-    print("📌 Selected word: $selectedWord");
-    print("🧩 Generated letters: $result");
+    debugPrint("📌 Selected word: $selectedWord");
+    debugPrint("🧩 Generated letters: $result");
 
     return result;
   }
