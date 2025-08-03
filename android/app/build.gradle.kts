@@ -31,8 +31,8 @@ android {
     defaultConfig {
         applicationId = "com.word_game_app"
         minSdk = 23
-        targetSdk = 34
-        versionCode = 12 // ← ✅ Add this! Must be > 7 to upload new version to Play Store
+        targetSdk = 35
+        versionCode = 13 // ← ✅ Add this! Must be incremented every time to upload new version to Play Store
         versionName = "2.0.0"
     }
 
