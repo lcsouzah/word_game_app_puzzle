@@ -2,6 +2,7 @@
 
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/cupertino.dart';
 
 class SoundManager {
   static final AudioPlayer _player = AudioPlayer();
@@ -27,7 +28,7 @@ class SoundManager {
       await _player.setSource(AssetSource(fileName));
       await _player.resume();
     } catch (e) {
-      print("Error playing sound: $e");
+      debugPrint("Error playing sound: $e");
     }
   }
 
