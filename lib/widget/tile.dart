@@ -2,76 +2,109 @@
 
 import 'package:flutter/material.dart';
 
-class TileWidget extends StatelessWidget {
+class TileWidget extends StatefulWidget {
   final String letter;
   final VoidCallback onTap;
-  final bool highlighted;
+  final bool highlighted; // 🔴 highlighted on hint logic
+  final bool disappearing; // 🔴 disappearing correct word animation
 
   const TileWidget({
     super.key,
     required this.letter,
     required this.onTap,
     this.highlighted = false,
+    this.disappearing = false,
   });
 
   @override
+  TileWidgetState createState() => TileWidgetState();
+
+}
+
+class TileWidgetState extends State<TileWidget>
+    with SingleTickerProviderStateMixin {
+  double _scale = 1.0;
+
+  void _onTapDown(_) {
+    setState(() {
+      _scale = 0.8; // slightly make tile smaller
+    });
+  }
+
+  void _onTapUp(_) {
+    setState(() {
+      _scale = 1.1; // quick bounce out
+    });
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          _scale = 1.0; // reset scale
+        });
+      }
+    });
+    widget.onTap(); // move tile
+  }
+
+  void _onTapCancel() {
+    setState(() {
+      _scale = 1.0; // reset scale
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final _ = widget.letter.trim().isEmpty;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(1),
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedScale(
+        scale: widget.disappearing ? 0.0 : _scale, //shrink when disappearing
+        duration: const Duration(milliseconds: 50),
+        curve: Curves.easeInOut,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 50),
+          curve: Curves.easeOutBack,
+          margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            boxShadow: highlighted
-                ? [
-              BoxShadow(
-                color: Colors.greenAccent.withOpacity(0.7),
-                blurRadius: 18,
-                spreadRadius: 3,
-              ),
-            ]
-                : [],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Card(
-            elevation: 35,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(
-                color: highlighted ? Colors.greenAccent : Colors.white,
-                width: 4,
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: highlighted
-                    ? const LinearGradient(
-                  colors: [Colors.green, Colors.lightGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-                    : const LinearGradient(
-                  colors: [Colors.deepPurple, Colors.blue],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            color: widget.letter.trim().isEmpty // 🟢 empty tile black
+                ? Colors.transparent
+                : widget.highlighted // 🔵 highlighted blue
+                  ? Colors.greenAccent.withValues(alpha: 0.8)
+                  : (_scale != 1.0 ? Colors.grey.withValues(alpha: 0.5) : Colors.blueGrey),
+                borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              if (widget.highlighted)
+                BoxShadow(
+
+                  color: Colors.greenAccent.withValues(alpha: 0.7),
+                    blurRadius: 15,
+                    spreadRadius: 3,
+              )
+              else
+                BoxShadow(
+                  color: Colors.black12.withValues(alpha: 0.8),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: const Offset(2,2),
                 ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  letter,
+            ],
+          ),
+          alignment: Alignment.center,
+          child: widget.letter.trim().isEmpty // 🟢 empty tile black
+              ? const SizedBox.shrink() // 🟢 empty tile black
+              : Text(
+                  widget.letter,
                   style: const TextStyle(
-                    fontSize: 24.0,
+                    fontSize: 28.0,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                  ),
-                ),
-              ),
             ),
           ),
         ),
       ),
     );
   }
+
 }
