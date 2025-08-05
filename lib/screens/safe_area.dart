@@ -8,6 +8,7 @@ import '../utils/score_uploader.dart';
 import '../utils/pause_manager.dart';
 import 'game_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SafeAreaScreen extends StatefulWidget {
   final ScoringOption scoringOption;
@@ -51,7 +52,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     pauseManager.addListener(_onPauseStateChanged);
 
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      adUnitId: dotenv.env['BANNER_AD_UNIT_ID']!,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -85,7 +86,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     _isAdLoading = true;
 
     RewardedAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5224354917',
+      adUnitId: dotenv.env['REWARDED_AD_UNIT_ID']!,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
@@ -201,7 +202,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                       (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
                   },
-                  pageBuilder: (_, __, ___) => SafeAreaScreen(
+                  pageBuilder: (context, animation, secondaryAnimation) => SafeAreaScreen(
                     scoringOption: widget.scoringOption,
                     gameDuration: widget.gameDuration,
                     wordList: widget.wordList,

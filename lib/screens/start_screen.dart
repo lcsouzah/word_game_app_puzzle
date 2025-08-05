@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:games_services/games_services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
 import'../utils/category_unlock_manager.dart';
@@ -106,7 +107,7 @@ class StartScreenState extends State<StartScreen> {
     final Completer<bool> completer = Completer();
 
     RewardedAd.load(
-      adUnitId: "ca-app-pub-3940256099942544/5224354917",
+      adUnitId: dotenv.env['REWARDED_AD_UNIT_ID']!,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (RewardedAd ad) {
@@ -428,9 +429,9 @@ class StartScreenState extends State<StartScreen> {
 
                 onTap: () async {
                 String leaderboardId = switch (_selectedDifficulty) {
-                  DifficultyLevel.easy => 'CgkIr_H04_cJEAIQAg',
-                  DifficultyLevel.moderate => 'CgkIr_H04_cJEAIQAw',
-                  DifficultyLevel.hard => 'CgkIr_H04_cJEAIQBA',
+                  DifficultyLevel.easy => dotenv.env['EASY_LEADERBOARD_ID']!,
+                  DifficultyLevel.moderate => dotenv.env['MODERATE_LEADERBOARD_ID']!,
+                  DifficultyLevel.hard => dotenv.env['HARD_LEADERBOARD_ID']!,
                 };
                 try {
                   await GamesServices.showLeaderboards(

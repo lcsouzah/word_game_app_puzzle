@@ -7,10 +7,16 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/mode_selection_screen.dart';
 import 'utils/word_category.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
-void main() async {
+
+
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env"); // Load environment variables from .env file
   await MobileAds.instance.initialize();
 
 
