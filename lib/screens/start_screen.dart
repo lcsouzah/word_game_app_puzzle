@@ -161,6 +161,7 @@ class StartScreenState extends State<StartScreen> {
             TextButton(
               onPressed: () async {
                 final rewarded = await _showRewardedAd();
+                if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext, rewarded);
               },
               child: const Text('Watch Ad'),
@@ -193,6 +194,8 @@ class StartScreenState extends State<StartScreen> {
       children: [
         Radio<ScoringOption>(
           value: option,
+          groupValue: _scoringOption,
+          onChanged: _handleRadioValueChanged,
         ),
         Text(option.name),
       ],
@@ -346,7 +349,7 @@ class StartScreenState extends State<StartScreen> {
             left: MediaQuery.of(context).size.width * 0.001,
             width: MediaQuery.of(context).size.width * 0.9,
             child: RadioGroup<ScoringOption>(
-              value: _scoringOption,
+              groupValue: _scoringOption,
               onChanged: _handleRadioValueChanged,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
