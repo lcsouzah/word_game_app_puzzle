@@ -144,10 +144,9 @@ class StartScreenState extends State<StartScreen> {
           return completer.future;
   }
 
-  void _promptUnlockCategory(String categoryName) {
-    final parentContext = context;
-    showDialog(
-      context: parentContext,
+  Future<bool> _promptUnlockCategory(String categoryName) async {
+    final rewarded = await showDialog<bool>(
+      context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text("🔒 Category Locked"),
@@ -155,41 +154,38 @@ class StartScreenState extends State<StartScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext);
+                Navigator.pop(dialogContext, false);
               },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(dialogContext);
-                bool rewarded = await _showRewardedAd(); // Step 4
-
-                if (!context.mounted) return;
-
-                if (rewarded) {
-                  await CategoryUnlockManager.unlockCategory(categoryName);
-                  if (!context.mounted) return;
-                  setState(() {
-                    _selectedCategoryName = categoryName;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('🎉 Category unlocked!')),
-                  );
-
-                } else {
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('❌ Ad not completed. Category still locked.'),
-                    ),
-                  );
-                }
+                final rewarded = await _showRewardedAd();
+                Navigator.pop(dialogContext, rewarded);
               },
               child: const Text('Watch Ad'),
             ),
           ],
         );
       },
-    );
+    ) ?? false;
+
+    if (!mounted) return false;
+
+    if (rewarded) {
+      await CategoryUnlockManager.unlockCategory(categoryName);
+      if (!mounted) return true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🎉 Category unlocked!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Ad not completed. Category still locked.'),
+        ),
+      );
+    }
+    return rewarded;
   }
 
   Widget _buildScoringOption(ScoringOption option) {
