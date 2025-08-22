@@ -20,20 +20,20 @@ android {
     ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
         applicationId = "com.word_game_app"
-        minSdk = 23
-        targetSdk = 34
-        versionCode = 8 // ← ✅ Add this! Must be > 7 to upload new version to Play Store
-        versionName = "1.0.2"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 35
+        versionCode = 13 // ← ✅ Add this! Must be incremented every time to upload new version to Play Store
+        versionName = "2.0.0"
     }
 
     signingConfigs {
@@ -59,4 +59,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+
+dependencies {
+    implementation("com.google.android.gms:play-services-games-v2:+")
 }
