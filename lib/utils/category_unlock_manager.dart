@@ -9,15 +9,21 @@ class CategoryUnlockManager {
 
   // check if a category is unlock
   static Future<bool> isCategoryUnlocked(String categoryKey) async {
-    final prefs = await SharedPreferences.getInstance();
     final normalizedKey = _normalizeKey(categoryKey);
+    if (normalizedKey == 'dictionary') {
+      return true;
+    }
+    final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('unlocked_$normalizedKey') ?? false;
   }
 
   //unlock a category
   static Future<void> unlockCategory(String categoryKey) async {
-    final prefs = await SharedPreferences.getInstance();
     final normalizedKey = _normalizeKey(categoryKey);
+    if (normalizedKey == 'dictionary') {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('unlocked_$normalizedKey', true);
   }
 }
