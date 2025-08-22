@@ -140,16 +140,43 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return bestMatch;
   }
 
-  List<int> _findMatchingIndices(String word) {
-    List<int> indices = [];
+  /// Returns the tile indices that form [word].
+  ///
+  /// When [vertical] is `true`, tiles are checked column-by-column rather than
+  /// left-to-right. This mirrors the order used by [AlphabetGame.getWord] and
+  /// [AlphabetGame.getWordVertical] so that the indices line up with the solved
+  /// word regardless of orientation.
+  List<int> _findMatchingIndices(String word, {bool vertical = false}) {
+    final List<int> indices = [];
     final tiles = widget.game.letters;
     int matchIndex = 0;
 
-    for (int i = 0; i < tiles.length; i++) {
-      if (tiles[i] == word[matchIndex]) {
-        indices.add(i);
-        matchIndex++;
-        if (matchIndex >= word.length) break;
+    const int gridSize = 4; // 4x4 grid
+
+    if (vertical) {
+      // Scan column-by-column, top-to-bottom
+      for (int col = 0; col < gridSize && matchIndex < word.length; col++) {
+        for (int row = 0; row < gridSize && matchIndex < word.length; row++) {
+          final int i = row * gridSize + col;
+          if (tiles[i] == ' ') {
+            return indices; // stop at first blank tile
+          }
+          if (tiles[i] == word[matchIndex]) {
+            indices.add(i);
+            matchIndex++;
+          }
+        }
+      }
+    } else {
+      // Default: scan left-to-right
+      for (int i = 0; i < tiles.length && matchIndex < word.length; i++) {
+        if (tiles[i] == ' ') {
+          break; // stop at first blank tile
+        }
+        if (tiles[i] == word[matchIndex]) {
+          indices.add(i);
+          matchIndex++;
+        }
       }
     }
 
@@ -199,38 +226,49 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _checkWord() async {
-    // Initialize a variable to hold the formed word(s)
-    List<String> formedWords = [];
+    // Collect formed words along with their orientation
+    final List<Map<String, dynamic>> formedWords = [];
 
-    // Check based on the selected scoring option
     switch (widget.scoringOption) {
       case ScoringOption.horizontal:
-      // Assuming getWord() returns a list of horizontally formed words
-        formedWords.add(widget.game.getWord()); // Adjusted to hypothetical method
+        formedWords.add({
+          'word': widget.game.getWord(),
+          'vertical': false,
+        });
         break;
       case ScoringOption.vertical:
-      // For vertical, we're already clear on getWordVertical()
-        formedWords.add(widget.game.getWordVertical()); // Assuming it returns a single vertical word
+        formedWords.add({
+          'word': widget.game.getWordVertical(),
+          'vertical': true,
+        });
         break;
       case ScoringOption.both:
-      // Combine both horizontal and vertical checks
-        formedWords.add(widget.game.getWord()); // Adjusted to hypothetical method
-        formedWords.add(widget.game.getWordVertical());
+        formedWords.add({
+          'word': widget.game.getWord(),
+          'vertical': false,
+        });
+        formedWords.add({
+          'word': widget.game.getWordVertical(),
+          'vertical': true,
+        });
         break;
     }
 
     // Iterate through all formed words and check if any is correct
-    for (String word in formedWords) {
+    for (final entry in formedWords) {
+      final String word = entry['word'];
+      final bool vertical = entry['vertical'];
+
       if (widget.dictionary.contains(word)) {
         widget.onCorrectWord(word);
         debugPrint('🎉 Matched word: $word');
 
-        final indices = _findMatchingIndices(word);
+        final indices = _findMatchingIndices(word, vertical: vertical);
 
         // ✅ Sequentially highlight each tile
-        for(int i = 0; i < indices.length; i++){
-          await Future.delayed(Duration(milliseconds: 120 * i),() {
-            if(!mounted) return;
+        for (int i = 0; i < indices.length; i++) {
+          await Future.delayed(Duration(milliseconds: 120 * i), () {
+            if (!mounted) return;
             setState(() {
               _highlightedIndices.add(indices[i]);
             });
@@ -238,7 +276,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         }
 
         // ✅ Keep them green for a moment
-
         await Future.delayed(const Duration(milliseconds: 50));
 
         // ✅ Sequentially "disappear" (shrink them one by one)
@@ -246,19 +283,15 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           await Future.delayed(Duration(milliseconds: 50 * i), () {
             if (!mounted) return;
             setState(() {
-
-              //replace with disappearing animation
+              // replace highlight with disappearing animation
               _highlightedIndices.remove(indices[i]);
-
+              _disappearingIndices.add(indices[i]);
             });
           });
         }
 
         // ✅ After all done → clear word & generate new letters
-
-        // Wait before clearing
         await Future.delayed(const Duration(milliseconds: 50));
-
 
         setState(() {
           _disappearingIndices.clear();

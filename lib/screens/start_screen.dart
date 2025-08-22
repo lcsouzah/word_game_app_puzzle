@@ -41,9 +41,7 @@ class StartScreenState extends State<StartScreen> {
   void initState() {
     super.initState();
     _safeSignIn();
-    if (widget.categories.isNotEmpty) {
-      _selectedCategoryName = widget.categories.first.name;
-    }
+
   }
 
   void _safeSignIn() async {
@@ -77,6 +75,13 @@ class StartScreenState extends State<StartScreen> {
   }
 
   void _startGame() {
+    if (_selectedCategoryName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category')),
+      );
+      return;
+    }
+
     final selectedCategory = widget.categories.firstWhere(
           (cat) => cat.name == _selectedCategoryName,
     );
@@ -99,9 +104,7 @@ class StartScreenState extends State<StartScreen> {
     );
   }
 
-  Future<bool> isCategoryUnlocked (String categoryName) async {
-    return await CategoryUnlockManager.isCategoryUnlocked(categoryName);
-  }
+
 
   Future<bool> _showRewardedAd() async {
     final Completer<bool> completer = Completer();
@@ -142,30 +145,31 @@ class StartScreenState extends State<StartScreen> {
   }
 
   void _promptUnlockCategory(String categoryName) {
+    final parentContext = context;
     showDialog(
-      context: context,
-      builder: (context) {
+      context: parentContext,
+      builder: (dialogContext) {
         return AlertDialog(
-        title: const Text( "🔒 Category Locked"),
+          title: const Text("🔒 Category Locked"),
           content: const Text("Watch a short ad to unlock this category forever?"),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
-              child: const Text('Cancel')
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 bool rewarded = await _showRewardedAd(); // Step 4
 
-                if(!context.mounted) return;
+                if (!context.mounted) return;
 
                 if (rewarded) {
                   await CategoryUnlockManager.unlockCategory(categoryName);
-                  if(!context.mounted) return;
-                  setState((){
+                  if (!context.mounted) return;
+                  setState(() {
                     _selectedCategoryName = categoryName;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -173,16 +177,18 @@ class StartScreenState extends State<StartScreen> {
                   );
 
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('❌ Ad not completed. Category still locked.')),
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ Ad not completed. Category still locked.'),
+                    ),
                   );
                 }
               },
-              child: const Text('Watch Ad')
+              child: const Text('Watch Ad'),
             ),
           ],
         );
-      }
+      },
     );
   }
 
@@ -191,8 +197,6 @@ class StartScreenState extends State<StartScreen> {
       children: [
         Radio<ScoringOption>(
           value: option,
-          groupValue: _scoringOption,
-          onChanged: _handleRadioValueChanged,
         ),
         Text(option.name),
       ],
@@ -246,10 +250,11 @@ class StartScreenState extends State<StartScreen> {
                 border: Border.all(color: Colors.cyanAccent),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: DropdownButton<String>(
-                value: null ,
-                iconSize: 30,
-                isExpanded: true,
+                child: DropdownButton<String>(
+                  value: _selectedCategoryName,
+                  hint: const SizedBox.shrink(),
+                  iconSize: 30,
+                  isExpanded: true,
 
                 dropdownColor: Colors.transparent.withValues(alpha: 0.8),
                 underline: const SizedBox(),
@@ -259,19 +264,22 @@ class StartScreenState extends State<StartScreen> {
                   color: Colors.cyanAccent, fontSize: 30,
                     fontWeight: FontWeight.bold,  ),
 
-                onChanged: (String? newValue) async {
-                  if (newValue == null ) return;
+                  onChanged: (String? newValue) async {
+                    if (newValue == null) return;
 
-                  final unlocked = await CategoryUnlockManager.isCategoryUnlocked(newValue);
-
-                  if (unlocked) {
-                    setState((){
-                      _selectedCategoryName = newValue;
-                    });
-                  } else {
-                    _promptUnlockCategory(newValue); //_promptUnlockCategory implementation with Ad Unlock wire up the ad unlock prompt + logic
-                  }
-                },
+                    if (await CategoryUnlockManager.isCategoryUnlocked(newValue)) {
+                      setState(() {
+                        _selectedCategoryName = newValue;
+                      });
+                    } else {
+                      final unlocked = await _promptUnlockCategory(newValue);
+                      if (unlocked) {
+                        setState(() {
+                          _selectedCategoryName = newValue;
+                        });
+                      }
+                    }
+                  },
 
 
                 items: widget.categories.map((category) {
@@ -309,7 +317,6 @@ class StartScreenState extends State<StartScreen> {
               spacing: 8,
               alignment: WrapAlignment.center,
               children: DifficultyLevel.values.map((level) {
-                String _ = level.toString().split('.').last;
 
                 return ChoiceChip(
                   backgroundColor: Colors.deepPurple.shade400,
@@ -325,10 +332,12 @@ class StartScreenState extends State<StartScreen> {
                   labelPadding: const EdgeInsets.all(5),
                   label: Text(level.name),
                   selected: _selectedDifficulty == level,
-                  onSelected: (_) {
-                    setState(() {
-                      _selectedDifficulty = level;
-                    });
+                  onSelected: (isSelected) {
+                    if (isSelected) {
+                      setState(() {
+                        _selectedDifficulty = level;
+                      });
+                    }
                   },
                 );
               }).toList(),
@@ -340,11 +349,16 @@ class StartScreenState extends State<StartScreen> {
             top: MediaQuery.of(context).size.height * 0.58,
             left: MediaQuery.of(context).size.width * 0.001,
             width: MediaQuery.of(context).size.width * 0.9,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: ScoringOption.values.map(_buildScoringOption).toList(),
+            child: RadioGroup<ScoringOption>(
+              value: _scoringOption,
+              onChanged: _handleRadioValueChanged,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ScoringOption.values.map(_buildScoringOption).toList(),
+              ),
             ),
           ),
+
 
           // Time Selector
           Positioned(
