@@ -259,6 +259,10 @@ class StartScreenState extends State<StartScreen> {
                 underline: const SizedBox(),
                 iconEnabledColor: Colors.cyanAccent,
                 icon: const Icon(Icons.arrow_drop_down),
+                  selectedItemBuilder: (context) =>
+                      widget.categories
+                          .map((_) => const SizedBox.shrink())
+                          .toList(),
                 style: const TextStyle(
                   color: Colors.cyanAccent, fontSize: 30,
                     fontWeight: FontWeight.bold,  ),
