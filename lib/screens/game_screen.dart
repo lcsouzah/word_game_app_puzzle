@@ -3,9 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widget/tap_feedback_overlay.dart'; // need improvement
+import '../widgets/tap_feedback_overlay.dart'; // need improvement
 import '../models/alphabet_game.dart';
-import '../widget/tile.dart';
+import '../widgets/tile.dart';
 import '../utils/sound_manager.dart';
 import '../utils/pause_manager.dart';
 

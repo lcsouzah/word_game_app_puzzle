@@ -2,7 +2,7 @@
 
 
 import 'package:flutter/material.dart';
-import '../main.dart'; // function to load categories
+import '../services/category_loader.dart'; // function to load categories
 import '../utils/word_category.dart'; // model for categories
 import 'start_screen.dart';
 
