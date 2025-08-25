@@ -5,17 +5,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:games_services/games_services.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 
 
 import'../utils/category_unlock_manager.dart';
 
 import '../models/alphabet_game.dart';
+import '../models/difficulty_level.dart';
 import '../utils/word_category.dart';
 import '../screens/safe_area.dart';
-
-enum DifficultyLevel { easy, moderate, hard }
+import '../widgets/start/category_selector.dart';
+import '../widgets/start/difficulty_selector.dart';
+import '../widgets/start/leaderboard_button.dart';
+import '../widgets/start/scoring_options.dart';
+import '../widgets/start/start_button.dart';
+import '../widgets/start/time_selector.dart';
+import '../services/ad_service.dart';
 
 class StartScreen extends StatefulWidget {
   final List<WordCategory> categories;
@@ -106,44 +113,6 @@ class StartScreenState extends State<StartScreen> {
 
 
 
-  Future<bool> _showRewardedAd() async {
-    final Completer<bool> completer = Completer();
-
-    RewardedAd.load(
-      adUnitId: dotenv.env['REWARDED_AD_UNIT_ID']!,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (RewardedAd ad) {
-          ad.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (ad){
-              ad.dispose();
-              if (!completer.isCompleted) completer.complete(false);
-            },
-
-            onAdFailedToShowFullScreenContent: (ad, error) {
-              ad.dispose();
-              if (!completer.isCompleted) completer.complete(false);
-              },
-          );
-
-
-          ad.show(
-            onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-              if (!completer.isCompleted) completer.complete(true);
-              },
-            );
-          },
-
-
-          onAdFailedToLoad: (LoadAdError error) {
-          if (!completer.isCompleted) completer.complete(false);
-        },
-      ),
-    );
-
-          return completer.future;
-  }
-
   Future<bool> _promptUnlockCategory(String categoryName) async {
     final rewarded = await showDialog<bool>(
       context: context,
@@ -160,7 +129,7 @@ class StartScreenState extends State<StartScreen> {
             ),
             TextButton(
               onPressed: () async {
-                final rewarded = await _showRewardedAd();
+                final rewarded = await context.read<AdService>().showRewardedAd();
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext, rewarded);
               },
@@ -187,19 +156,6 @@ class StartScreenState extends State<StartScreen> {
       );
     }
     return rewarded;
-  }
-
-  Widget _buildScoringOption(ScoringOption option) {
-    return Row(
-      children: [
-        Radio<ScoringOption>(
-          value: option,
-          groupValue: _scoringOption,
-          onChanged: _handleRadioValueChanged,
-        ),
-        Text(option.name),
-      ],
-    );
   }
 
   @override
@@ -243,71 +199,16 @@ class StartScreenState extends State<StartScreen> {
             left: MediaQuery.of(context).size.width * 0.1285,
             width: MediaQuery.of(context).size.width * 0.78,
             height: 49,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.cyanAccent),
-                borderRadius: BorderRadius.circular(5),
-              ),
-                child: DropdownButton<String>(
-                  value: _selectedCategoryName,
-                  hint: const SizedBox.shrink(),
-                  iconSize: 30,
-                  isExpanded: true,
-
-                dropdownColor: Colors.transparent.withValues(alpha: 0.8),
-                underline: const SizedBox(),
-                iconEnabledColor: Colors.cyanAccent,
-                icon: const Icon(Icons.arrow_drop_down),
-                  selectedItemBuilder: (context) =>
-                      widget.categories
-                          .map((_) => const SizedBox.shrink())
-                          .toList(),
-                style: const TextStyle(
-                  color: Colors.cyanAccent, fontSize: 30,
-                    fontWeight: FontWeight.bold,  ),
-
-                  onChanged: (String? newValue) async {
-                    if (newValue == null) return;
-
-                    if (await CategoryUnlockManager.isCategoryUnlocked(newValue)) {
-                      setState(() {
-                        _selectedCategoryName = newValue;
-                      });
-                    } else {
-                      final unlocked = await _promptUnlockCategory(newValue);
-                      if (unlocked) {
-                        setState(() {
-                          _selectedCategoryName = newValue;
-                        });
-                      }
-                    }
-                  },
-
-
-                items: widget.categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category.name,
-                    child: FutureBuilder<bool>(
-                      future: CategoryUnlockManager.isCategoryUnlocked(category.name),
-                      builder: (context, snapshot) {
-                        final isUnlocked = snapshot.data ?? false;
-                        return Row(
-                          children: [
-                            Text(
-                              category.name,
-                              style: TextStyle(
-                                color: isUnlocked ? Colors.cyanAccent : Colors.redAccent,
-                              ),
-                            ),
-                            if (!isUnlocked) const Icon(Icons.lock, size:16, color: Colors.redAccent),
-                          ],
-                        );
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
+            child: CategorySelector(
+              categories: widget.categories,
+              selectedCategory: _selectedCategoryName,
+              isCategoryUnlocked: CategoryUnlockManager.isCategoryUnlocked,
+              promptUnlock: _promptUnlockCategory,
+              onCategoryChanged: (value) {
+                setState(() {
+                  _selectedCategoryName = value;
+                });
+              },
             ),
           ),
 
@@ -316,34 +217,13 @@ class StartScreenState extends State<StartScreen> {
             top: MediaQuery.of(context).size.height * 0.505,
             left: MediaQuery.of(context).size.width * 0.03,
             width: MediaQuery.of(context).size.width * 0.95,
-            child: Wrap(
-              spacing: 8,
-              alignment: WrapAlignment.center,
-              children: DifficultyLevel.values.map((level) {
-
-                return ChoiceChip(
-                  backgroundColor: Colors.deepPurple.shade400,
-                  shadowColor: Colors.red,
-                  selectedColor: Colors.deepPurple.shade300,
-                  selectedShadowColor: Colors.greenAccent,
-                  labelStyle: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  elevation: 15,
-                  labelPadding: const EdgeInsets.all(5),
-                  label: Text(level.name),
-                  selected: _selectedDifficulty == level,
-                  onSelected: (isSelected) {
-                    if (isSelected) {
-                      setState(() {
-                        _selectedDifficulty = level;
-                      });
-                    }
-                  },
-                );
-              }).toList(),
+            child: DifficultySelector(
+              selectedDifficulty: _selectedDifficulty,
+              onSelected: (level) {
+                setState(() {
+                  _selectedDifficulty = level;
+                });
+              },
             ),
           ),
 
@@ -352,62 +232,26 @@ class StartScreenState extends State<StartScreen> {
             top: MediaQuery.of(context).size.height * 0.58,
             left: MediaQuery.of(context).size.width * 0.001,
             width: MediaQuery.of(context).size.width * 0.9,
-            child: RadioGroup<ScoringOption>(
+            child: ScoringOptions(
               groupValue: _scoringOption,
               onChanged: _handleRadioValueChanged,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: ScoringOption.values.map(_buildScoringOption).toList(),
-              ),
             ),
           ),
-
 
           // Time Selector
           Positioned(
             top: MediaQuery.of(context).size.height * 0.65,
             left: MediaQuery.of(context).size.width * 0.30,
             width: MediaQuery.of(context).size.width * 0.35,
-            child: DropdownButton<int>(
-              iconSize: 24,
-              value: _selectedTime,
-              dropdownColor: Colors.black,
-              iconEnabledColor: Colors.orange,
-              style: const TextStyle(color: Colors.orangeAccent),
-              underline: Container(height: 3, width: 3, color: Colors.orange),
-              onChanged: (int? value) {
+            child: TimeSelector(
+              selectedTime: _selectedTime,
+              onChanged: (value) {
                 if (value != null) {
                   setState(() {
                     _selectedTime = value;
                   });
                 }
               },
-              items: const [
-                DropdownMenuItem<int>(value: 60,  child: Text(
-                  "1 Minute",
-                  style: TextStyle(
-                    color: Colors.lightBlueAccent,
-                    fontSize: 32,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),),
-                DropdownMenuItem<int>(value: 120, child: Text(
-                    '2 Minutes',
-                  style: TextStyle(
-                    color: Colors.lightBlueAccent,
-                    fontSize: 32,
-                    fontStyle: FontStyle.italic,
-                  ),
-                )),
-                DropdownMenuItem<int>(value: 180, child: Text(
-                    '3 Minutes',
-                  style: TextStyle(
-                    color: Colors.lightBlueAccent,
-                    fontSize: 32,
-                    fontStyle: FontStyle.italic,
-                  ),
-                )),
-              ],
             ),
           ),
 
@@ -417,17 +261,7 @@ class StartScreenState extends State<StartScreen> {
             left: MediaQuery.of(context).size.width * 0.14,
             width: MediaQuery.of(context).size.width * 0.72,
             height: 63.5,
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(5),
-                splashColor: Colors.orangeAccent.withValues(alpha: 0.5),
-                highlightColor: Colors.orangeAccent.withValues(alpha: 0.2),
-                onTap: _startGame,
-                child: const Text(""),
-            ),
-          ),
+            child: StartButton(onTap: _startGame),
           ),
 
           // Leaderboard Button
@@ -436,15 +270,8 @@ class StartScreenState extends State<StartScreen> {
             left: MediaQuery.of(context).size.width * 0.135,
             width: MediaQuery.of(context).size.width * 0.73,
             height: 40,
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(5),
-                splashColor: Colors.purpleAccent.withValues(alpha: 0.5),
-                highlightColor: Colors.purpleAccent.withValues(alpha: 0.2),
-
-                onTap: () async {
+            child: LeaderboardButton(
+              onTap: () async {
                 String leaderboardId = switch (_selectedDifficulty) {
                   DifficultyLevel.easy => dotenv.env['EASY_LEADERBOARD_ID']!,
                   DifficultyLevel.moderate => dotenv.env['MODERATE_LEADERBOARD_ID']!,
@@ -455,7 +282,7 @@ class StartScreenState extends State<StartScreen> {
                     androidLeaderboardID: leaderboardId,
                   );
 
-                  if(!context.mounted) return;
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Showing leaderboard.")),
                   );
@@ -466,9 +293,7 @@ class StartScreenState extends State<StartScreen> {
                   );
                 }
               },
-              child: const Text(""),
             ),
-          ),
           ),
 
           // Toggle Theme Button (top-right)
