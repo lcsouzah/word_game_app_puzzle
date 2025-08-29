@@ -31,7 +31,7 @@ android {
     defaultConfig {
         applicationId = "com.word_game_app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 13 // ← ✅ Add this! Must be incremented every time to upload new version to Play Store
         versionName = "2.0.0"
     }
