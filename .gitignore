@@ -45,7 +45,7 @@ app.*.map.json
 /android/app/release
 
 # 🔐 Sensitive config files – DO NOT TRACK
-.env
+.env            # Local environment variables
 key.properties
 *.jks
 

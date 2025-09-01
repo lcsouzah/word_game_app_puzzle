@@ -10,13 +10,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/ad_service.dart';
 
 
-
-
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: ".env"); // Load environment variables from .env file
+  dotenv.mergeWith({
+    if (const String.fromEnvironment('BANNER_AD_UNIT_ID').isNotEmpty)
+      'BANNER_AD_UNIT_ID': const String.fromEnvironment('BANNER_AD_UNIT_ID'),
+    if (const String.fromEnvironment('REWARDED_AD_UNIT_ID').isNotEmpty)
+      'REWARDED_AD_UNIT_ID': const String.fromEnvironment('REWARDED_AD_UNIT_ID'),
+    if (const String.fromEnvironment('EASY_LEADERBOARD_ID').isNotEmpty)
+      'EASY_LEADERBOARD_ID': const String.fromEnvironment('EASY_LEADERBOARD_ID'),
+    if (const String.fromEnvironment('MODERATE_LEADERBOARD_ID').isNotEmpty)
+      'MODERATE_LEADERBOARD_ID': const String.fromEnvironment('MODERATE_LEADERBOARD_ID'),
+    if (const String.fromEnvironment('HARD_LEADERBOARD_ID').isNotEmpty)
+      'HARD_LEADERBOARD_ID': const String.fromEnvironment('HARD_LEADERBOARD_ID'),
+  });
   await MobileAds.instance.initialize();
 
 
