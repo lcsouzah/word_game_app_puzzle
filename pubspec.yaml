@@ -104,6 +104,7 @@ flutter:
     - assets/sounds/tile_move1.mp3
     - assets/sounds/tile_move.mp3
     - assets/sounds/tile_move2.wav
+    - .env
   fonts:
     - family: PressStart2P
       fonts:

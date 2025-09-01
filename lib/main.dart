@@ -12,23 +12,41 @@ import 'services/ad_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(
-    fileName: ".env",
-    mergeWith: {
-      if (const String.fromEnvironment('BANNER_AD_UNIT_ID').isNotEmpty)
-        'BANNER_AD_UNIT_ID': const String.fromEnvironment('BANNER_AD_UNIT_ID'),
-      if (const String.fromEnvironment('REWARDED_AD_UNIT_ID').isNotEmpty)
-        'REWARDED_AD_UNIT_ID': const String.fromEnvironment('REWARDED_AD_UNIT_ID'),
-      if (const String.fromEnvironment('EASY_LEADERBOARD_ID').isNotEmpty)
-        'EASY_LEADERBOARD_ID': const String.fromEnvironment('EASY_LEADERBOARD_ID'),
-      if (const String.fromEnvironment('MODERATE_LEADERBOARD_ID').isNotEmpty)
-        'MODERATE_LEADERBOARD_ID': const String.fromEnvironment('MODERATE_LEADERBOARD_ID'),
-      if (const String.fromEnvironment('HARD_LEADERBOARD_ID').isNotEmpty)
-        'HARD_LEADERBOARD_ID': const String.fromEnvironment('HARD_LEADERBOARD_ID'),
-    },
-  );
-  await MobileAds.instance.initialize();
 
+  bool initializationFailed = false;
+
+  try {
+    await dotenv.load(
+      fileName: ".env",
+      mergeWith: {
+        if (const String.fromEnvironment('BANNER_AD_UNIT_ID').isNotEmpty)
+          'BANNER_AD_UNIT_ID': const String.fromEnvironment('BANNER_AD_UNIT_ID'),
+        if (const String.fromEnvironment('REWARDED_AD_UNIT_ID').isNotEmpty)
+          'REWARDED_AD_UNIT_ID': const String.fromEnvironment('REWARDED_AD_UNIT_ID'),
+        if (const String.fromEnvironment('LEADERBOARD_ID_EASY').isNotEmpty)
+          'LEADERBOARD_ID_EASY': const String.fromEnvironment('LEADERBOARD_ID_EASY'),
+        if (const String.fromEnvironment('LEADERBOARD_ID_MEDIUM').isNotEmpty)
+          'LEADERBOARD_ID_MEDIUM': const String.fromEnvironment('LEADERBOARD_ID_MEDIUM'),
+        if (const String.fromEnvironment('LEADERBOARD_ID_HARD').isNotEmpty)
+          'LEADERBOARD_ID_HARD': const String.fromEnvironment('LEADERBOARD_ID_HARD'),
+      },
+    );
+  } catch (e) {
+    initializationFailed = true;
+    debugPrint('Error loading .env file: $e');
+    dotenv.env.putIfAbsent('BANNER_AD_UNIT_ID', () => '');
+    dotenv.env.putIfAbsent('REWARDED_AD_UNIT_ID', () => '');
+    dotenv.env.putIfAbsent('EASY_LEADERBOARD_ID', () => '');
+    dotenv.env.putIfAbsent('MODERATE_LEADERBOARD_ID', () => '');
+    dotenv.env.putIfAbsent('HARD_LEADERBOARD_ID', () => '');
+  }
+
+  try {
+    await MobileAds.instance.initialize();
+  } catch (e) {
+    initializationFailed = true;
+    debugPrint('Error initializing Mobile Ads: $e');
+  }
 
   runApp(
     MultiProvider(
@@ -37,7 +55,7 @@ Future<void> main() async {
         Provider(create: (_) => AdService()),
         // other providers can be added here
       ],
-      child: const MyApp(),
+      child: MyApp(initializationFailed: initializationFailed),
     ),
   );
 }
@@ -46,7 +64,8 @@ Future<void> main() async {
 
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool initializationFailed;
+  const MyApp({super.key, required this.initializationFailed});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -69,7 +88,22 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData.dark(),
       darkTheme: ThemeData.dark(),
       themeMode: _themeMode,
-      home: ModeSelectionScreen(toggleTheme: toggleTheme), // <-- NEW ENTRY SCREEN
+      home: widget.initializationFailed
+          ? const InitializationErrorScreen()
+          : ModeSelectionScreen(toggleTheme: toggleTheme), // <-- NEW ENTRY SCREEN
+    );
+  }
+}
+
+class InitializationErrorScreen extends StatelessWidget {
+  const InitializationErrorScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('An error occurred during initialization. ⚠️ '),
+      ),
     );
   }
 }

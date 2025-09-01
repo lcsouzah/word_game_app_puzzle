@@ -273,9 +273,9 @@ class StartScreenState extends State<StartScreen> {
             child: LeaderboardButton(
               onTap: () async {
                 String leaderboardId = switch (_selectedDifficulty) {
-                  DifficultyLevel.easy => dotenv.env['EASY_LEADERBOARD_ID']!,
-                  DifficultyLevel.moderate => dotenv.env['MODERATE_LEADERBOARD_ID']!,
-                  DifficultyLevel.hard => dotenv.env['HARD_LEADERBOARD_ID']!,
+                  DifficultyLevel.easy => dotenv.env['LEADERBOARD_ID_EASY']!,
+                  DifficultyLevel.moderate => dotenv.env['LEADERBOARD_ID_MEDIUM']!,
+                  DifficultyLevel.hard => dotenv.env['LEADERBOARD_ID_HARD']!,
                 };
                 try {
                   await GamesServices.showLeaderboards(
