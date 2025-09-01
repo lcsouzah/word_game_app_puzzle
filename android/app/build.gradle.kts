@@ -1,5 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 
 plugins {
     id("com.android.application")
@@ -24,16 +26,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
 
     defaultConfig {
         applicationId = "com.word_game_app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
-        versionCode = 13 // ← ✅ Add this! Must be incremented every time to upload new version to Play Store
-        versionName = "2.0.0"
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     signingConfigs {
@@ -57,11 +56,18 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+
 flutter {
     source = "../.."
 }
 
 
 dependencies {
-    implementation("com.google.android.gms:play-services-games-v2:+")
+    implementation("com.google.android.gms:play-services-games-v2:21.0.0")
 }
