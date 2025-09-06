@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/category_loader.dart'; // function to load categories
 import '../utils/word_category.dart'; // model for categories
 import 'start_screen.dart';
+import 'serpuzzle_config_screen.dart';
 
 class ModeSelectionScreen extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -83,11 +84,10 @@ class ModeSelectionScreen extends StatelessWidget {
                 splashColor: Colors.tealAccent.withValues(alpha: 0.3),
                 highlightColor: Colors.teal.withValues(alpha: 0.2),
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("🛠 Serpuzzle mode is under development."),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.teal,
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SerpuzzleConfigScreen(),
                     ),
                   );
                 },

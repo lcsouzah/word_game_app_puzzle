@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import '../models/difficulty_level.dart';
+import './serpuzzle_game_screen.dart';
+
+class SerpuzzleConfigScreen extends StatefulWidget {
+  const SerpuzzleConfigScreen({super.key});
+
+  @override
+  State<SerpuzzleConfigScreen> createState() => _SerpuzzleConfigScreenState();
+}
+
+class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
+  DifficultyLevel _difficulty = DifficultyLevel.easy;
+
+  int _gridSizeFor(DifficultyLevel level) {
+    switch (level) {
+      case DifficultyLevel.easy:
+        return 4;
+      case DifficultyLevel.moderate:
+        return 5;
+      case DifficultyLevel.hard:
+        return 6;
+    }
+  }
+
+  void _startGame() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SerpuzzleGameScreen(
+          gridSize: _gridSizeFor(_difficulty),
+          dictionary: const ['CAT', 'DOG', 'BIRD', 'FISH'],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Serpuzzle Config')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            DropdownButton<DifficultyLevel>(
+              value: _difficulty,
+              onChanged: (val) {
+                if (val != null) setState(() => _difficulty = val);
+              },
+              items: const [
+                DropdownMenuItem(
+                  value: DifficultyLevel.easy,
+                  child: Text('Easy'),
+                ),
+                DropdownMenuItem(
+                  value: DifficultyLevel.moderate,
+                  child: Text('Moderate'),
+                ),
+                DropdownMenuItem(
+                  value: DifficultyLevel.hard,
+                  child: Text('Hard'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _startGame,
+              child: const Text('Start'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
