@@ -80,6 +80,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
 }
 
 class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
+  final Random _rand = Random();
   late SerpuzzleGrid _grid;
   late SerpuzzleSnake _snake;
   bool _isMatched = false;
@@ -253,8 +254,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   String _randomLetter() {
-    final rand = Random();
-    return String.fromCharCode(65 + rand.nextInt(26));
+    return String.fromCharCode(65 + _rand.nextInt(26));
   }
 
   @override
