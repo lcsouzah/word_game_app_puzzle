@@ -66,6 +66,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Timer? _moveTimer;
   Direction _currentDirection = Direction.right;
   int _growSegments = 0;
+  bool _isGameOver = false;
 
   @override
   void initState() {
@@ -160,11 +161,33 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       _score = 0;
       _isMatched = false;
       _initBoard();
+      _isGameOver = false;
     });
   }
 
+  Future<void> _gameOver() async {
+    if (_isGameOver) return;
+    _isGameOver = true;
+    final finalScore = _score;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Game Over'),
+        content: Text('Final score: $finalScore'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    _resetGame();
+  }
+
   void _tick() {
-    if (_isMatched) return;
+    if (_isMatched || _isGameOver) return;
     final head = _snake.segments.last;
     int row = head.row;
     int col = head.col;
@@ -184,7 +207,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
     final newPos = GridPosition(row, col);
     if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
-      _resetGame();
+      _gameOver();
       return;
     }
     final letter = _grid.letterAt(newPos);
@@ -225,7 +248,29 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   void _onSwipe(Direction direction) {
-    if (_isMatched) return;
+    if (_isMatched || _isGameOver) return;
+    final head = _snake.segments.last;
+    int row = head.row;
+    int col = head.col;
+    switch (direction) {
+      case Direction.up:
+        row -= 1;
+        break;
+      case Direction.down:
+        row += 1;
+        break;
+      case Direction.left:
+        col -= 1;
+        break;
+      case Direction.right:
+        col += 1;
+        break;
+    }
+    final newPos = GridPosition(row, col);
+    if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
+      _gameOver();
+      return;
+    }
     _currentDirection = direction;
   }
 
