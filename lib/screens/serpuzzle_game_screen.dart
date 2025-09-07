@@ -5,33 +5,8 @@ import '../models/serpuzzle_grid.dart';
 import '../models/serpuzzle_snake.dart';
 import '../widgets/serpuzzle_snake_body.dart';
 import '../widgets/serpuzzle_tile.dart';
-
-
-/// Direction values used by [SwipeDetector].
-enum DirectionEnum { up, down, left, right }
-
-/// Simple gesture detector that converts a swipe into a [DirectionEnum].
-class SwipeDetector extends StatelessWidget {
-  final Widget child;
-  final void Function(DirectionEnum) onSwipe;
-
-  const SwipeDetector({super.key, required this.child, required this.onSwipe});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onPanEnd: (details) {
-        final velocity = details.velocity.pixelsPerSecond;
-        if (velocity.dx.abs() > velocity.dy.abs()) {
-          onSwipe(velocity.dx > 0 ? DirectionEnum.right : DirectionEnum.left);
-        } else {
-          onSwipe(velocity.dy > 0 ? DirectionEnum.down : DirectionEnum.up);
-        }
-      },
-      child: child,
-    );
-  }
-}
+import '../utils/direction_enum.dart';
+import '../utils/swipe_detector.dart';
 
 
 /// Very small word-matching engine. Checks if the collected letters
@@ -89,7 +64,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Timer? _resetTimer;
   late int _maxWordLength;
   Timer? _moveTimer;
-  DirectionEnum _currentDirection = DirectionEnum.right;
+  Direction _currentDirection = Direction.right;
   int _growSegments = 0;
 
   @override
@@ -194,16 +169,16 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     int row = head.row;
     int col = head.col;
     switch (_currentDirection) {
-      case DirectionEnum.up:
+      case Direction.up:
         row -= 1;
         break;
-      case DirectionEnum.down:
+      case Direction.down:
         row += 1;
         break;
-      case DirectionEnum.left:
+      case Direction.left:
         col -= 1;
         break;
-      case DirectionEnum.right:
+      case Direction.right:
         col += 1;
         break;
     }
@@ -249,7 +224,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
   }
 
-  void _onSwipe(DirectionEnum direction) {
+  void _onSwipe(Direction direction) {
     if (_isMatched) return;
     _currentDirection = direction;
   }
