@@ -1,7 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../models/serpuzzle_grid.dart';
+import '../models/serpuzzle_snake.dart';
 import '../widgets/serpuzzle_snake_body.dart';
 import '../widgets/serpuzzle_tile.dart';
+
 
 /// Direction values used by [SwipeDetector].
 enum DirectionEnum { up, down, left, right }
@@ -60,9 +63,9 @@ class SerpuzzleGameScreen extends StatefulWidget {
 }
 
 class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
-  late List<String> _letters;
-  late List<int> _snake;
-  final Set<int> _matched = {};
+  late SerpuzzleGrid _grid;
+  late SerpuzzleSnake _snake;
+  bool _isMatched = false;
   int _score = 0;
   late WordMatchEngine _engine;
 
@@ -75,8 +78,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   void _initBoard() {
     final rand = Random();
-    final totalCells = widget.gridSize * widget.gridSize;
-    _letters = List.filled(totalCells, '');
+    _grid = SerpuzzleGrid(rows: widget.gridSize, cols: widget.gridSize);
 
     final placed = <int>{};
     final words = List<String>.from(widget.dictionary)..shuffle(rand);
@@ -96,7 +98,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           List<int>.generate(word.length, (k) => row * widget.gridSize + col + k);
           if (indexes.any(placed.contains)) continue;
           for (var k = 0; k < word.length; k++) {
-            _letters[indexes[k]] = word[k];
+            final pos = GridPosition(row, col + k);
+            _grid.placeLetter(pos, word[k]);
             placed.add(indexes[k]);
           }
           placedWord = true;
@@ -105,11 +108,12 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           final maxRow = widget.gridSize - word.length;
           if (maxRow < 0) continue;
           final row = rand.nextInt(maxRow + 1);
-          final indexes =
-          List<int>.generate(word.length, (k) => (row + k) * widget.gridSize + col);
+          final indexes = List<int>.generate(
+              word.length, (k) => (row + k) * widget.gridSize + col);
           if (indexes.any(placed.contains)) continue;
           for (var k = 0; k < word.length; k++) {
-            _letters[indexes[k]] = word[k];
+            final pos = GridPosition(row + k, col);
+            _grid.placeLetter(pos, word[k]);
             placed.add(indexes[k]);
           }
           placedWord = true;
@@ -117,21 +121,23 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       }
     }
 
-    for (var i = 0; i < _letters.length; i++) {
-      if (_letters[i].isEmpty) {
-        _letters[i] = _randomLetter();
+    for (var i = 0; i < _grid.length; i++) {
+      final pos = _grid.positionOfIndex(i);
+      if (_grid.letterAt(pos).isEmpty) {
+        _grid.placeLetter(pos, _randomLetter());
       }
     }
 
-
-    final start = (widget.gridSize ~/ 2) * widget.gridSize + widget.gridSize ~/ 2;
-    _snake = [start];
+    final startPos =
+    GridPosition(widget.gridSize ~/ 2, widget.gridSize ~/ 2);
+    _snake = SerpuzzleSnake()
+      ..append(startPos, _grid.letterAt(startPos));
   }
 
   void _onSwipe(DirectionEnum direction) {
-    final head = _snake.last;
-    int row = head ~/ widget.gridSize;
-    int col = head % widget.gridSize;
+    final head = _snake.segments.last;
+    int row = head.row;
+    int col = head.col;
     switch (direction) {
       case DirectionEnum.up:
         row -= 1;
@@ -146,29 +152,33 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         col += 1;
         break;
     }
-    if (row < 0 || col < 0 || row >= widget.gridSize || col >= widget.gridSize) {
+    final newPos = GridPosition(row, col);
+    if (!_grid.inBounds(newPos)) {
       return; // out of bounds
     }
-    final newIndex = row * widget.gridSize + col;
-    if (_snake.contains(newIndex)) return; // don't allow self-collision
+    if (_snake.segments.contains(newPos)) return; // don't allow self-collision
     setState(() {
-      _snake.add(newIndex);
+      _snake.append(newPos, _grid.letterAt(newPos));
       _validate();
     });
   }
 
   void _validate() {
-    final letters = _snake.map((i) => _letters[i]).join();
+    final letters = _snake.word;
     if (_engine.matches(letters)) {
-      _matched.addAll(_snake);
       _score += letters.length;
+      setState(() => _isMatched = true);
+      final matchedSegments = List<GridPosition>.from(_snake.segments);
       Future.delayed(const Duration(milliseconds: 300), () {
         setState(() {
-          for (final index in _matched) {
-            _letters[index] = _randomLetter();
+          for (final pos in matchedSegments) {
+            _grid.placeLetter(pos, _randomLetter());
           }
-          _matched.clear();
-          _snake = [_snake.last];
+          final headPos = matchedSegments.last;
+          _snake
+            ..clear()
+            ..append(headPos, _grid.letterAt(headPos));
+          _isMatched = false;
         });
       });
     }
@@ -191,17 +201,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final tileSize = constraints.maxWidth / widget.gridSize;
-                final snakeSet = _snake.toSet();
-                final segments = _snake.map((index) {
-                  final row = index ~/ widget.gridSize;
-                  final col = index % widget.gridSize;
-                  return SnakeSegment(
-                    row: row,
-                    col: col,
-                    letter: _letters[index],
-                    highlighted: _matched.contains(index),
-                  );
-                }).toList();
+                final snakePositions = _snake.segments.toSet();
+                final segments = _snake.segments
+                    .map((pos) => SnakeSegment(
+                  row: pos.row,
+                  col: pos.col,
+                  letter: _grid.letterAt(pos),
+                  highlighted: _isMatched,
+                ))
+                    .toList();
                 return Stack(
                   children: [
                     GridView.builder(
@@ -209,12 +217,13 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: widget.gridSize,
                       ),
-                      itemCount: _letters.length,
+                      itemCount: _grid.length,
                       itemBuilder: (context, index) {
-                        final highlight = _matched.contains(index);
-                        final isSnake = snakeSet.contains(index);
+                        final pos = _grid.positionOfIndex(index);
+                        final isSnake = snakePositions.contains(pos);
+                        final highlight = _isMatched && isSnake;
                         return SerpuzzleTile(
-                          letter: isSnake ? '' : _letters[index],
+                          letter: isSnake ? '' : _grid.letterAt(pos),
                           highlighted: highlight,
                         );
                       },
