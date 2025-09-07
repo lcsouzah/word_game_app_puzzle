@@ -40,7 +40,10 @@ class SerpuzzleSnakeBody extends StatelessWidget {
       children: [
         for (var i = 0; i < segments.length; i++)
           AnimatedPositioned(
-            key: ValueKey(i),
+            // Use the segment's coordinates as the key so that each segment
+            // remains uniquely identifiable even as segments are added or
+            // removed from the list.
+            key: ValueKey('${segments[i].row}-${segments[i].col}'),
             duration: const Duration(milliseconds: 150),
             left: segments[i].col * tileSize,
             top: segments[i].row * tileSize,
