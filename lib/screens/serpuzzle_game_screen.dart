@@ -88,6 +88,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late WordMatchEngine _engine;
   Timer? _resetTimer;
   late int _maxWordLength;
+  Timer? _moveTimer;
+  DirectionEnum _currentDirection = DirectionEnum.right;
+  int _growSegments = 0;
 
   @override
   void initState() {
@@ -95,11 +98,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _engine = WordMatchEngine(widget.dictionary);
     _maxWordLength = widget.dictionary.fold<int>(0, (p, w) => max(p, w.length));
     _initBoard();
+    _moveTimer =
+        Timer.periodic(const Duration(milliseconds: 300), (_) => _tick());
   }
 
   @override
   void dispose() {
     _resetTimer?.cancel();
+    _moveTimer?.cancel();
     super.dispose();
   }
 
@@ -170,14 +176,24 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
     _snake = SerpuzzleSnake()
       ..append(startPos, _grid.letterAt(startPos));
+    _growSegments = _maxWordLength - 1;
   }
 
-  void _onSwipe(DirectionEnum direction) {
+  void _resetGame() {
+    _resetTimer?.cancel();
+    setState(() {
+      _score = 0;
+      _isMatched = false;
+      _initBoard();
+    });
+  }
+
+  void _tick() {
     if (_isMatched) return;
     final head = _snake.segments.last;
     int row = head.row;
     int col = head.col;
-    switch (direction) {
+    switch (_currentDirection) {
       case DirectionEnum.up:
         row -= 1;
         break;
@@ -192,11 +208,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         break;
     }
     final newPos = GridPosition(row, col);
-    if (!_grid.inBounds(newPos)) {
-      return; // out of bounds
+    if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
+      _resetGame();
+      return;
     }
-    if (_snake.segments.contains(newPos)) return; // don't allow self-collision
-
     final letter = _grid.letterAt(newPos);
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
@@ -205,12 +220,18 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         _snake
           ..clear()
           ..append(newPos, letter);
+        _growSegments = _maxWordLength - 1;
       });
       return;
     }
 
     setState(() {
       _snake.append(newPos, letter);
+      if (_growSegments > 0) {
+        _growSegments--;
+      } else if (_snake.segments.length > 1) {
+        _snake.clearRange(0, 1);
+      }
       if (_snake.word.length > _maxWordLength) {
         _snake.clearRange(0, _snake.segments.length - 1);
       }
@@ -222,9 +243,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         if (!mounted) return;
         setState(() {
           _snake.clearRange(0, _snake.segments.length - 1);
+          _growSegments = _maxWordLength - 1;
         });
       });
     }
+  }
+
+  void _onSwipe(DirectionEnum direction) {
+    if (_isMatched) return;
+    _currentDirection = direction;
   }
 
   void _validate() {
@@ -236,6 +263,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         _score += letters.length;
         _isMatched = true;
         _snake.clearRange(0, _snake.segments.length - 1);
+        _growSegments = _maxWordLength - 1;
       });
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
@@ -248,6 +276,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             ..clear()
             ..append(headPos, _grid.letterAt(headPos));
           _isMatched = false;
+          _growSegments = _maxWordLength - 1;
         });
       });
     }
