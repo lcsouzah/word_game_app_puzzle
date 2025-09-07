@@ -11,6 +11,7 @@ class SerpuzzleConfigScreen extends StatefulWidget {
 
 class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
   DifficultyLevel _difficulty = DifficultyLevel.easy;
+  bool _centerStart = true;
 
   int _gridSizeFor(DifficultyLevel level) {
     switch (level) {
@@ -43,6 +44,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           gridSize: _gridSizeFor(_difficulty),
           dictionary: const ['CAT', 'DOG', 'BIRD', 'FISH'],
           seededWordCount: _seededWordsFor(_difficulty),
+          startCentered: _centerStart,
         ),
       ),
     );
@@ -75,6 +77,11 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
                   child: Text('Hard'),
                 ),
               ],
+            ),
+            SwitchListTile(
+              title: const Text('Start Centered'),
+              value: _centerStart,
+              onChanged: (val) => setState(() => _centerStart = val),
             ),
             const SizedBox(height: 20),
             ElevatedButton(

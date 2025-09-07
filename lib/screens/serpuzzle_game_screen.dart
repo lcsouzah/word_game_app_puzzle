@@ -65,12 +65,14 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final int gridSize;
   final List<String> dictionary;
   final int seededWordCount;
+  final bool startCentered;
 
   const SerpuzzleGameScreen({
     super.key,
     required this.gridSize,
     required this.dictionary,
     this.seededWordCount = 1,
+    this.startCentered = true,
   });
 
   @override
@@ -108,6 +110,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     final placed = <int>{};
     final words = List<String>.from(widget.dictionary)..shuffle(rand);
     final wordsToPlace = min(widget.seededWordCount, words.length);
+    GridPosition? wordStartPos;
 
     for (var i = 0; i < wordsToPlace; i++) {
       final word = words[i].toUpperCase();
@@ -127,6 +130,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             _grid.placeLetter(pos, word[k]);
             placed.add(indexes[k]);
           }
+          wordStartPos ??= GridPosition(row, col);
           placedWord = true;
         } else {
           final col = rand.nextInt(widget.gridSize);
@@ -141,6 +145,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             _grid.placeLetter(pos, word[k]);
             placed.add(indexes[k]);
           }
+          wordStartPos ??= GridPosition(row, col);
           placedWord = true;
         }
       }
@@ -153,8 +158,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       }
     }
 
-    final startPos =
-    GridPosition(widget.gridSize ~/ 2, widget.gridSize ~/ 2);
+    GridPosition startPos;
+    if (widget.startCentered) {
+      startPos = GridPosition(widget.gridSize ~/ 2, widget.gridSize ~/ 2);
+    } else if (wordStartPos != null) {
+      startPos = wordStartPos;
+    } else {
+      startPos = GridPosition(
+          rand.nextInt(widget.gridSize), rand.nextInt(widget.gridSize));
+    }
     _snake = SerpuzzleSnake()
       ..append(startPos, _grid.letterAt(startPos));
   }
