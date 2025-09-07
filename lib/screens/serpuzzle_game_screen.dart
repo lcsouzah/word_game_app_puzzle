@@ -179,6 +179,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     if (!_isMatched) {
       _resetTimer?.cancel();
       _resetTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted) return;
         setState(() {
           _snake.clearRange(0, _snake.segments.length - 1);
         });
@@ -197,6 +198,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         _snake.clearRange(0, _snake.segments.length - 1);
       });
       Future.delayed(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
         setState(() {
           for (final pos in matchedSegments) {
             _grid.placeLetter(pos, _randomLetter());
