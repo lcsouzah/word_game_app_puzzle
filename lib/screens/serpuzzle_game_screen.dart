@@ -34,16 +34,30 @@ class SwipeDetector extends StatelessWidget {
 }
 
 
-
 /// Very small word-matching engine. Checks if the collected letters
-/// form any word in the provided [dictionary].
+/// form any word in the provided [dictionary] and provides prefix lookups
+/// to quickly rule out impossible paths.
 class WordMatchEngine {
   final Set<String> dictionary;
+  final Set<String> prefixes;
 
   WordMatchEngine(List<String> words)
-      : dictionary = words.map((e) => e.toUpperCase()).toSet();
+      : dictionary = words.map((e) => e.toUpperCase()).toSet(),
+        prefixes = (() {
+          final set = <String>{};
+          for (final w in words) {
+            final upper = w.toUpperCase();
+            for (var i = 1; i <= upper.length; i++) {
+              set.add(upper.substring(0, i));
+            }
+          }
+          return set;
+        })();
 
   bool matches(String letters) => dictionary.contains(letters.toUpperCase());
+
+  /// Returns `true` if [letters] is a prefix of any word in [dictionary].
+  bool hasPrefix(String letters) => prefixes.contains(letters.toUpperCase());
 }
 
 /// Serpuzzle game screen showing the grid and handling swipe input.
@@ -169,8 +183,21 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       return; // out of bounds
     }
     if (_snake.segments.contains(newPos)) return; // don't allow self-collision
+
+    final letter = _grid.letterAt(newPos);
+    final potentialWord = _snake.word + letter;
+    if (!_engine.hasPrefix(potentialWord)) {
+      _resetTimer?.cancel();
+      setState(() {
+        _snake
+          ..clear()
+          ..append(newPos, letter);
+      });
+      return;
+    }
+
     setState(() {
-      _snake.append(newPos, _grid.letterAt(newPos));
+      _snake.append(newPos, letter);
       if (_snake.word.length > _maxWordLength) {
         _snake.clearRange(0, _snake.segments.length - 1);
       }
