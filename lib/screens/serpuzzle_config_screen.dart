@@ -23,6 +23,18 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
     }
   }
 
+
+  int _seededWordsFor(DifficultyLevel level) {
+    switch (level) {
+      case DifficultyLevel.easy:
+        return 1;
+      case DifficultyLevel.moderate:
+        return 2;
+      case DifficultyLevel.hard:
+        return 3;
+    }
+  }
+
   void _startGame() {
     Navigator.push(
       context,
@@ -30,6 +42,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
         builder: (_) => SerpuzzleGameScreen(
           gridSize: _gridSizeFor(_difficulty),
           dictionary: const ['CAT', 'DOG', 'BIRD', 'FISH'],
+          seededWordCount: _seededWordsFor(_difficulty),
         ),
       ),
     );
