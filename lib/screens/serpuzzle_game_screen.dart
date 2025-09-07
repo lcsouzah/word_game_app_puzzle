@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/serpuzzle_grid.dart';
@@ -68,13 +69,23 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   bool _isMatched = false;
   int _score = 0;
   late WordMatchEngine _engine;
+  Timer? _resetTimer;
+  late int _maxWordLength;
 
   @override
   void initState() {
     super.initState();
     _engine = WordMatchEngine(widget.dictionary);
+    _maxWordLength = widget.dictionary.fold<int>(0, (p, w) => max(p, w.length));
     _initBoard();
   }
+
+  @override
+  void dispose() {
+    _resetTimer?.cancel();
+    super.dispose();
+  }
+
 
   void _initBoard() {
     final rand = Random();
@@ -135,6 +146,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   void _onSwipe(DirectionEnum direction) {
+    if (_isMatched) return;
     final head = _snake.segments.last;
     int row = head.row;
     int col = head.col;
@@ -159,16 +171,31 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     if (_snake.segments.contains(newPos)) return; // don't allow self-collision
     setState(() {
       _snake.append(newPos, _grid.letterAt(newPos));
-      _validate();
+      if (_snake.word.length > _maxWordLength) {
+        _snake.clearRange(0, _snake.segments.length - 1);
+      }
     });
+    _validate();
+    if (!_isMatched) {
+      _resetTimer?.cancel();
+      _resetTimer = Timer(const Duration(seconds: 2), () {
+        setState(() {
+          _snake.clearRange(0, _snake.segments.length - 1);
+        });
+      });
+    }
   }
 
   void _validate() {
     final letters = _snake.word;
     if (_engine.matches(letters)) {
-      _score += letters.length;
-      setState(() => _isMatched = true);
       final matchedSegments = List<GridPosition>.from(_snake.segments);
+      _resetTimer?.cancel();
+      setState(() {
+        _score += letters.length;
+        _isMatched = true;
+        _snake.clearRange(0, _snake.segments.length - 1);
+      });
       Future.delayed(const Duration(milliseconds: 300), () {
         setState(() {
           for (final pos in matchedSegments) {
