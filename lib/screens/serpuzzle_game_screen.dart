@@ -151,7 +151,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           rand.nextInt(widget.gridSize), rand.nextInt(widget.gridSize));
     }
     _snake = SerpuzzleSnake()
-      ..append(startPos, _grid.letterAt(startPos));
+      ..append(startPos, '');
     _growSegments = _maxWordLength - 1;
   }
 
@@ -217,7 +217,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       setState(() {
         _snake
           ..clear()
-          ..append(newPos, letter);
+          ..append(newPos, '');
         _growSegments = _maxWordLength - 1;
       });
       return;
@@ -240,7 +240,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       _resetTimer = Timer(const Duration(seconds: 2), () {
         if (!mounted) return;
         setState(() {
-          _snake.clearRange(0, _snake.segments.length - 1);
+          final headPos = _snake.segments.last;
+          _snake
+            ..clear()
+            ..append(headPos, '');
           _growSegments = _maxWordLength - 1;
         });
       });
@@ -294,7 +297,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           final headPos = matchedSegments.last;
           _snake
             ..clear()
-            ..append(headPos, _grid.letterAt(headPos));
+            ..append(headPos, '');
           _isMatched = false;
           _growSegments = _maxWordLength - 1;
         });
@@ -319,14 +322,18 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
               builder: (context, constraints) {
                 final tileSize = constraints.maxWidth / widget.gridSize;
                 final snakePositions = _snake.segments.toSet();
-                final segments = _snake.segments
-                    .map((pos) => SnakeSegment(
-                  row: pos.row,
-                  col: pos.col,
-                  letter: _grid.letterAt(pos),
-                  highlighted: _isMatched,
-                ))
-                    .toList();
+                final letters = _snake.word;
+                final segments = <SnakeSegment>[];
+                for (var i = 0; i < _snake.segments.length; i++) {
+                  final pos = _snake.segments[i];
+                  final isHead = i == _snake.segments.length - 1;
+                  segments.add(SnakeSegment(
+                    row: pos.row,
+                    col: pos.col,
+                    letter: isHead ? '' : letters[i],
+                    highlighted: _isMatched,
+                  ));
+                }
                 return Stack(
                   children: [
                     GridView.builder(

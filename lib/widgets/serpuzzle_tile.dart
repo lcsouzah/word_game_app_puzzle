@@ -12,10 +12,14 @@ class SerpuzzleTile extends StatelessWidget {
   /// Whether the tile should be highlighted.
   final bool highlighted;
 
+  /// Whether this tile represents the snake's head.
+  final bool isHead;
+
   const SerpuzzleTile({
     super.key,
     this.letter = '',
     this.highlighted = false,
+    this.isHead = false,
   });
 
   @override
@@ -24,14 +28,22 @@ class SerpuzzleTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isEmpty
+        color: isHead
+            ? Colors.deepOrange
+            : isEmpty
             ? Colors.transparent
             : highlighted
             ? Colors.greenAccent.withOpacity(0.8)
             : Colors.blueGrey,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          if (highlighted)
+          if (isHead)
+            BoxShadow(
+              color: Colors.deepOrangeAccent.withOpacity(0.7),
+              blurRadius: 15,
+              spreadRadius: 3,
+            )
+          else if (highlighted)
             BoxShadow(
               color: Colors.greenAccent.withOpacity(0.7),
               blurRadius: 15,

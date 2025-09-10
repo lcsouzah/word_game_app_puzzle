@@ -56,6 +56,7 @@ class SerpuzzleSnakeBody extends StatelessWidget {
                 child: SerpuzzleTile(
                   letter: segments[i].letter,
                   highlighted: segments[i].highlighted,
+                  isHead: i == segments.length - 1,
                 ),
               ),
             ),
