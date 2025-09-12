@@ -293,7 +293,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
               builder: (context, constraints) {
                 final tileSize = constraints.maxWidth / widget.gridSize;
                 final snakePositions = _snake.segments.toSet();
-                final letters = _snake.word;
+                final letters = _snake.letters;
                 final segments = <SnakeSegment>[];
                 for (var i = 0; i < _snake.segments.length; i++) {
                   final pos = _snake.segments[i];

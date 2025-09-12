@@ -1,27 +1,26 @@
 import '../models/serpuzzle_grid.dart';
 
 class SerpuzzleSnake {
-  final List<GridPosition> body = [];
-  final StringBuffer _letters = StringBuffer();
+final List<GridPosition> body = [];
+final List<String> _letters = [];
 
-  List<GridPosition> get segments => List.unmodifiable(body);
+List<GridPosition> get segments => List.unmodifiable(body);
 
-  String get word => _letters.toString();
+List<String> get letters => List.unmodifiable(_letters);
 
-  void append(GridPosition position, String letter) {
-    body.add(position);
-    _letters.write(letter);
-  }
+String get word => _letters.join();
 
-  /// Removes positions and letters in the range [start, end).
-  void clearRange(int start, int end) {
-    if (start < 0 || end > body.length || start >= end) return;
-    body.removeRange(start, end);
-    final current = _letters.toString();
-    _letters
-      ..clear()
-      ..write(current.substring(0, start) + current.substring(end));
-  }
+void append(GridPosition position, String letter) {
+body.add(position);
+_letters.add(letter);
+}
+
+/// Removes positions and letters in the range [start, end).
+void clearRange(int start, int end) {
+if (start < 0 || end > body.length || start >= end) return;
+body.removeRange(start, end);
+_letters.removeRange(start, end);
+}
 
   void clear() {
     body.clear();
