@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/tap_feedback_overlay.dart'; // need improvement
 import '../models/alphabet_game.dart';
 import '../widgets/tile.dart';
@@ -55,7 +56,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int moveCounter = 0;// Add this line to initialize the move counter
   List<int> _highlightedIndices = [];
   final List<int> _disappearingIndices = [];
-
+  Color _tileColor = Colors.blueGrey;
 
   @override
 
@@ -71,6 +72,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     _hintButtonAnimation = Tween<double>(begin: 1.0, end: 1.1)
         .animate(CurvedAnimation(parent: _hintButtonController, curve: Curves.easeInOut));
+    _loadTileColor();
   }
 
 
@@ -94,6 +96,16 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _hintsUsed = _hintsUsed.clamp(0, _maxHints);
       debugPrint('🧠 addHints called: maxHints=$_maxHints | hintsUsed=$_hintsUsed');
     });
+  }
+
+  Future<void> _loadTileColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getInt('tileColor');
+    if (value != null) {
+      setState(() {
+        _tileColor = Color(value);
+      });
+    }
   }
 
   void _handleTileTap(int index) {
@@ -397,6 +409,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           onTap: () => _handleTileTap(index),
                           highlighted: _highlightedIndices.contains(index), // stays green glow
                           disappearing: _disappearingIndices.contains(index), // wont shrink on hint
+                          tileColor: _tileColor,
+
                         ),
                         ),
                       );

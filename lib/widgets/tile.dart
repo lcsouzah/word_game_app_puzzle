@@ -7,13 +7,19 @@ class TileWidget extends StatefulWidget {
   final VoidCallback onTap;
   final bool highlighted; // 🔴 highlighted on hint logic
   final bool disappearing; // 🔴 disappearing correct word animation
+  final Color tileColor;
+  final Color borderAssetPatch;
+  final Color tileColor;
 
   const TileWidget({
     super.key,
     required this.letter,
     required this.onTap,
+    required this.tileColor,
+    required this.borderAssetPatch,
     this.highlighted = false,
     this.disappearing = false,
+    this.tileColor = Colors.blueGrey,
   });
 
   @override
@@ -62,45 +68,54 @@ class TileWidgetState extends State<TileWidget>
       child: AnimatedScale(
         scale: widget.disappearing ? 0.0 : _scale, //shrink when disappearing
         duration: const Duration(milliseconds: 50),
-        curve: Curves.easeInOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 50),
-          curve: Curves.easeOutBack,
+        child: Container(
           margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: widget.letter.trim().isEmpty // 🟢 empty tile black
-                ? Colors.transparent
-                : widget.highlighted // 🔵 highlighted blue
-                  ? Colors.greenAccent.withValues(alpha: 0.8)
-                  : (_scale != 1.0 ? Colors.grey.withValues(alpha: 0.5) : Colors.blueGrey),
-                borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              if (widget.highlighted)
-                BoxShadow(
-
-                  color: Colors.greenAccent.withValues(alpha: 0.7),
-                    blurRadius: 15,
-                    spreadRadius: 3,
-              )
-              else
-                BoxShadow(
-                  color: Colors.black12.withValues(alpha: 0.8),
-                  spreadRadius: 2,
-                  blurRadius: 8,
-                  offset: const Offset(2,2),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: widget.letter.trim().isEmpty
+                      ? Colors.transparent
+                      : widget.tileColor,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    if (widget.highlighted)
+                      BoxShadow(
+                        color: Colors.greenAccent.withValues(alpha: 0.7),
+                        blurRadius: 15,
+                        spreadRadius: 3,
+                      )
+                    else
+                      BoxShadow(
+                        color: Colors.black12.withValues(alpha: 0.8),
+                        spreadRadius: 2,
+                        blurRadius: 8,
+                        offset: const Offset(2, 2),
+                      ),
+                  ],
                 ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: widget.letter.trim().isEmpty // 🟢 empty tile black
-              ? const SizedBox.shrink() // 🟢 empty tile black
-              : Text(
+                alignment: Alignment.center,
+                child: widget.letter.trim().isEmpty
+                    ? const SizedBox.shrink()
+                    : Text(
                   widget.letter,
                   style: const TextStyle(
                     fontSize: 28.0,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-            ),
+                  ),
+                ),
+              ),
+              if (widget.borderAssetPath != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    widget.borderAssetPath!,
+                    fit: BoxFit.fill,
+                  ),
+                ),
+            ],
           ),
         ),
       ),

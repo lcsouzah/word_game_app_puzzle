@@ -100,6 +100,9 @@ flutter:
     - assets/transportation/
     - assets/weather/
 
+      #Borders
+    assets/borders/
+
     # Sounds
     - assets/sounds/tile_move1.mp3
     - assets/sounds/tile_move.mp3

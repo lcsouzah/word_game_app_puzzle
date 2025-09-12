@@ -6,6 +6,7 @@ import '../services/category_loader.dart'; // function to load categories
 import '../utils/word_category.dart'; // model for categories
 import 'start_screen.dart';
 import 'serpuzzle_config_screen.dart';
+import 'settings_screen.dart';
 
 class ModeSelectionScreen extends StatelessWidget {
   final VoidCallback toggleTheme;
@@ -24,6 +25,22 @@ class ModeSelectionScreen extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+
 
 // Word Slide button
           Positioned(

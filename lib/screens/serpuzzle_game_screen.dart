@@ -67,12 +67,16 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Direction _currentDirection = Direction.right;
   int _growSegments = 0;
   bool _isGameOver = false;
+  late List<String> _letterPool;
 
   @override
   void initState() {
     super.initState();
     _engine = WordMatchEngine(widget.dictionary);
     _maxWordLength = widget.dictionary.fold<int>(0, (p, w) => max(p, w.length));
+    _letterPool = widget.dictionary
+        .expand((w) => w.toUpperCase().split(''))
+        .toList();
     _initBoard();
     _moveTimer =
         Timer.periodic(const Duration(milliseconds: 300), (_) => _tick());
@@ -87,72 +91,17 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
 
   void _initBoard() {
-    final rand = Random();
     _grid = SerpuzzleGrid(rows: widget.gridSize, cols: widget.gridSize);
-
-    final placed = <int>{};
-    final words = List<String>.from(widget.dictionary)..shuffle(rand);
-    final wordsToPlace = min(widget.seededWordCount, words.length);
-    GridPosition? wordStartPos;
-
-    for (var i = 0; i < wordsToPlace; i++) {
-      final word = words[i].toUpperCase();
-      bool placedWord = false;
-      for (var attempt = 0; attempt < 100 && !placedWord; attempt++) {
-        final horizontal = rand.nextBool();
-        if (horizontal) {
-          final row = rand.nextInt(widget.gridSize);
-          final maxCol = widget.gridSize - word.length;
-          if (maxCol < 0) continue;
-          final col = rand.nextInt(maxCol + 1);
-          final indexes =
-          List<int>.generate(word.length, (k) => row * widget.gridSize + col + k);
-          if (indexes.any(placed.contains)) continue;
-          for (var k = 0; k < word.length; k++) {
-            final pos = GridPosition(row, col + k);
-            _grid.placeLetter(pos, word[k]);
-            placed.add(indexes[k]);
-          }
-          wordStartPos ??= GridPosition(row, col);
-          placedWord = true;
-        } else {
-          final col = rand.nextInt(widget.gridSize);
-          final maxRow = widget.gridSize - word.length;
-          if (maxRow < 0) continue;
-          final row = rand.nextInt(maxRow + 1);
-          final indexes = List<int>.generate(
-              word.length, (k) => (row + k) * widget.gridSize + col);
-          if (indexes.any(placed.contains)) continue;
-          for (var k = 0; k < word.length; k++) {
-            final pos = GridPosition(row + k, col);
-            _grid.placeLetter(pos, word[k]);
-            placed.add(indexes[k]);
-          }
-          wordStartPos ??= GridPosition(row, col);
-          placedWord = true;
-        }
-      }
-    }
-
-    for (var i = 0; i < _grid.length; i++) {
-      final pos = _grid.positionOfIndex(i);
-      if (_grid.letterAt(pos).isEmpty) {
-        _grid.placeLetter(pos, _randomLetter());
-      }
-    }
-
     GridPosition startPos;
     if (widget.startCentered) {
       startPos = GridPosition(widget.gridSize ~/ 2, widget.gridSize ~/ 2);
-    } else if (wordStartPos != null) {
-      startPos = wordStartPos;
     } else {
       startPos = GridPosition(
-          rand.nextInt(widget.gridSize), rand.nextInt(widget.gridSize));
+          _rand.nextInt(widget.gridSize), _rand.nextInt(widget.gridSize));
     }
-    _snake = SerpuzzleSnake()
-      ..append(startPos, '');
+    _snake = SerpuzzleSnake()..append(startPos, '');
     _growSegments = _maxWordLength - 1;
+    _spawnRandomTiles(4);
   }
 
   void _resetGame() {
@@ -211,8 +160,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       return;
     }
     final letter = _grid.letterAt(newPos);
+    if (letter.isNotEmpty) {
+      _grid.placeLetter(newPos, '');
+    }
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
+      if (letter.isNotEmpty) {
+        setState(() => _spawnRandomTiles(4));
+      }
       _resetTimer?.cancel();
       setState(() {
         _snake
@@ -232,6 +187,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       }
       if (_snake.word.length > _maxWordLength) {
         _snake.clearRange(0, _snake.segments.length - 1);
+      }
+      if (letter.isNotEmpty) {
+        _spawnRandomTiles(4);
       }
     });
     _validate();
@@ -280,7 +238,6 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void _validate() {
     final letters = _snake.word;
     if (_engine.matches(letters)) {
-      final matchedSegments = List<GridPosition>.from(_snake.segments);
       _resetTimer?.cancel();
       setState(() {
         _score += letters.length;
@@ -291,10 +248,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
         setState(() {
-          for (final pos in matchedSegments) {
-            _grid.placeLetter(pos, _randomLetter());
-          }
-          final headPos = matchedSegments.last;
+          final headPos = _snake.segments.last;
           _snake
             ..clear()
             ..append(headPos, '');
@@ -306,7 +260,22 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   String _randomLetter() {
-    return String.fromCharCode(65 + _rand.nextInt(26));
+    return _letterPool[_rand.nextInt(_letterPool.length)];
+  }
+
+  void _spawnRandomTiles(int count) {
+    final empties = <GridPosition>[];
+    for (var i = 0; i < _grid.length; i++) {
+      final pos = _grid.positionOfIndex(i);
+      if (_grid.letterAt(pos).isEmpty && !_snake.segments.contains(pos)) {
+        empties.add(pos);
+      }
+    }
+    empties.shuffle(_rand);
+    final spawnCount = min(count, empties.length);
+    for (var i = 0; i < spawnCount; i++) {
+      _grid.placeLetter(empties[i], _randomLetter());
+    }
   }
 
   @override
