@@ -39,6 +39,7 @@ class WordMatchEngine {
 class SerpuzzleGameScreen extends StatefulWidget {
   final int gridSize;
   final List<String> dictionary;
+  final int maxWordLength;
   final int seededWordCount;
   final bool startCentered;
 
@@ -46,6 +47,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
     super.key,
     required this.gridSize,
     required this.dictionary,
+    required this.maxWordLength,
     this.seededWordCount = 1,
     this.startCentered = true,
   });
@@ -73,7 +75,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void initState() {
     super.initState();
     _engine = WordMatchEngine(widget.dictionary);
-    _maxWordLength = widget.dictionary.fold<int>(0, (p, w) => max(p, w.length));
+    _maxWordLength = widget.maxWordLength;
     _letterPool = widget.dictionary
         .expand((w) => w.toUpperCase().split(''))
         .toList();

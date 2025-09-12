@@ -12,18 +12,31 @@ class SerpuzzleConfigScreen extends StatefulWidget {
 class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
   DifficultyLevel _difficulty = DifficultyLevel.easy;
   bool _centerStart = true;
+  static const int _gridSize = 8;
 
-  int _gridSizeFor(DifficultyLevel level) {
+  static const List<String> _baseDictionary = [
+    'CAT',
+    'DOG',
+    'BIRD',
+    'FISH',
+    'HORSE',
+  ];
+
+  int _maxWordLengthFor(DifficultyLevel level) {
     switch (level) {
       case DifficultyLevel.easy:
-        return 4;
+        return 3;
       case DifficultyLevel.moderate:
-        return 5;
+        return 4;
       case DifficultyLevel.hard:
-        return 6;
+        return 5;
     }
   }
 
+  List<String> _dictionaryFor(DifficultyLevel level) {
+    final maxLen = _maxWordLengthFor(level);
+    return _baseDictionary.where((w) => w.length <= maxLen).toList();
+  }
 
   int _seededWordsFor(DifficultyLevel level) {
     switch (level) {
@@ -41,15 +54,15 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => SerpuzzleGameScreen(
-          gridSize: _gridSizeFor(_difficulty),
-          dictionary: const ['CAT', 'DOG', 'BIRD', 'FISH'],
+          gridSize: _gridSize,
+          dictionary: _dictionaryFor(_difficulty),
+          maxWordLength: _maxWordLengthFor(_difficulty),
           seededWordCount: _seededWordsFor(_difficulty),
           startCentered: _centerStart,
         ),
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
