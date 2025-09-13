@@ -26,8 +26,8 @@ class ModeSelectionScreen extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            right: 16,
+            top: 40,
+            right: 20,
             child: IconButton(
               icon: const Icon(Icons.settings, color: Colors.white),
               onPressed: () {

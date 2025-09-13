@@ -1,75 +1,99 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
-class SettingsScreen extends StatefulWidget {
+import '../services/settings_service.dart';
+
+/// Screen allowing the player to customise tile colour and border image.
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  final List<Color> _colors = [
-    Colors.blueGrey,
-    Colors.red,
-    Colors.green,
-    Colors.purple,
-    Colors.orange,
-  ];
-  Color _selectedColor = Colors.blueGrey;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadColor();
-  }
-
-  Future<void> _loadColor() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getInt('tileColor');
-    if (value != null) {
-      setState(() {
-        _selectedColor = Color(value);
-      });
-    }
-  }
-
-  Future<void> _saveColor(Color color) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('tileColor', color.value);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final settings = Provider.of<SettingsService>(context);
+
+    final colors = <Color>[
+      Colors.blueGrey,
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.brown,
+    ];
+
+    final borders = <String>[
+      'assets/borders/border_red.png',
+      'assets/borders/border_green.png',
+      'assets/borders/border_blue.png',
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: GridView.count(
-        crossAxisCount: 3,
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        children: _colors.map((color) {
-          final bool isSelected = _selectedColor.value == color.value;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedColor = color;
-              });
-              _saveColor(color);
-            },
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.white : Colors.transparent,
-                  width: 4,
+        children: [
+          const Text(
+            'Tile Colour',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final color in colors)
+                GestureDetector(
+                  onTap: () => settings.updateTileColor(color),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: settings.tileColor == color
+                            ? Colors.white
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Tile Border',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final path in borders)
+                GestureDetector(
+                  onTap: () => settings.updateBorderAssetPath(path),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(image: AssetImage(path)),
+                      border: Border.all(
+                        color: settings.borderAssetPath == path
+                            ? Colors.white
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => settings.updateBorderAssetPath(''),
+            child: const Text('No Border'),
+          ),
+        ],
       ),
     );
   }

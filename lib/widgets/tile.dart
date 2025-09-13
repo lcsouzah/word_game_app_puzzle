@@ -1,6 +1,9 @@
 //Y:\word_game_app_puzzle\lib\widget\tile.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../services/settings_service.dart';
 
 class TileWidget extends StatefulWidget {
   final String letter;
@@ -57,7 +60,8 @@ class TileWidgetState extends State<TileWidget>
 
   @override
   Widget build(BuildContext context) {
-    final _ = widget.letter.trim().isEmpty;
+    final settings = Provider.of<SettingsService>(context);
+    final isEmpty = widget.letter.trim().isEmpty;
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -67,58 +71,52 @@ class TileWidgetState extends State<TileWidget>
         scale: widget.disappearing ? 0.0 : _scale, //shrink when disappearing
         duration: const Duration(milliseconds: 50),
         curve: Curves.easeInOut,
-        child: Stack(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 50),
-              curve: Curves.easeOutBack,
-              margin: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: widget.letter.trim().isEmpty // 🟢 empty tile black
-                    ? Colors.transparent
-                    : widget.highlighted // 🔵 highlighted blue
-                    ? Colors.greenAccent.withValues(alpha: 0.8)
-                    : (_scale != 1.0
-                    ? Colors.grey.withValues(alpha: 0.5)
-                    : widget.tileColor),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  if (widget.highlighted)
-                    BoxShadow(
-                      color: Colors.greenAccent.withValues(alpha: 0.7),
-                      blurRadius: 15,
-                      spreadRadius: 3,
-                    )
-                  else
-                    BoxShadow(
-                      color: Colors.black12.withValues(alpha: 0.8),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                      offset: const Offset(2, 2),
-                    ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: widget.letter.trim().isEmpty // 🟢 empty tile black
-                  ? const SizedBox.shrink() // 🟢 empty tile black
-                  : Text(
-                widget.letter,
-                style: const TextStyle(
-                  fontSize: 28.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 50),
+          curve: Curves.easeOutBack,
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isEmpty
+                ? Colors.transparent
+                : widget.highlighted
+                ? Colors.greenAccent.withValues(alpha: 0.8)
+                : (_scale != 1.0
+                ? settings.tileColor.withValues(alpha: 0.5)
+                : settings.tileColor),
+            borderRadius: BorderRadius.circular(8),
+            image: settings.borderAssetPath.isEmpty
+                ? null
+                : DecorationImage(
+              image: AssetImage(settings.borderAssetPath),
+              fit: BoxFit.fill,
             ),
-            if (widget.borderAssetPath != null)
-              Container(
-                margin: const EdgeInsets.all(4),
-                child: Image.asset(
-                  widget.borderAssetPath!,
-                  fit: BoxFit.fill,
+            boxShadow: [
+              if (widget.highlighted)
+                BoxShadow(
+                  color: Colors.greenAccent.withValues(alpha: 0.7),
+                  blurRadius: 15,
+                  spreadRadius: 3,
+                )
+              else
+                BoxShadow(
+                  color: Colors.black12.withValues(alpha: 0.8),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: const Offset(2, 2),
                 ),
-              ),
-          ],
+            ],
+          ),
+          alignment: Alignment.center,
+          child: isEmpty
+              ? const SizedBox.shrink()
+              : Text(
+            widget.letter,
+            style: const TextStyle(
+              fontSize: 28.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );

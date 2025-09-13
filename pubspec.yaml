@@ -105,6 +105,7 @@ flutter:
     - assets/sounds/tile_move1.mp3
     - assets/sounds/tile_move.mp3
     - assets/sounds/tile_move2.wav
+    # Tileborders
     - assests/bordes/
     - .env
   fonts:

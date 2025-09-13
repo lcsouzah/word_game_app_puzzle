@@ -19,7 +19,10 @@ class WordMatchEngine {
   WordMatchEngine(List<String> words)
       : dictionary = words.map((e) => e.toUpperCase()).toSet(),
         prefixes = (() {
-          final set = <String>{};
+          // Include the empty string so that an empty sequence of letters is
+          // treated as a valid prefix. This allows the game logic to advance
+          // over blank tiles without resetting the snake.
+          final set = <String>{''};
           for (final w in words) {
             final upper = w.toUpperCase();
             for (var i = 1; i <= upper.length; i++) {
