@@ -73,6 +73,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   int _growSegments = 0;
   bool _isGameOver = false;
   late List<String> _letterPool;
+  int _currentTiles = 0;
+
+  int get _tilesNeeded => max(0, 4 - _currentTiles);
 
   @override
   void initState() {
@@ -106,7 +109,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
     _snake = SerpuzzleSnake()..append(startPos, '');
     _growSegments = _maxWordLength - 1;
-    _spawnRandomTiles(4);
+    _currentTiles = 0;
+    _spawnRandomTiles(_tilesNeeded);
   }
 
   void _resetGame() {
@@ -167,18 +171,17 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     final letter = _grid.letterAt(newPos);
     if (letter.isNotEmpty) {
       _grid.placeLetter(newPos, '');
+      _currentTiles--;
     }
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
-      if (letter.isNotEmpty) {
-        setState(() => _spawnRandomTiles(4));
-      }
       _resetTimer?.cancel();
       setState(() {
         _snake
           ..clear()
           ..append(newPos, '');
         _growSegments = _maxWordLength - 1;
+        _spawnRandomTiles(_tilesNeeded);
       });
       return;
     }
@@ -194,7 +197,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         _snake.clearRange(0, _snake.segments.length - 1);
       }
       if (letter.isNotEmpty) {
-        _spawnRandomTiles(4);
+        _spawnRandomTiles(_tilesNeeded);
       }
     });
     _validate();
@@ -208,6 +211,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             ..clear()
             ..append(headPos, '');
           _growSegments = _maxWordLength - 1;
+          _spawnRandomTiles(_tilesNeeded);
         });
       });
     }
@@ -259,6 +263,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             ..append(headPos, '');
           _isMatched = false;
           _growSegments = _maxWordLength - 1;
+          _spawnRandomTiles(_tilesNeeded);
         });
       });
     }
@@ -281,6 +286,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     for (var i = 0; i < spawnCount; i++) {
       _grid.placeLetter(empties[i], _randomLetter());
     }
+    _currentTiles += spawnCount;
   }
 
   @override
