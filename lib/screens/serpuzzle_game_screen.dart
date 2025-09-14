@@ -5,6 +5,7 @@ import '../models/serpuzzle_grid.dart';
 import '../models/serpuzzle_snake.dart';
 import '../widgets/serpuzzle_snake_body.dart';
 import '../widgets/serpuzzle_tile.dart';
+import '../widgets/portal_animation.dart';
 import '../utils/direction_enum.dart';
 import '../utils/swipe_detector.dart';
 
@@ -63,6 +64,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late SerpuzzleSnake _snake;
   bool _isMatched = false;
   int _score = 0;
+  int _level = 1;
   late WordMatchEngine _engine;
   Timer? _resetTimer;
   late int _maxWordLength;
@@ -116,6 +118,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     setState(() {
       _score = 0;
       _isMatched = false;
+      _level = 1;
       _initBoard();
       _isGameOver = false;
     });
@@ -249,22 +252,23 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       setState(() {
         _score += letters.length;
         _isMatched = true;
-        _snake.clearRange(0, _snake.segments.length - 1);
-        _growSegments = _maxWordLength - 1;
+        _level++;
       });
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (!mounted) return;
-        setState(() {
-          final headPos = _snake.segments.last;
-          _snake
-            ..clear()
-            ..append(headPos, '');
-          _isMatched = false;
-          _growSegments = _maxWordLength - 1;
-          _spawnRandomTiles(_tilesNeeded);
-        });
-      });
+      _showLevelTransition();
     }
+  }
+
+  Future<void> _showLevelTransition() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PortalAnimation(level: _level),
+    );
+    if (!mounted) return;
+    setState(() {
+      _isMatched = false;
+      _initBoard();
+    });
   }
 
   String _randomLetter() {
@@ -324,7 +328,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Score: $_score')),
+      appBar: AppBar(title: Text('Level $_level - Score: $_score')),
       body: Center(
         child: SwipeDetector(
           onSwipe: _onSwipe,
