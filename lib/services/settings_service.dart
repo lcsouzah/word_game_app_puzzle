@@ -36,7 +36,7 @@ class SettingsService extends ChangeNotifier {
   Future<void> updateTileColor(Color color) async {
     _tileColor = color;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_tileColorKey, color.value);
+    await prefs.setInt(_tileColorKey, color.toARGB32());
     notifyListeners();
   }
 
