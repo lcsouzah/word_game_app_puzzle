@@ -33,25 +33,25 @@ class SerpuzzleTile extends StatelessWidget {
             : isEmpty
             ? Colors.transparent
             : highlighted
-            ? Colors.greenAccent.withOpacity(0.8)
+            ? Colors.greenAccent.withValues(alpha: 0.8)
             : Colors.blueGrey,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           if (isHead)
             BoxShadow(
-              color: Colors.deepOrangeAccent.withOpacity(0.7),
+              color: Colors.deepOrangeAccent.withValues(alpha: 0.7),
               blurRadius: 15,
               spreadRadius: 3,
             )
           else if (highlighted)
             BoxShadow(
-              color: Colors.greenAccent.withOpacity(0.7),
+              color: Colors.greenAccent.withValues(alpha: 0.7),
               blurRadius: 15,
               spreadRadius: 3,
             )
           else
             BoxShadow(
-              color: Colors.black12.withOpacity(0.8),
+              color: Colors.black12.withValues(alpha: 0.8),
               spreadRadius: 2,
               blurRadius: 8,
               offset: const Offset(2, 2),
