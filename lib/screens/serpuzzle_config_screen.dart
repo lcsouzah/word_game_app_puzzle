@@ -38,16 +38,6 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
     return _baseDictionary.where((w) => w.length <= maxLen).toList();
   }
 
-  int _seededWordsFor(DifficultyLevel level) {
-    switch (level) {
-      case DifficultyLevel.easy:
-        return 1;
-      case DifficultyLevel.moderate:
-        return 2;
-      case DifficultyLevel.hard:
-        return 3;
-    }
-  }
 
   void _startGame() {
     Navigator.push(
@@ -57,7 +47,6 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           gridSize: _gridSize,
           dictionary: _dictionaryFor(_difficulty),
           maxWordLength: _maxWordLengthFor(_difficulty),
-          seededWordCount: _seededWordsFor(_difficulty),
           startCentered: _centerStart,
         ),
       ),

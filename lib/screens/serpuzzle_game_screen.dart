@@ -43,7 +43,6 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final int gridSize;
   final List<String> dictionary;
   final int maxWordLength;
-  final int seededWordCount;
   final bool startCentered;
 
   const SerpuzzleGameScreen({
@@ -51,7 +50,6 @@ class SerpuzzleGameScreen extends StatefulWidget {
     required this.gridSize,
     required this.dictionary,
     required this.maxWordLength,
-    this.seededWordCount = 1,
     this.startCentered = true,
   });
 
