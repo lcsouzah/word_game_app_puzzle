@@ -56,7 +56,21 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int moveCounter = 0;// Add this line to initialize the move counter
   List<int> _highlightedIndices = [];
   final List<int> _disappearingIndices = [];
+
   Color _tileColor = Colors.blueGrey;
+  String? _borderAssetPath;
+
+  Future<void> _loadTileCustomization() async {
+    final prefs = await SharedPreferences.getInstance();
+    final colorValue = prefs.getInt('tileColor');
+    final borderPath = prefs.getString('borderAssetPath');
+
+    setState(() {
+      _tileColor =
+      colorValue != null ? Color(colorValue) : Colors.blueGrey;
+      _borderAssetPath = borderPath ?? 'assets/images/default_border.png';
+    });
+  }
 
   @override
 
@@ -64,6 +78,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.initState();
     _maxHints =  widget.maxHints;
     _hintsUsed = 0;
+
+    _loadTileCustomization();
 
     _hintButtonController = AnimationController(
       vsync: this,
@@ -404,12 +420,14 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           return ScaleTransition(scale: animation, child: child);
                         },
                         child: TileWidget(
-                          key:ValueKey(letter + index.toString()),
+                          key: ValueKey(letter + index.toString()),
                           letter: letter,
                           onTap: () => _handleTileTap(index),
                           highlighted: _highlightedIndices.contains(index), // stays green glow
                           disappearing: _disappearingIndices.contains(index), // wont shrink on hint
+
                           tileColor: _tileColor,
+                          borderAssetPath: _borderAssetPath,
 
                         ),
                         ),

@@ -76,23 +76,24 @@ class TileWidgetState extends State<TileWidget>
           curve: Curves.easeOutBack,
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: isEmpty
+            color: widget.letter.trim().isEmpty // 🟢 empty tile black
                 ? Colors.transparent
-                : widget.highlighted
+                : widget.highlighted // 🔵 highlighted blue
                 ? Colors.greenAccent.withValues(alpha: 0.8)
                 : (_scale != 1.0
-                ? settings.tileColor.withValues(alpha: 0.5)
-                : settings.tileColor),
+                ? widget.tileColor.withValues(alpha: 0.5)
+                : widget.tileColor),
             borderRadius: BorderRadius.circular(8),
-            image: settings.borderAssetPath.isEmpty
-                ? null
-                : DecorationImage(
-              image: AssetImage(settings.borderAssetPath),
-              fit: BoxFit.fill,
-            ),
+            image: widget.borderAssetPath != null
+                ? DecorationImage(
+              image: AssetImage(widget.borderAssetPath!),
+              fit: BoxFit.cover,
+            )
+                : null,
             boxShadow: [
               if (widget.highlighted)
                 BoxShadow(
+
                   color: Colors.greenAccent.withValues(alpha: 0.7),
                   blurRadius: 15,
                   spreadRadius: 3,
@@ -102,13 +103,13 @@ class TileWidgetState extends State<TileWidget>
                   color: Colors.black12.withValues(alpha: 0.8),
                   spreadRadius: 2,
                   blurRadius: 8,
-                  offset: const Offset(2, 2),
+                  offset: const Offset(2,2),
                 ),
             ],
           ),
           alignment: Alignment.center,
-          child: isEmpty
-              ? const SizedBox.shrink()
+          child: widget.letter.trim().isEmpty // 🟢 empty tile black
+              ? const SizedBox.shrink() // 🟢 empty tile black
               : Text(
             widget.letter,
             style: const TextStyle(
