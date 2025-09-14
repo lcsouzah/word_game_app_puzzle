@@ -271,7 +271,41 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     return _letterPool[_rand.nextInt(_letterPool.length)];
   }
 
+  /// Selects a random word (up to four letters) from the dictionary and
+  /// places its letters on the board. Any remaining slots are filled with
+  /// random letters. This guarantees that at least one valid word can always
+  /// be formed from the visible tiles.
   void _spawnRandomTiles(int count) {
+    if (count <= 0) return;
+
+    // Clear existing letters from the grid before spawning new ones so that
+    // we always spawn a fresh set of tiles representing a word.
+    for (var i = 0; i < _grid.length; i++) {
+      final pos = _grid.positionOfIndex(i);
+      if (!_snake.segments.contains(pos)) {
+        _grid.placeLetter(pos, '');
+      }
+    }
+
+    // Choose a target word that fits within four tiles.
+    final candidates = widget.dictionary
+        .where((w) => w.isNotEmpty && w.length <= 4)
+        .toList();
+    if (candidates.isEmpty) {
+      return;
+    }
+    final target = candidates[_rand.nextInt(candidates.length)].toUpperCase();
+
+    // Build the letter list from the target word and add random letters
+    // for any remaining tile slots.
+    final letters = target.split('');
+    while (letters.length < 4) {
+      letters.add(_randomLetter());
+    }
+    letters.shuffle(_rand);
+
+    // Determine all empty positions (ignoring the snake's body) and place
+    // the letters there.
     final empties = <GridPosition>[];
     for (var i = 0; i < _grid.length; i++) {
       final pos = _grid.positionOfIndex(i);
@@ -280,11 +314,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       }
     }
     empties.shuffle(_rand);
-    final spawnCount = min(count, empties.length);
+    final spawnCount = min(4, empties.length);
     for (var i = 0; i < spawnCount; i++) {
-      _grid.placeLetter(empties[i], _randomLetter());
+      _grid.placeLetter(empties[i], letters[i]);
     }
-    _currentTiles += spawnCount;
+    _currentTiles = spawnCount;
   }
 
   @override

@@ -107,7 +107,7 @@ flutter:
     - assets/sounds/tile_move.mp3
     - assets/sounds/tile_move2.wav
     # Tileborders
-    - assests/bordes/
+    - assets/borders/
     - .env
   fonts:
     - family: PressStart2P
