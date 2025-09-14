@@ -1,9 +1,7 @@
 //Y:\word_game_app_puzzle\lib\widget\tile.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../services/settings_service.dart';
 
 class TileWidget extends StatefulWidget {
   final String letter;
@@ -60,7 +58,7 @@ class TileWidgetState extends State<TileWidget>
 
   @override
   Widget build(BuildContext context) {
-    final settings = Provider.of<SettingsService>(context);
+
     final isEmpty = widget.letter.trim().isEmpty;
 
     return GestureDetector(
@@ -76,7 +74,7 @@ class TileWidgetState extends State<TileWidget>
           curve: Curves.easeOutBack,
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: widget.letter.trim().isEmpty // 🟢 empty tile black
+            color: isEmpty // 🟢 empty tile black
                 ? Colors.transparent
                 : widget.highlighted // 🔵 highlighted blue
                 ? Colors.greenAccent.withValues(alpha: 0.8)
@@ -108,7 +106,7 @@ class TileWidgetState extends State<TileWidget>
             ],
           ),
           alignment: Alignment.center,
-          child: widget.letter.trim().isEmpty // 🟢 empty tile black
+          child: isEmpty // 🟢 empty tile black
               ? const SizedBox.shrink() // 🟢 empty tile black
               : Text(
             widget.letter,
