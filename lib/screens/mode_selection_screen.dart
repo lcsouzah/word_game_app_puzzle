@@ -25,21 +25,6 @@ class ModeSelectionScreen extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(Icons.settings, color: Colors.white),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
 
 
 // Word Slide button

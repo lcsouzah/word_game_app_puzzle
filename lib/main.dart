@@ -54,7 +54,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => PauseManager()),
         Provider(create: (_) => AdService()),
-        ChangeNotifierProvider(create: (_) => SettingsService()..load),
+        ChangeNotifierProvider(create: (_) => SettingsService()..load()),
         // other providers can be added here
       ],
       child: MyApp(initializationFailed: initializationFailed),

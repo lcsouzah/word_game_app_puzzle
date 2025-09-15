@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:word_game_app/screens/settings_screen.dart';
 import '../models/alphabet_game.dart';
 import '../utils/score_uploader.dart';
 import '../utils/pause_manager.dart';
@@ -267,6 +268,24 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
           style: TextStyle(color: Colors.white),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              final pauseManager = Provider.of<PauseManager>(context, listen: false);
+              pauseManager.pause(PauseReason.manual);
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              ).then((_) {
+                if (!mounted) return;
+                pauseManager.resume(PauseReason.manual);
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.pause),
             tooltip: "Pause",
