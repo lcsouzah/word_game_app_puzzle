@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'store_screen.dart' ;
 import '../services/settings_service.dart';
 
 /// Screen allowing the player to customise tile colour and border image.
@@ -92,6 +92,23 @@ class SettingsScreen extends StatelessWidget {
           TextButton(
             onPressed: () => settings.updateBorderAssetPath(''),
             child: const Text('No Border'),
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.storefront),
+              title: const Text('Border Store'),
+              subtitle: const Text('Browse and unlock new border styles'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StoreScreenProvider(),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
