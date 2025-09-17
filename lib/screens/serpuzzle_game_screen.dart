@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/serpuzzle_grid.dart';
 import '../models/serpuzzle_snake.dart';
@@ -171,6 +172,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
     final letter = _grid.letterAt(newPos);
     if (letter.isNotEmpty) {
+      _growSegments++;
       _grid.placeLetter(newPos, '');
       _currentTiles--;
     }
@@ -380,5 +382,46 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         ),
       ),
     );
+  }
+  @visibleForTesting
+  SerpuzzleSnake get snake => _snake;
+
+  @visibleForTesting
+  SerpuzzleGrid get grid => _grid;
+
+  @visibleForTesting
+  int get growSegments => _growSegments;
+
+  @visibleForTesting
+  void setGrowSegmentsForTest(int value) {
+    _growSegments = value;
+  }
+
+  @visibleForTesting
+  void setDirectionForTest(Direction direction) {
+    _currentDirection = direction;
+  }
+
+  @visibleForTesting
+  void tickForTest() => _tick();
+
+  @visibleForTesting
+  void cancelTimersForTest() {
+    _moveTimer?.cancel();
+    _resetTimer?.cancel();
+  }
+
+  @visibleForTesting
+  void clearGridLettersForTest() {
+    for (var i = 0; i < _grid.length; i++) {
+      final pos = _grid.positionOfIndex(i);
+      _grid.placeLetter(pos, '');
+    }
+    _currentTiles = 0;
+  }
+
+  @visibleForTesting
+  void setCurrentTilesForTest(int value) {
+    _currentTiles = value;
   }
 }
