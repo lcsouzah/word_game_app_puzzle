@@ -39,7 +39,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   bool _isAdLoaded = false;
   late AlphabetGame game;
   late int _remainingTime;
-  late Timer _timer;
+  Timer? _timer;
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
 
@@ -74,6 +74,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _onPauseStateChanged() {
+    if(!mounted) return;
     final pauseManager = Provider.of<PauseManager>(context, listen: false);
     if (pauseManager.isPaused) {
       _pauseTimer();
@@ -152,7 +153,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _endGame() {
-    if (_timer.isActive) _timer.cancel();
+    _pauseTimer();
 
     int safeMoveCounter = moveCounter == 0 ? 1 : moveCounter;
     int finalScore = (correctWords.length * 1000) ~/ safeMoveCounter;
@@ -227,33 +228,90 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _pauseTimer() {
-    if (_timer.isActive) {
-      _timer.cancel();
+    if (_timer != null) {
+      _timer!.cancel();
+      _timer = null;
     }
   }
 
   void _resumeTimer() {
+    if (_timer != null || _remainingTime <= 0) {
+      return;
+    }
+    _startTimer();
+  }
+
+  void _startTimer() {
+    if (_remainingTime <= 0) {
+      return;
+    }
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
       if (_remainingTime > 0) {
         setState(() {
           _remainingTime--;
         });
       } else {
+        timer.cancel();
+        _timer = null;
         _endGame();
       }
     });
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
-      if (_remainingTime > 0) {
-        setState(() {
-          _remainingTime--;
-        });
-      } else {
-        _endGame();
-      }
-    });
+  Widget _buildPauseOverlay(BuildContext context, PauseManager pauseManager) {
+    return Container(
+      color: Colors.black.withOpacity(0.6),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 8,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Game Paused',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'The timer is paused. Tap resume when you are ready to continue.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      pauseManager.resume(PauseReason.manual);
+                    },
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Resume'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      pauseManager.forceResume();
+                      _pauseTimer();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Exit to Menu'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -287,116 +345,111 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.pause),
-            tooltip: "Pause",
+            icon: Icon(
+              pauseManager.isPaused &&
+                  pauseManager.pauseReason == PauseReason.manual
+                  ? Icons.play_arrow
+                  : Icons.pause,
+            ),
+            tooltip: pauseManager.isPaused &&
+                pauseManager.pauseReason == PauseReason.manual
+                ? 'Resume'
+                : 'Pause',
             onPressed: () {
-              final pauseManager = Provider.of<PauseManager>(context, listen: false);
-              pauseManager.pause(PauseReason.manual);
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,  // 🔒 disables outside-tap to dismiss
-                builder: (context) => AlertDialog(
-                  title: const Text('Game Paused'),
-                  content: const Text("What would you like to do?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        pauseManager.resume(PauseReason.manual);
-                      },
-                      child: const Text('Resume'),
-                    ),
-                   TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context); // back to menu
-                    },
-                    child: const Text('Exit'),
-                   ),
-                  ],
-                ),
-              );
-
+              final pauseManager =
+              Provider.of<PauseManager>(context, listen: false);
+              if (pauseManager.isPaused &&
+                  pauseManager.pauseReason == PauseReason.manual) {
+                pauseManager.resume(PauseReason.manual);
+              } else {
+                pauseManager.pause(PauseReason.manual);
+              }
             },
           ),
         ],
       ),
 
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              flex: 4,
-              child: IgnorePointer(
-                ignoring: pauseManager.isPaused,
-                child: GameScreen(
-                key: _gameScreenKey,
-                game: game,
-                dictionary: widget.wordList,
-                onCorrectWord: onCorrectWord,
-                scoringOption: widget.scoringOption,
-                onPauseToggle: () {
-                  if (pauseManager.isPaused &&
-                      pauseManager.pauseReason == PauseReason.manual) {
-                    pauseManager.resume(PauseReason.manual);
-                  } else {
-                    pauseManager.pause(PauseReason.manual);
-                  }
-                },
-                maxHints: 3,
-                onRewardedAdRequest: _showRewardedAdForHints,
-                adUsesThisMatch: _adUsesThisMatch,
-                maxAdUsesPerMatch: _maxAdUsesPerMatch,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: IgnorePointer(
+                    ignoring: pauseManager.isPaused,
+                    child: GameScreen(
+                      key: _gameScreenKey,
+                      game: game,
+                      dictionary: widget.wordList,
+                      onCorrectWord: onCorrectWord,
+                      scoringOption: widget.scoringOption,
+                      onPauseToggle: () {
+                        if (pauseManager.isPaused &&
+                            pauseManager.pauseReason == PauseReason.manual) {
+                          pauseManager.resume(PauseReason.manual);
+                        } else {
+                          pauseManager.pause(PauseReason.manual);
+                        }
+                      },
+                      maxHints: 3,
+                      onRewardedAdRequest: _showRewardedAdForHints,
+                      adUsesThisMatch: _adUsesThisMatch,
+                      maxAdUsesPerMatch: _maxAdUsesPerMatch,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                color: Colors.white60,
-                child: ListView.builder(
-                  itemCount: correctWords.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      margin: const EdgeInsets.all(4.0),
-                      padding: const EdgeInsets.all(2.0),
-                      decoration: BoxDecoration(
-                        border: Border.all(width: 2),
-                        color: Colors.yellowAccent.shade100,
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                      child: Text(
-                        correctWords[index],
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  },
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    color: Colors.white60,
+                    child: ListView.builder(
+                      itemCount: correctWords.length,
+                      itemBuilder: (context, index) {
+                        return Container(
+                          margin: const EdgeInsets.all(4.0),
+                          padding: const EdgeInsets.all(2.0),
+                          decoration: BoxDecoration(
+                            border: Border.all(width: 2),
+                            color: Colors.yellowAccent.shade100,
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                          child: Text(
+                            correctWords[index],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Time Remaining: $_remainingTime seconds',
+                    style: const TextStyle(fontSize: 18.0),
+                  ),
+                ),
+                if (_isAdLoaded)
+                  Container(
+                    alignment: Alignment.center,
+                    width: _bannerAd.size.width.toDouble(),
+                    height: _bannerAd.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd),
+                  ),
+              ],
             ),
-
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Time Remaining: $_remainingTime seconds',
-                style: const TextStyle(fontSize: 18.0),
-              ),
-            ),
-            if (_isAdLoaded)
-              Container(
-                alignment: Alignment.center,
-                width: _bannerAd.size.width.toDouble(),
-                height: _bannerAd.size.height.toDouble(),
-                child: AdWidget(ad: _bannerAd),
-              ),
+            if (pauseManager.isPaused &&
+                pauseManager.pauseReason == PauseReason.manual)
+              _buildPauseOverlay(context, pauseManager),
           ],
         ),
       ),
@@ -407,9 +460,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   void dispose() {
     Provider.of<PauseManager>(context, listen: false)
         .removeListener(_onPauseStateChanged);
-    _timer.cancel();
+    _timer?.cancel();
     _bannerAd.dispose();
     super.dispose();
   }
 }
-

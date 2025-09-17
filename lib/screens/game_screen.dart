@@ -363,35 +363,59 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     return TouchFeedbackOverlay(
-        child: Scaffold(
-            floatingActionButton: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ScaleTransition(
-                  scale: canUseHint
-                      ? _hintButtonAnimation
-                      : const AlwaysStoppedAnimation(1.0),
-                  child: FloatingActionButton.extended(
-                    onPressed: (!canUseHint && !canUseAd)
-                        ? null
-                        : () {
-                      if (canUseHint) {
-                        _showHint();
-                      } else {
-                        widget.onRewardedAdRequest();
-                        setState(() {});
-                      }
-                    },
-                    label: Text(label),
-                    icon: icon,
-                    backgroundColor:
-                    _hintsUsed < _maxHints ? Colors.amber : Colors.grey,
-                  ),
-
-                ),
-              ],
+      child: Scaffold(
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton(
+              heroTag: 'pauseButton',
+              onPressed: () {
+                final pauseManager =
+                Provider.of<PauseManager>(context, listen: false);
+                if (pauseManager.isPaused &&
+                    pauseManager.pauseReason == PauseReason.manual) {
+                  pauseManager.resume(PauseReason.manual);
+                } else {
+                  pauseManager.pause(PauseReason.manual);
+                }
+              },
+              tooltip: pauseManager.isPaused &&
+                  pauseManager.pauseReason == PauseReason.manual
+                  ? 'Resume'
+                  : 'Pause',
+              child: Icon(
+                pauseManager.isPaused &&
+                    pauseManager.pauseReason == PauseReason.manual
+                    ? Icons.play_arrow
+                    : Icons.pause,
+              ),
             ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+            const SizedBox(height: 12),
+            ScaleTransition(
+              scale: canUseHint
+                  ? _hintButtonAnimation
+                  : const AlwaysStoppedAnimation(1.0),
+              child: FloatingActionButton.extended(
+                heroTag: 'hintButton',
+                onPressed: (!canUseHint && !canUseAd)
+                    ? null
+                    : () {
+                  if (canUseHint) {
+                    _showHint();
+                  } else {
+                    widget.onRewardedAdRequest();
+                    setState(() {});
+                  }
+                },
+                label: Text(label),
+                icon: icon,
+                backgroundColor:
+                _hintsUsed < _maxHints ? Colors.amber : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
 
 
             appBar: AppBar(
