@@ -26,7 +26,7 @@ class SerpuzzleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isEmpty = letter.trim().isEmpty;
     return Container(
-      margin: const EdgeInsets.all(4),
+      margin: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: isHead
             ? Colors.deepOrange
@@ -64,7 +64,7 @@ class SerpuzzleTile extends StatelessWidget {
           : Text(
         letter,
         style: const TextStyle(
-          fontSize: 28,
+          fontSize: 21,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),

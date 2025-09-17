@@ -27,15 +27,20 @@ class SnakeSegment {
 class SerpuzzleSnakeBody extends StatelessWidget {
   final List<SnakeSegment> segments;
   final double tileSize;
+  final double segmentScale;
 
   const SerpuzzleSnakeBody({
     super.key,
     required this.segments,
     this.tileSize = 40,
+    this.segmentScale = 1.0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final scale = segmentScale <= 0 ? 1.0 : segmentScale;
+    final baseTileSize = tileSize / scale;
+    final offset = (baseTileSize - tileSize) / 2;
     return Stack(
       children: [
         for (var i = 0; i < segments.length; i++)
@@ -45,8 +50,8 @@ class SerpuzzleSnakeBody extends StatelessWidget {
             // removed from the list.
             key: ValueKey('${segments[i].row}-${segments[i].col}'),
             duration: const Duration(milliseconds: 150),
-            left: segments[i].col * tileSize,
-            top: segments[i].row * tileSize,
+            left: segments[i].col * baseTileSize + offset,
+            top: segments[i].row * baseTileSize + offset,
             child: AnimatedOpacity(
               opacity: segments[i].fading ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 300),

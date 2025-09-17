@@ -222,29 +222,21 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   void _onSwipe(Direction direction) {
     if (_isMatched || _isGameOver) return;
-    final head = _snake.segments.last;
-    int row = head.row;
-    int col = head.col;
-    switch (direction) {
-      case Direction.up:
-        row -= 1;
-        break;
-      case Direction.down:
-        row += 1;
-        break;
-      case Direction.left:
-        col -= 1;
-        break;
-      case Direction.right:
-        col += 1;
-        break;
-    }
-    final newPos = GridPosition(row, col);
-    if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
-      _gameOver();
-      return;
-    }
+    if (_isOppositeDirection(direction, _currentDirection)) return;
     _currentDirection = direction;
+  }
+
+  bool _isOppositeDirection(Direction a, Direction b) {
+    switch (a) {
+      case Direction.up:
+        return b == Direction.down;
+      case Direction.down:
+        return b == Direction.up;
+      case Direction.left:
+        return b == Direction.right;
+      case Direction.right:
+        return b == Direction.left;
+    }
   }
 
   void _validate() {
@@ -338,7 +330,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             aspectRatio: 1,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final tileSize = constraints.maxWidth / widget.gridSize;
+                const boardScale = 1.25;
+                const snakeScale = 0.75;
+                final baseTileSize = constraints.maxWidth / widget.gridSize;
+                final tileSize = baseTileSize * boardScale;
+                final snakeTileSize = tileSize * snakeScale;
                 final snakePositions = _snake.segments.toSet();
                 final letters = _snake.letters;
                 final segments = <SnakeSegment>[];
@@ -352,29 +348,34 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
                     highlighted: _isMatched,
                   ));
                 }
-                return Stack(
-                  children: [
-                    GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: widget.gridSize,
+                return FractionallySizedBox(
+                  widthFactor: boardScale,
+                  heightFactor: boardScale,
+                  child: Stack(
+                    children: [
+                      GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: widget.gridSize,
+                        ),
+                        itemCount: _grid.length,
+                        itemBuilder: (context, index) {
+                          final pos = _grid.positionOfIndex(index);
+                          final isSnake = snakePositions.contains(pos);
+                          final highlight = _isMatched && isSnake;
+                          return SerpuzzleTile(
+                            letter: isSnake ? '' : _grid.letterAt(pos),
+                            highlighted: highlight,
+                          );
+                        },
                       ),
-                      itemCount: _grid.length,
-                      itemBuilder: (context, index) {
-                        final pos = _grid.positionOfIndex(index);
-                        final isSnake = snakePositions.contains(pos);
-                        final highlight = _isMatched && isSnake;
-                        return SerpuzzleTile(
-                          letter: isSnake ? '' : _grid.letterAt(pos),
-                          highlighted: highlight,
-                        );
-                      },
-                    ),
-                    SerpuzzleSnakeBody(
-                      segments: segments,
-                      tileSize: tileSize,
-                    ),
-                  ],
+                      SerpuzzleSnakeBody(
+                        segments: segments,
+                        tileSize: snakeTileSize,
+                        segmentScale: snakeScale,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
