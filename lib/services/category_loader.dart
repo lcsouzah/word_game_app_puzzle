@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
-import '../utils/word_category.dart';
+import 'package:word_game_app/utils/word_category.dart';
 
 Future<List<String>> loadWordList(String path) async {
   try {

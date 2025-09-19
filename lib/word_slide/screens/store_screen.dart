@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
-import '../services/in_app_purchase_service.dart';
+import 'package:word_game_app/services/in_app_purchase_service.dart';
 
 /// Simple data class that describes a border product available for purchase.
 class BorderProduct {

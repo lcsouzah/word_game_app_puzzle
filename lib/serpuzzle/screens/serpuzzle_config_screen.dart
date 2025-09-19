@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/difficulty_level.dart';
-import './serpuzzle_game_screen.dart';
+import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
+import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_screen.dart';
 
 class SerpuzzleConfigScreen extends StatefulWidget {
   const SerpuzzleConfigScreen({super.key});

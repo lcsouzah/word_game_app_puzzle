@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/alphabet_game.dart'; // for ScoringOption
+import 'package:word_game_app/word_slide/models/alphabet_game.dart';
 
 class ScoringOptions extends StatelessWidget {
   final ScoringOption groupValue;

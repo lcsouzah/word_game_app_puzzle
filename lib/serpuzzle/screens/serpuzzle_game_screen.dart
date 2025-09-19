@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../models/serpuzzle_grid.dart';
-import '../models/serpuzzle_snake.dart';
-import '../widgets/serpuzzle_snake_body.dart';
-import '../widgets/serpuzzle_tile.dart';
-import '../widgets/portal_animation.dart';
-import '../utils/direction_enum.dart';
-import '../utils/swipe_detector.dart';
-
+import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
+import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
+import 'package:word_game_app/serpuzzle/widgets/portal_animation.dart';
+import 'package:word_game_app/serpuzzle/widgets/serpuzzle_snake_body.dart';
+import 'package:word_game_app/serpuzzle/widgets/serpuzzle_tile.dart';
+import 'package:word_game_app/utils/direction_enum.dart';
+import 'package:word_game_app/utils/swipe_detector.dart';
 
 /// Very small word-matching engine. Checks if the collected letters
 /// form any word in the provided [dictionary] and provides prefix lookups

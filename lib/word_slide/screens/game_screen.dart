@@ -1,15 +1,13 @@
 //Y:\word_game_app_puzzle\lib\screens\game_screen.dart
 
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/tap_feedback_overlay.dart'; // need improvement
-import '../models/alphabet_game.dart';
-import '../widgets/tile.dart';
-import '../utils/sound_manager.dart';
-import '../utils/pause_manager.dart';
-
+import 'package:word_game_app/utils/pause_manager.dart';
+import 'package:word_game_app/utils/sound_manager.dart';
+import 'package:word_game_app/word_slide/models/alphabet_game.dart';
+import 'package:word_game_app/word_slide/widgets/tap_feedback_overlay.dart';
+import 'package:word_game_app/word_slide/widgets/tile.dart';
 
 class GameScreen extends StatefulWidget {
   final Function(String) onCorrectWord;

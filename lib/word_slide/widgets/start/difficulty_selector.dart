@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/difficulty_level.dart';
+import 'package:word_game_app/word_slide/models/difficulty_level.dart';
 
 class DifficultySelector extends StatelessWidget {
   final DifficultyLevel selectedDifficulty;

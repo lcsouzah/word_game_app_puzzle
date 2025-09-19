@@ -3,11 +3,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:word_game_app/screens/settings_screen.dart';
-import '../models/alphabet_game.dart';
-import '../utils/score_uploader.dart';
-import '../utils/pause_manager.dart';
-import 'game_screen.dart';
+import 'package:word_game_app/utils/pause_manager.dart';
+import 'package:word_game_app/utils/score_uploader.dart';
+import 'package:word_game_app/word_slide/models/alphabet_game.dart';
+import 'package:word_game_app/word_slide/screens/game_screen.dart';
+import 'package:word_game_app/word_slide/screens/settings_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

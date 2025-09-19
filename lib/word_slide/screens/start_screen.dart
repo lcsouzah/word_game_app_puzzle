@@ -10,19 +10,18 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 
-import'../utils/category_unlock_manager.dart';
-
-import '../models/alphabet_game.dart';
-import '../models/difficulty_level.dart';
-import '../utils/word_category.dart';
-import '../screens/safe_area.dart';
-import '../widgets/start/category_selector.dart';
-import '../widgets/start/difficulty_selector.dart';
-import '../widgets/start/leaderboard_button.dart';
-import '../widgets/start/scoring_options.dart';
-import '../widgets/start/start_button.dart';
-import '../widgets/start/time_selector.dart';
-import '../services/ad_service.dart';
+import 'package:word_game_app/utils/category_unlock_manager.dart';
+import 'package:word_game_app/utils/word_category.dart';
+import 'package:word_game_app/word_slide/models/alphabet_game.dart';
+import 'package:word_game_app/word_slide/models/difficulty_level.dart';
+import 'package:word_game_app/word_slide/screens/safe_area.dart';
+import 'package:word_game_app/word_slide/widgets/start/category_selector.dart';
+import 'package:word_game_app/word_slide/widgets/start/difficulty_selector.dart';
+import 'package:word_game_app/word_slide/widgets/start/leaderboard_button.dart';
+import 'package:word_game_app/word_slide/widgets/start/scoring_options.dart';
+import 'package:word_game_app/word_slide/widgets/start/start_button.dart';
+import 'package:word_game_app/word_slide/widgets/start/time_selector.dart';
+import 'package:word_game_app/services/ad_service.dart';
 
 class StartScreen extends StatefulWidget {
   final List<WordCategory> categories;

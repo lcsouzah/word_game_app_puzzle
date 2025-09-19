@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'store_screen.dart' ;
-import '../services/settings_service.dart';
+import 'package:word_game_app/services/settings_service.dart';
+import 'package:word_game_app/word_slide/screens/store_screen.dart';
 
 /// Screen allowing the player to customise tile colour and border image.
 class SettingsScreen extends StatelessWidget {

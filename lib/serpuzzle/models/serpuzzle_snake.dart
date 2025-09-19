@@ -1,4 +1,4 @@
-import '../models/serpuzzle_grid.dart';
+import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 
 class SerpuzzleSnake {
 final List<GridPosition> body = [];
