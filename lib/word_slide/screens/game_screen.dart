@@ -2,12 +2,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/sound_manager.dart';
 import 'package:word_game_app/word_slide/models/alphabet_game.dart';
 import 'package:word_game_app/word_slide/widgets/tap_feedback_overlay.dart';
 import 'package:word_game_app/word_slide/widgets/tile.dart';
+import 'package:word_game_app/services/settings_service.dart';
 
 class GameScreen extends StatefulWidget {
   final Function(String) onCorrectWord;
@@ -55,20 +56,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   List<int> _highlightedIndices = [];
   final List<int> _disappearingIndices = [];
 
-  Color _tileColor = Colors.blueGrey;
-  String? _borderAssetPath;
-
-  Future<void> _loadTileCustomization() async {
-    final prefs = await SharedPreferences.getInstance();
-    final colorValue = prefs.getInt('tileColor');
-    final borderPath = prefs.getString('borderAssetPath');
-
-    setState(() {
-      _tileColor =
-      colorValue != null ? Color(colorValue) : Colors.blueGrey;
-      _borderAssetPath = borderPath ?? 'assets/images/default_border.png';
-    });
-  }
 
   @override
 
@@ -77,7 +64,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _maxHints =  widget.maxHints;
     _hintsUsed = 0;
 
-    _loadTileCustomization();
 
     _hintButtonController = AnimationController(
       vsync: this,
@@ -86,7 +72,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     _hintButtonAnimation = Tween<double>(begin: 1.0, end: 1.1)
         .animate(CurvedAnimation(parent: _hintButtonController, curve: Curves.easeInOut));
-    _loadTileColor();
   }
 
 
@@ -112,15 +97,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _loadTileColor() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getInt('tileColor');
-    if (value != null) {
-      setState(() {
-        _tileColor = Color(value);
-      });
-    }
-  }
 
   void _handleTileTap(int index) {
     final pauseManager = Provider.of<PauseManager>(context, listen: false);
@@ -338,6 +314,11 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final pauseManager = Provider.of<PauseManager>(context);
+    final settings = context.watch<SettingsService>();
+    final tileColor = settings.tileColor;
+    final borderAssetPath = settings.borderAssetPath.isNotEmpty
+        ? settings.borderAssetPath
+        : null;
 
     debugPrint('💡 BUILD → hintsUsed=$_hintsUsed | maxHints=$_maxHints');
     debugPrint('📺 Ads → adUsesThisMatch=${widget.adUsesThisMatch} | maxAdUsesPerMatch=${widget.maxAdUsesPerMatch}');
@@ -448,8 +429,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           highlighted: _highlightedIndices.contains(index), // stays green glow
                           disappearing: _disappearingIndices.contains(index), // wont shrink on hint
 
-                          tileColor: _tileColor,
-                          borderAssetPath: _borderAssetPath,
+                          tileColor: tileColor,
+                          borderAssetPath: borderAssetPath,
 
                         ),
                         ),
