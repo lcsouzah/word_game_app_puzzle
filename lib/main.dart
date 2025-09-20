@@ -8,6 +8,7 @@ import 'screens/mode_selection_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/ad_service.dart';
+import 'services/in_app_purchase_service.dart';
 import 'services/settings_service.dart';
 
 
@@ -55,6 +56,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => PauseManager()),
         Provider(create: (_) => AdService()),
         ChangeNotifierProvider(create: (_) => SettingsService()..load()),
+        ChangeNotifierProvider(
+        create: (_) => InAppPurchaseService()..initialize(),
+        ),
         // other providers can be added here
       ],
       child: MyApp(initializationFailed: initializationFailed),
