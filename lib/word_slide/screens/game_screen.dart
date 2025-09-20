@@ -315,10 +315,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final pauseManager = Provider.of<PauseManager>(context);
     final settings = context.watch<SettingsService>();
-    final tileColor = settings.tileColor;
-    final borderAssetPath = settings.borderAssetPath.isNotEmpty
-        ? settings.borderAssetPath
-        : null;
+
 
     debugPrint('💡 BUILD → hintsUsed=$_hintsUsed | maxHints=$_maxHints');
     debugPrint('📺 Ads → adUsesThisMatch=${widget.adUsesThisMatch} | maxAdUsesPerMatch=${widget.maxAdUsesPerMatch}');
@@ -400,8 +397,11 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           highlighted: _highlightedIndices.contains(index), // stays green glow
                           disappearing: _disappearingIndices.contains(index), // wont shrink on hint
 
-                          tileColor: tileColor,
-                          borderAssetPath: borderAssetPath,
+
+                          tileColor: settings.tileColor,
+                          borderAssetPath: settings.borderAssetPath.isEmpty
+                              ? null
+                              : settings.borderAssetPath,
 
                         ),
                         ),
