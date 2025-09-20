@@ -1,9 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
 import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 import 'package:word_game_app/word_slide/screens/store_screen.dart';
+
+const _availableTileColors = <Color>[
+  Colors.blueGrey,
+  Colors.red,
+  Colors.green,
+  Colors.orange,
+  Colors.purple,
+  Colors.teal,
+  Colors.brown,
+];
 
 /// Screen allowing the player to customise tile colour and border image.
 class SettingsScreen extends StatelessWidget {
@@ -22,6 +34,17 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const Text(
+            'Tile Colour',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _TileColorPalette(
+            colors: _availableTileColors,
+            selectedColor: settings.tileColor,
+            onColorSelected: settings.updateTileColor,
+          ),
+          const SizedBox(height: 24),
           const Text(
             'Free Borders',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -90,6 +113,90 @@ class SettingsScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => const StoreScreenProvider(),
+      ),
+    );
+  }
+}
+
+class _TileColorPalette extends StatelessWidget {
+  final List<Color> colors;
+  final Color selectedColor;
+  final Future<void> Function(Color color) onColorSelected;
+
+  const _TileColorPalette({
+    required this.colors,
+    required this.selectedColor,
+    required this.onColorSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        for (final color in colors)
+          _TileColorSwatch(
+            color: color,
+            isSelected: color == selectedColor,
+            onTap: () {
+              unawaited(onColorSelected(color));
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _TileColorSwatch extends StatelessWidget {
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TileColorSwatch({
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final highlightColor = Theme.of(context).colorScheme.secondary;
+
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? highlightColor : Colors.transparent,
+              width: 3,
+            ),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: highlightColor.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+            ],
+          ),
+          child: AnimatedOpacity(
+            opacity: isSelected ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            child: const Icon(Icons.check, color: Colors.white),
+          ),
+        ),
       ),
     );
   }
