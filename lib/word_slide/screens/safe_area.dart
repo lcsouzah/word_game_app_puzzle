@@ -83,6 +83,11 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     }
   }
 
+  void _resetPauseState() {
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+    pauseManager.forceResume();
+  }
+
   void _loadRewardedAd() {
     if (_isAdLoading) return;
     _isAdLoading = true;
@@ -217,6 +222,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
           ),
           TextButton(
             onPressed: () {
+              _resetPauseState();
               Navigator.pop(context);
               Navigator.of(context).pop();
             },
@@ -299,7 +305,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () {
-                      pauseManager.forceResume();
+                      _resetPauseState();
                       _pauseTimer();
                       Navigator.of(context).pop();
                     },
@@ -458,6 +464,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
 
   @override
   void dispose() {
+    _resetPauseState();
     Provider.of<PauseManager>(context, listen: false)
         .removeListener(_onPauseStateChanged);
     _timer?.cancel();
