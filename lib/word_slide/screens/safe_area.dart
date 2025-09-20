@@ -42,6 +42,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   Timer? _timer;
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
+  bool _isGameOver = false;
 
   @override
   void initState() {
@@ -163,6 +164,11 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _endGame() {
+    if (_isGameOver) return;
+
+    setState(() {
+      _isGameOver = true;
+    });
     _pauseTimer();
 
     int safeMoveCounter = moveCounter == 0 ? 1 : moveCounter;
@@ -246,7 +252,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _resumeTimer() {
-    if (_timer != null || _remainingTime <= 0) {
+    if (_timer != null || _remainingTime <= 0 || _isGameOver) {
       return;
     }
     final pauseManager = Provider.of<PauseManager>(context, listen: false);
@@ -257,7 +263,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _startTimer() {
-    if (_remainingTime <= 0) {
+    if (_remainingTime <= 0 || _isGameOver) {
       return;
     }
     final pauseManager = Provider.of<PauseManager>(context, listen: false);
@@ -338,139 +344,142 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   Widget build(BuildContext context) {
     final pauseManager = Provider.of<PauseManager>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: const Text(
-          'Word Game',
-          style: TextStyle(color: Colors.white),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onPressed: () {
-              final pauseManager = Provider.of<PauseManager>(context, listen: false);
-              pauseManager.pause(PauseReason.manual);
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              ).then((_) {
-                if (!mounted) return;
-                pauseManager.resume(PauseReason.manual);
-              });
-            },
+    return WillPopScope(
+      onWillPop: () async => !_isGameOver,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple,
+          title: const Text(
+            'Word Game',
+            style: TextStyle(color: Colors.white),
           ),
-          IconButton(
-            icon: Icon(
-              pauseManager.isPaused &&
-                  pauseManager.pauseReason == PauseReason.manual
-                  ? Icons.play_arrow
-                  : Icons.pause,
-            ),
-            tooltip: pauseManager.isPaused &&
-                pauseManager.pauseReason == PauseReason.manual
-                ? 'Resume'
-                : 'Pause',
-            onPressed: () {
-              final pauseManager =
-              Provider.of<PauseManager>(context, listen: false);
-              if (pauseManager.isPaused &&
-                  pauseManager.pauseReason == PauseReason.manual) {
-                pauseManager.resume(PauseReason.manual);
-              } else {
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: 'Settings',
+              onPressed: () {
+                final pauseManager =
+                Provider.of<PauseManager>(context, listen: false);
                 pauseManager.pause(PauseReason.manual);
-              }
-            },
-          ),
-        ],
-      ),
 
-      body: SafeArea(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: IgnorePointer(
-                    ignoring: pauseManager.isPaused,
-                    child: GameScreen(
-                      key: _gameScreenKey,
-                      game: game,
-                      dictionary: widget.wordList,
-                      onCorrectWord: onCorrectWord,
-                      scoringOption: widget.scoringOption,
-                      onPauseToggle: () {
-                        if (pauseManager.isPaused &&
-                            pauseManager.pauseReason == PauseReason.manual) {
-                          pauseManager.resume(PauseReason.manual);
-                        } else {
-                          pauseManager.pause(PauseReason.manual);
-                        }
-                      },
-                      maxHints: 3,
-                      onRewardedAdRequest: _showRewardedAdForHints,
-                      adUsesThisMatch: _adUsesThisMatch,
-                      maxAdUsesPerMatch: _maxAdUsesPerMatch,
-                    ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
                   ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    color: Colors.white60,
-                    child: ListView.builder(
-                      itemCount: correctWords.length,
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: const EdgeInsets.all(4.0),
-                          padding: const EdgeInsets.all(2.0),
-                          decoration: BoxDecoration(
-                            border: Border.all(width: 2),
-                            color: Colors.yellowAccent.shade100,
-                            borderRadius: BorderRadius.circular(5.0),
-                          ),
-                          child: Text(
-                            correctWords[index],
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Time Remaining: $_remainingTime seconds',
-                    style: const TextStyle(fontSize: 18.0),
-                  ),
-                ),
-                if (_isAdLoaded)
-                  Container(
-                    alignment: Alignment.center,
-                    width: _bannerAd.size.width.toDouble(),
-                    height: _bannerAd.size.height.toDouble(),
-                    child: AdWidget(ad: _bannerAd),
-                  ),
-              ],
+                ).then((_) {
+                  if (!mounted) return;
+                  pauseManager.resume(PauseReason.manual);
+                });
+              },
             ),
-            if (pauseManager.isPaused &&
-                pauseManager.pauseReason == PauseReason.manual)
-              _buildPauseOverlay(context, pauseManager),
+            IconButton(
+              icon: Icon(
+                pauseManager.isPaused &&
+                    pauseManager.pauseReason == PauseReason.manual
+                    ? Icons.play_arrow
+                    : Icons.pause,
+              ),
+              tooltip: pauseManager.isPaused &&
+                  pauseManager.pauseReason == PauseReason.manual
+                  ? 'Resume'
+                  : 'Pause',
+              onPressed: () {
+                final pauseManager =
+                Provider.of<PauseManager>(context, listen: false);
+                if (pauseManager.isPaused &&
+                    pauseManager.pauseReason == PauseReason.manual) {
+                  pauseManager.resume(PauseReason.manual);
+                } else {
+                  pauseManager.pause(PauseReason.manual);
+                }
+              },
+            ),
           ],
+        ),
+        body: SafeArea(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: IgnorePointer(
+                      ignoring: pauseManager.isPaused || _isGameOver,
+                      child: GameScreen(
+                        key: _gameScreenKey,
+                        game: game,
+                        dictionary: widget.wordList,
+                        onCorrectWord: onCorrectWord,
+                        scoringOption: widget.scoringOption,
+                        onPauseToggle: () {
+                          if (pauseManager.isPaused &&
+                              pauseManager.pauseReason == PauseReason.manual) {
+                            pauseManager.resume(PauseReason.manual);
+                          } else {
+                            pauseManager.pause(PauseReason.manual);
+                          }
+                        },
+                        maxHints: 3,
+                        onRewardedAdRequest: _showRewardedAdForHints,
+                        adUsesThisMatch: _adUsesThisMatch,
+                        maxAdUsesPerMatch: _maxAdUsesPerMatch,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      color: Colors.white60,
+                      child: ListView.builder(
+                        itemCount: correctWords.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            margin: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(2.0),
+                            decoration: BoxDecoration(
+                              border: Border.all(width: 2),
+                              color: Colors.yellowAccent.shade100,
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            child: Text(
+                              correctWords[index],
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Time Remaining: $_remainingTime seconds',
+                      style: const TextStyle(fontSize: 18.0),
+                    ),
+                  ),
+                  if (_isAdLoaded)
+                    Container(
+                      alignment: Alignment.center,
+                      width: _bannerAd.size.width.toDouble(),
+                      height: _bannerAd.size.height.toDouble(),
+                      child: AdWidget(ad: _bannerAd),
+                    ),
+                ],
+              ),
+              if (pauseManager.isPaused &&
+                  pauseManager.pauseReason == PauseReason.manual)
+                _buildPauseOverlay(context, pauseManager),
+            ],
+          ),
         ),
       ),
     );
