@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:word_game_app/services/settings_service.dart';
+import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 import 'package:word_game_app/word_slide/screens/store_screen.dart';
 
 /// Screen allowing the player to customise tile colour and border image.
@@ -21,11 +22,7 @@ class SettingsScreen extends StatelessWidget {
       Colors.brown,
     ];
 
-    final borders = <String>[
-      'assets/borders/border_red.png',
-      'assets/borders/border_green.png',
-      'assets/borders/border_blue.png',
-    ];
+    final styles = TileBorderStyles.freeStyles.toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -38,60 +35,51 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            children: [
-              for (final color in colors)
-                GestureDetector(
-                  onTap: () => settings.updateTileColor(color),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: settings.tileColor == color
-                            ? Colors.white
-                            : Colors.transparent,
-                        width: 3,
+            spacing: 12,
+            runSpacing: 12,
+            children: styles.map((style) {
+              final visuals = style.visuals(settings.tileColor);
+              final isSelected = settings.borderStyle.id == style.id;
+              return GestureDetector(
+                onTap: () {
+                  settings.updateBorderStyle(style);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                        visuals.borderRadius ?? BorderRadius.circular(8),
+                        border: Border.all(
+                          color:
+                          isSelected ? Colors.white : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: _TilePreview(
+                        style: style,
+                        tileColor: settings.tileColor,
+                        visualsOverride: visuals,
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Tile Border',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final path in borders)
-                GestureDetector(
-                  onTap: () => settings.updateBorderAssetPath(path),
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(image: AssetImage(path)),
-                      border: Border.all(
-                        color: settings.borderAssetPath == path
-                            ? Colors.white
-                            : Colors.transparent,
-                        width: 3,
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      style.displayName,
+                      style: const TextStyle(fontSize: 12),
                     ),
-                  ),
+                  ],
                 ),
-            ],
+              );
+            }).toList(),
           ),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: () => settings.updateBorderAssetPath(''),
-            child: const Text('No Border'),
+            onPressed: () {
+              settings.updateBorderStyle(TileBorderStyles.defaultStyle);
+            },
+            child: const Text('Classic Outline'),
           ),
           const SizedBox(height: 24),
           Card(
@@ -111,6 +99,47 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TilePreview extends StatelessWidget {
+  final TileBorderStyle style;
+  final Color tileColor;
+  final TileBorderVisuals? visualsOverride;
+
+  const _TilePreview({
+    required this.style,
+    required this.tileColor,
+    this.visualsOverride,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visuals = visualsOverride ?? style.visuals(tileColor);
+    final decoration = BoxDecoration(
+      color: visuals.gradient == null
+          ? visuals.fillColor ?? tileColor
+          : null,
+      gradient: visuals.gradient,
+      borderRadius: visuals.borderRadius ?? BorderRadius.circular(8),
+      border: visuals.border,
+      boxShadow: visuals.boxShadows,
+    );
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: decoration,
+      alignment: Alignment.center,
+      child: const Text(
+        'A',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       ),
     );
   }

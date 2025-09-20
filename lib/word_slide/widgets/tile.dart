@@ -1,6 +1,7 @@
 //Y:\word_game_app_puzzle\lib\widget\tile.dart
 
 import 'package:flutter/material.dart';
+import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
 
 class TileWidget extends StatefulWidget {
@@ -10,6 +11,7 @@ class TileWidget extends StatefulWidget {
   final bool disappearing; // 🔴 disappearing correct word animation
   final Color tileColor;
   final String? borderAssetPath;
+  final TileBorderStyle? borderStyle;
 
   const TileWidget({
     super.key,
@@ -18,7 +20,7 @@ class TileWidget extends StatefulWidget {
     this.highlighted = false,
     this.disappearing = false,
     this.tileColor = Colors.blueGrey,
-    this.borderAssetPath,
+    this.borderStyle = TileBorderStyles.defaultStyle,
   });
 
   @override
@@ -60,6 +62,10 @@ class TileWidgetState extends State<TileWidget>
   Widget build(BuildContext context) {
 
     final isEmpty = widget.letter.trim().isEmpty;
+    final visuals = widget.borderStyle.visuals(widget.tileColor);
+    final baseFillColor = visuals.fillColor ?? widget.tileColor;
+    final bool useGradient =
+        !isEmpty && !widget.highlighted && visuals.gradient != null;
 
     return GestureDetector(
       onTapDown: _onTapDown,
@@ -74,35 +80,38 @@ class TileWidgetState extends State<TileWidget>
           curve: Curves.easeOutBack,
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: isEmpty // 🟢 empty tile black
+            color: useGradient
+                ? null
+                : isEmpty
                 ? Colors.transparent
-                : widget.highlighted // 🔵 highlighted blue
+                : widget.highlighted
                 ? Colors.greenAccent.withValues(alpha: 0.8)
                 : (_scale != 1.0
-                ? widget.tileColor.withValues(alpha: 0.5)
-                : widget.tileColor),
-            borderRadius: BorderRadius.circular(8),
-            image: widget.borderAssetPath != null
-                ? DecorationImage(
-              image: AssetImage(widget.borderAssetPath!),
-              fit: BoxFit.cover,
-            )
-                : null,
+                ? baseFillColor.withValues(alpha: 0.5)
+                : baseFillColor),
+            gradient: useGradient ? visuals.gradient : null,
+            borderRadius:
+            visuals.borderRadius ?? BorderRadius.circular(8),
+            border: visuals.border,
             boxShadow: [
               if (widget.highlighted)
                 BoxShadow(
-
                   color: Colors.greenAccent.withValues(alpha: 0.7),
                   blurRadius: 15,
                   spreadRadius: 3,
-                )
-              else
+                ),
+              ...(
+              visuals.boxShadows.isNotEmpty
+                  ? visuals.boxShadows
+                  : [
                 BoxShadow(
                   color: Colors.black12.withValues(alpha: 0.8),
                   spreadRadius: 2,
                   blurRadius: 8,
-                  offset: const Offset(2,2),
-                ),
+                  offset: const Offset(2, 2),
+                )
+              ],
+              ),
             ],
           ),
           alignment: Alignment.center,

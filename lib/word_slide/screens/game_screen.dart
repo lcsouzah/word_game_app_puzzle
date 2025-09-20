@@ -399,9 +399,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
 
                           tileColor: settings.tileColor,
-                          borderAssetPath: settings.borderAssetPath.isEmpty
-                              ? null
-                              : settings.borderAssetPath,
+                          borderStyle: settings.borderStyle,
 
                         ),
                         ),
