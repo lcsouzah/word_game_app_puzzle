@@ -12,15 +12,15 @@ class TileWidget extends StatefulWidget {
   final Color tileColor;
   final TileBorderStyle borderStyle;
 
-  const TileWidget({
+  TileWidget({
     super.key,
     required this.letter,
     required this.onTap,
     this.highlighted = false,
     this.disappearing = false,
     this.tileColor = Colors.blueGrey,
-    this.borderStyle = TileBorderStyles.none,
-  });
+    TileBorderStyle? borderStyle,
+  }) : borderStyle = borderStyle ?? TileBorderStyles.none;
 
   @override
   TileWidgetState createState() => TileWidgetState();
@@ -84,11 +84,10 @@ class TileWidgetState extends State<TileWidget>
           blurRadius: 15,
           spreadRadius: 3,
         ),
-      ...(
-      decorationParts.boxShadows.isNotEmpty
-          ? decorationParts.boxShadows
-          : [defaultShadow],
-      ),
+      if (decorationParts.boxShadows.isNotEmpty)
+        ...decorationParts.boxShadows
+      else
+        defaultShadow,
     ];
 
     return GestureDetector(
