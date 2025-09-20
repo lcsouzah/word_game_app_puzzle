@@ -70,7 +70,12 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
 
     game = AlphabetGame(widget.wordList);
     _remainingTime = widget.gameDuration;
-    _startTimer();
+
+    if (pauseManager.isPaused) {
+      _pauseTimer();
+    } else {
+      _startTimer();
+    }
   }
 
   void _onPauseStateChanged() {
@@ -244,11 +249,20 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     if (_timer != null || _remainingTime <= 0) {
       return;
     }
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+    if (pauseManager.pauseReason != PauseReason.none) {
+      return;
+    }
     _startTimer();
   }
 
   void _startTimer() {
     if (_remainingTime <= 0) {
+      return;
+    }
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+    if (pauseManager.pauseReason != PauseReason.none) {
+      _pauseTimer();
       return;
     }
     _timer?.cancel();
