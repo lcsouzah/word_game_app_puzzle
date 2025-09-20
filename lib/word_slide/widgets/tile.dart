@@ -10,8 +10,7 @@ class TileWidget extends StatefulWidget {
   final bool highlighted; // 🔴 highlighted on hint logic
   final bool disappearing; // 🔴 disappearing correct word animation
   final Color tileColor;
-  final String? borderAssetPath;
-  final TileBorderStyle? borderStyle;
+  final TileBorderStyle borderStyle;
 
   const TileWidget({
     super.key,
@@ -20,7 +19,7 @@ class TileWidget extends StatefulWidget {
     this.highlighted = false,
     this.disappearing = false,
     this.tileColor = Colors.blueGrey,
-    this.borderStyle = TileBorderStyles.defaultStyle,
+    this.borderStyle = TileBorderStyles.none,
   });
 
   @override
@@ -62,17 +61,42 @@ class TileWidgetState extends State<TileWidget>
   Widget build(BuildContext context) {
 
     final isEmpty = widget.letter.trim().isEmpty;
-    final visuals = widget.borderStyle.visuals(widget.tileColor);
-    final baseFillColor = visuals.fillColor ?? widget.tileColor;
-    final bool useGradient =
-        !isEmpty && !widget.highlighted && visuals.gradient != null;
+    final decorationParts = widget.borderStyle.buildDecoration(
+      tileColor: widget.tileColor,
+      highlighted: widget.highlighted,
+    );
+    final baseFillColor = decorationParts.fillColor ?? widget.tileColor;
+    final bool useGradient = !isEmpty &&
+        !widget.highlighted &&
+        decorationParts.gradient != null;
+    final borderRadius =
+        decorationParts.borderRadius ?? BorderRadius.circular(8);
+    final defaultShadow = BoxShadow(
+      color: Colors.black12.withValues(alpha: 0.8),
+      spreadRadius: 2,
+      blurRadius: 8,
+      offset: const Offset(2, 2),
+    );
+    final List<BoxShadow> combinedShadows = [
+      if (widget.highlighted)
+        BoxShadow(
+          color: Colors.greenAccent.withValues(alpha: 0.7),
+          blurRadius: 15,
+          spreadRadius: 3,
+        ),
+      ...(
+      decorationParts.boxShadows.isNotEmpty
+          ? decorationParts.boxShadows
+          : [defaultShadow],
+      ),
+    ];
 
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: AnimatedScale(
-        scale: widget.disappearing ? 0.0 : _scale, //shrink when disappearing
+        scale: widget.disappearing ? 0.0 : _scale, // shrink when disappearing
         duration: const Duration(milliseconds: 50),
         curve: Curves.easeInOut,
         child: AnimatedContainer(
@@ -89,31 +113,12 @@ class TileWidgetState extends State<TileWidget>
                 : (_scale != 1.0
                 ? baseFillColor.withValues(alpha: 0.5)
                 : baseFillColor),
-            gradient: useGradient ? visuals.gradient : null,
-            borderRadius:
-            visuals.borderRadius ?? BorderRadius.circular(8),
-            border: visuals.border,
-            boxShadow: [
-              if (widget.highlighted)
-                BoxShadow(
-                  color: Colors.greenAccent.withValues(alpha: 0.7),
-                  blurRadius: 15,
-                  spreadRadius: 3,
-                ),
-              ...(
-              visuals.boxShadows.isNotEmpty
-                  ? visuals.boxShadows
-                  : [
-                BoxShadow(
-                  color: Colors.black12.withValues(alpha: 0.8),
-                  spreadRadius: 2,
-                  blurRadius: 8,
-                  offset: const Offset(2, 2),
-                )
-              ],
-              ),
-            ],
+            gradient: useGradient ? decorationParts.gradient : null,
+            borderRadius: borderRadius,
+            border: decorationParts.border,
+            boxShadow: combinedShadows,
           ),
+          foregroundDecoration: decorationParts.foregroundDecoration,
           alignment: Alignment.center,
           child: isEmpty // 🟢 empty tile black
               ? const SizedBox.shrink() // 🟢 empty tile black

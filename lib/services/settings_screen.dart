@@ -38,7 +38,10 @@ class SettingsScreen extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: styles.map((style) {
-              final visuals = style.visuals(settings.tileColor);
+              final styleDecoration = style.buildDecoration(
+                tileColor: settings.tileColor,
+                highlighted: false,
+              );
               final isSelected = settings.borderStyle.id == style.id;
               return GestureDetector(
                 onTap: () {
@@ -51,7 +54,8 @@ class SettingsScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         borderRadius:
-                        visuals.borderRadius ?? BorderRadius.circular(8),
+                        styleDecoration.borderRadius ??
+                            BorderRadius.circular(8),
                         border: Border.all(
                           color:
                           isSelected ? Colors.white : Colors.transparent,
@@ -61,7 +65,7 @@ class SettingsScreen extends StatelessWidget {
                       child: _TilePreview(
                         style: style,
                         tileColor: settings.tileColor,
-                        visualsOverride: visuals,
+                        decorationOverride: styleDecoration,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -107,31 +111,36 @@ class SettingsScreen extends StatelessWidget {
 class _TilePreview extends StatelessWidget {
   final TileBorderStyle style;
   final Color tileColor;
-  final TileBorderVisuals? visualsOverride;
+  final TileBorderDecoration? decorationOverride;
 
   const _TilePreview({
     required this.style,
     required this.tileColor,
-    this.visualsOverride,
+    this.decorationOverride,
   });
 
   @override
   Widget build(BuildContext context) {
-    final visuals = visualsOverride ?? style.visuals(tileColor);
-    final decoration = BoxDecoration(
-      color: visuals.gradient == null
-          ? visuals.fillColor ?? tileColor
+    final styleDecoration = decorationOverride ?? style.buildDecoration(
+      tileColor: tileColor,
+      highlighted: false,
+    );
+    final boxDecoration = BoxDecoration(
+      color: styleDecoration.gradient == null
+          ? styleDecoration.fillColor ?? tileColor
           : null,
-      gradient: visuals.gradient,
-      borderRadius: visuals.borderRadius ?? BorderRadius.circular(8),
-      border: visuals.border,
-      boxShadow: visuals.boxShadows,
+      gradient: styleDecoration.gradient,
+      borderRadius:
+      styleDecoration.borderRadius ?? BorderRadius.circular(8),
+      border: styleDecoration.border,
+      boxShadow: styleDecoration.boxShadows,
     );
 
     return Container(
       width: 60,
       height: 60,
-      decoration: decoration,
+      decoration: boxDecoration,
+      foregroundDecoration: styleDecoration.foregroundDecoration,
       alignment: Alignment.center,
       child: const Text(
         'A',

@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 
+/// Input parameters supplied to a border style when building decorations.
+class TileBorderStyleContext {
+  final Color tileColor;
+  final bool highlighted;
+
+  const TileBorderStyleContext({
+    required this.tileColor,
+    required this.highlighted,
+  });
+}
+
 /// Visual fragments describing how a tile border should appear.
-class TileBorderVisuals {
+class TileBorderDecoration {
   final BorderRadius? borderRadius;
   final Border? border;
   final Gradient? gradient;
   final List<BoxShadow> boxShadows;
   final Color? fillColor;
+  final Decoration? foregroundDecoration;
 
-  const TileBorderVisuals({
+  const TileBorderDecoration({
     this.borderRadius,
     this.border,
     this.gradient,
     this.boxShadows = const [],
     this.fillColor,
+    this.foregroundDecoration,
   });
 }
 
@@ -22,25 +35,41 @@ class TileBorderStyle {
   final String id;
   final String displayName;
   final bool isPremium;
-  final TileBorderVisuals Function(Color baseColor) _builder;
+  final TileBorderDecoration Function(TileBorderStyleContext context) _builder;
 
   const TileBorderStyle({
     required this.id,
     required this.displayName,
     required this.isPremium,
-    required TileBorderVisuals Function(Color baseColor) visualsBuilder,
-  }) : _builder = visualsBuilder;
+    required TileBorderDecoration Function(TileBorderStyleContext context)
+    decorationBuilder,
+  }) : _builder = decorationBuilder;
 
-  TileBorderVisuals visuals(Color baseColor) => _builder(baseColor);
+  TileBorderDecoration buildDecoration({
+    required Color tileColor,
+    required bool highlighted,
+  }) =>
+      _builder(
+        TileBorderStyleContext(tileColor: tileColor, highlighted: highlighted),
+      );
 }
 
 /// Registry of built-in tile border styles.
 class TileBorderStyles {
+  static final TileBorderStyle _none = TileBorderStyle(
+    id: 'none',
+    displayName: 'None',
+    isPremium: false,
+    decorationBuilder: (context) => TileBorderDecoration(
+      borderRadius: BorderRadius.circular(8),
+      boxShadows: const [],
+    ),
+  );
   static final TileBorderStyle classicOutline = TileBorderStyle(
     id: 'classic_outline',
     displayName: 'Classic Outline',
     isPremium: false,
-    visualsBuilder: (baseColor) => TileBorderVisuals(
+    decorationBuilder: (context) => TileBorderDecoration(
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
         color: Colors.white.withOpacity(0.6),
@@ -60,15 +89,15 @@ class TileBorderStyles {
     id: 'rounded_glow',
     displayName: 'Rounded Glow',
     isPremium: false,
-    visualsBuilder: (baseColor) => TileBorderVisuals(
+    decorationBuilder: (context) => TileBorderDecoration(
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: baseColor.withOpacity(0.5),
+        color: context.tileColor.withOpacity(0.5),
         width: 2,
       ),
       boxShadows: [
         BoxShadow(
-          color: baseColor.withOpacity(0.4),
+          color: context.tileColor.withOpacity(0.4),
           blurRadius: 18,
           spreadRadius: 1,
         ),
@@ -85,7 +114,7 @@ class TileBorderStyles {
     id: 'inset_shadow',
     displayName: 'Inset Shadow',
     isPremium: false,
-    visualsBuilder: (baseColor) => TileBorderVisuals(
+    decorationBuilder: (context) => TileBorderDecoration(
       borderRadius: BorderRadius.circular(10),
       border: Border.all(
         color: Colors.black.withOpacity(0.25),
@@ -105,7 +134,7 @@ class TileBorderStyles {
     id: 'gold_gloss',
     displayName: 'Gold Gloss',
     isPremium: true,
-    visualsBuilder: (_) => const TileBorderVisuals(
+    decorationBuilder: (context) => const TileBorderDecoration(
       borderRadius: BorderRadius.all(Radius.circular(12)),
       gradient: LinearGradient(
         colors: [
@@ -133,7 +162,7 @@ class TileBorderStyles {
     id: 'silver_glow',
     displayName: 'Silver Glow',
     isPremium: true,
-    visualsBuilder: (_) => const TileBorderVisuals(
+    decorationBuilder: (context) => const TileBorderDecoration(
       borderRadius: BorderRadius.all(Radius.circular(12)),
       gradient: LinearGradient(
         colors: [
@@ -161,7 +190,7 @@ class TileBorderStyles {
     id: 'bronze_edge',
     displayName: 'Bronze Edge',
     isPremium: true,
-    visualsBuilder: (_) => const TileBorderVisuals(
+    decorationBuilder: (context) => const TileBorderDecoration(
       borderRadius: BorderRadius.all(Radius.circular(10)),
       gradient: LinearGradient(
         colors: [
@@ -187,6 +216,7 @@ class TileBorderStyles {
 
   static final Map<String, TileBorderStyle> _stylesById = {
     for (final style in [
+      _none,
       classicOutline,
       roundedGlow,
       insetShadow,
@@ -211,6 +241,8 @@ class TileBorderStyles {
       all.where((style) => style.isPremium);
 
   static TileBorderStyle get defaultStyle => classicOutline;
+
+  static TileBorderStyle get none => _none;
 
   static String migrateLegacyAssetPath(String? path) {
     switch (path) {
