@@ -186,4 +186,61 @@ void main() {
 
         expect(separatedTiles, 3);
       });
+  testWidgets('snake wraps across all edges when wrapAround is enabled',
+          (tester) async {
+        const gridSize = 5;
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: gridSize,
+            dictionary: const ['A'],
+            maxWordLength: 3,
+            wrapAround: true,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+        state.setGrowSegmentsForTest(0);
+
+        Future<void> move(Direction direction) async {
+          state.setDirectionForTest(direction);
+          state.tickForTest();
+          await tester.pump();
+          state.cancelTimersForTest();
+        }
+
+        GridPosition head = state.snake.segments.last as GridPosition;
+        final int initialRow = head.row;
+        final int stepsToLeftBoundary = head.col + 1;
+        for (var i = 0; i < stepsToLeftBoundary; i++) {
+          await move(Direction.left);
+        }
+        head = state.snake.segments.last as GridPosition;
+        expect(head.row, equals(initialRow));
+        expect(head.col, equals(gridSize - 1));
+        expect(state.isGameOverForTest, isFalse);
+
+        await move(Direction.right);
+        head = state.snake.segments.last as GridPosition;
+        expect(head.col, equals(0));
+        expect(head.row, equals(initialRow));
+        expect(state.isGameOverForTest, isFalse);
+
+        final int stepsToTopBoundary = head.row + 1;
+        for (var i = 0; i < stepsToTopBoundary; i++) {
+          await move(Direction.up);
+        }
+        head = state.snake.segments.last as GridPosition;
+        expect(head.row, equals(gridSize - 1));
+        expect(head.col, equals(0));
+        expect(state.isGameOverForTest, isFalse);
+
+        await move(Direction.down);
+        head = state.snake.segments.last as GridPosition;
+        expect(head.row, equals(0));
+        expect(head.col, equals(0));
+        expect(state.isGameOverForTest, isFalse);
+      });
 }

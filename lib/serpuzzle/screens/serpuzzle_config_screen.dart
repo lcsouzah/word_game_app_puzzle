@@ -12,6 +12,7 @@ class SerpuzzleConfigScreen extends StatefulWidget {
 class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
   DifficultyLevel _difficulty = DifficultyLevel.easy;
   bool _centerStart = true;
+  bool _wrapAround = false;
   static const int _gridSize = 8;
 
   static const List<String> _baseDictionary = [
@@ -72,6 +73,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           startCentered: _centerStart,
           moveDelay: _moveDelayFor(_difficulty),
           levelTimeLimit: _timeLimitFor(_difficulty),
+          wrapAround: _wrapAround,
         ),
       ),
     );
@@ -108,6 +110,11 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
               title: const Text('Start Centered'),
               value: _centerStart,
               onChanged: (val) => setState(() => _centerStart = val),
+            ),
+            SwitchListTile(
+              title: const Text('Wrap Around'),
+              value: _wrapAround,
+              onChanged: (val) => setState(() => _wrapAround = val),
             ),
             const SizedBox(height: 20),
             ElevatedButton(

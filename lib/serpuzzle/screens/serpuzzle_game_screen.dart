@@ -47,6 +47,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final bool startCentered;
   final Duration moveDelay;
   final Duration levelTimeLimit;
+  final bool wrapAround;
 
   const SerpuzzleGameScreen({
     super.key,
@@ -56,6 +57,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
     this.startCentered = true,
     this.moveDelay = const Duration(milliseconds: 300),
     this.levelTimeLimit = const Duration(minutes: 1),
+    this.wrapAround = false,
 
   });
 
@@ -232,6 +234,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         col += 1;
         break;
     }
+
+    if (widget.wrapAround) {
+      final rows = _grid.rows;
+      final cols = _grid.cols;
+      row = ((row % rows) + rows) % rows;
+      col = ((col % cols) + cols) % cols;
+    }
+
     final newPos = GridPosition(row, col);
     if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
       _gameOver();
@@ -563,4 +573,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   @visibleForTesting
   int get minSpawnDistanceForTest => _minSpawnDistance;
+
+  @visibleForTesting
+  bool get isGameOverForTest => _isGameOver;
 }
