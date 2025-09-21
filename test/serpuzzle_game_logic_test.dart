@@ -55,4 +55,48 @@ void main() {
         expect(state.snake.segments.last, equals(nextTarget));
         expect(state.growSegments, equals(0));
       });
+  
+  testWidgets('snake trims only overflow segments when exceeding max word',
+          (tester) async {
+            await tester.pumpWidget(MaterialApp(
+                  home: SerpuzzleGameScreen(
+                        gridSize: 8,
+                        dictionary: const ['ABCD'],
+                        maxWordLength: 3,
+                  ),
+            ));
+
+            final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+            state.cancelTimersForTest();
+            state.clearGridLettersForTest();
+
+            final GridPosition head = state.snake.segments.last as GridPosition;
+            final List<GridPosition> path = List.generate(
+                  4,
+                      (index) => GridPosition(head.row, head.col + index + 1),
+            );
+
+            for (final target in path) {
+                  expect(state.grid.inBounds(target), isTrue);
+            }
+
+            const letters = ['A', 'B', 'C', 'D'];
+
+            state.setDirectionForTest(Direction.right);
+
+            for (var i = 0; i < path.length; i++) {
+                  final target = path[i];
+                  state.grid.placeLetter(target, letters[i]);
+                  state.setCurrentTilesForTest(5);
+                  state.tickForTest();
+                  await tester.pump();
+                  state.cancelTimersForTest();
+            }
+
+            expect(state.snake.word.length, equals(3));
+            expect(state.snake.word, equals('BCD'));
+            expect(state.snake.segments.length, greaterThan(1));
+            expect(state.snake.segments.last, equals(path.last));
+      });
 }

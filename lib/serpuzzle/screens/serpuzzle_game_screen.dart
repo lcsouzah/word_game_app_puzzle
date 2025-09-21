@@ -195,8 +195,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       } else if (_snake.segments.length > 1) {
         _snake.clearRange(0, 1);
       }
-      if (_snake.word.length > _maxWordLength) {
-        _snake.clearRange(0, _snake.segments.length - 1);
+      while (_snake.word.length > _maxWordLength &&
+          _snake.segments.length > 1) {
+        _snake.clearRange(0, 1);
       }
       if (letter.isNotEmpty) {
         _spawnRandomTiles(_tilesNeeded);
