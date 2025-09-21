@@ -196,7 +196,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       if (_growSegments > 0) {
         _growSegments--;
       } else if (_snake.segments.length > 1) {
-        _snake.clearRange(0, 1);
+        _snake.dropFirstBlankSegment();
       }
       while (_snake.word.length > _maxWordLength &&
           _snake.segments.length > 1) {
@@ -272,6 +272,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     return _letterPool[_rand.nextInt(_letterPool.length)];
   }
 
+  /// Minimum Manhattan distance a spawned tile must maintain from the snake.
+  static const int _minSpawnDistance = 2;
+
   /// Selects a random word (up to four letters) from the dictionary and
   /// places its letters on the board. Any remaining slots are filled with
   /// random letters. This guarantees that at least one valid word can always
@@ -279,34 +282,6 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void _spawnRandomTiles(int count) {
     if (count <= 0) return;
 
-    // Clear existing letters from the grid before spawning new ones so that
-    // we always spawn a fresh set of tiles representing a word.
-    for (var i = 0; i < _grid.length; i++) {
-      final pos = _grid.positionOfIndex(i);
-      if (!_snake.segments.contains(pos)) {
-        _grid.placeLetter(pos, '');
-      }
-    }
-
-    // Choose a target word that fits within four tiles.
-    final candidates = widget.dictionary
-        .where((w) => w.isNotEmpty && w.length <= 4)
-        .toList();
-    if (candidates.isEmpty) {
-      return;
-    }
-    final target = candidates[_rand.nextInt(candidates.length)].toUpperCase();
-
-    // Build the letter list from the target word and add random letters
-    // for any remaining tile slots.
-    final letters = target.split('');
-    while (letters.length < 4) {
-      letters.add(_randomLetter());
-    }
-    letters.shuffle(_rand);
-
-    // Determine all empty positions (ignoring the snake's body) and place
-    // the letters there.
     final empties = <GridPosition>[];
     for (var i = 0; i < _grid.length; i++) {
       final pos = _grid.positionOfIndex(i);
@@ -314,12 +289,57 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         empties.add(pos);
       }
     }
-    empties.shuffle(_rand);
-    final spawnCount = min(4, empties.length);
-    for (var i = 0; i < spawnCount; i++) {
-      _grid.placeLetter(empties[i], letters[i]);
+    if (empties.isEmpty) {
+      return;
     }
-    _currentTiles = spawnCount;
+
+    final farPositions = empties
+        .where((pos) => _isFarFromSnake(pos, _snake.segments))
+        .toList();
+    final spawnPositions = farPositions.isNotEmpty ? farPositions : empties;
+    spawnPositions.shuffle(_rand);
+
+    final spawnCount = min(count, spawnPositions.length);
+    if (spawnCount <= 0) {
+      return;
+    }
+
+    final maxWordLength = min(4, spawnCount);
+    final candidates = widget.dictionary
+        .where((w) => w.isNotEmpty && w.length <= maxWordLength)
+        .toList();
+    String? target;
+    if (candidates.isNotEmpty) {
+      target =
+          candidates[_rand.nextInt(candidates.length)].toUpperCase();
+    }
+
+    final letters = <String>[];
+    if (target != null) {
+      letters.addAll(target.split(''));
+    }
+    while (letters.length < spawnCount) {
+      letters.add(_randomLetter());
+    }
+    letters.shuffle(_rand);
+
+    for (var i = 0; i < spawnCount; i++) {
+      _grid.placeLetter(spawnPositions[i], letters[i]);
+    }
+    _currentTiles += spawnCount;
+  }
+
+  bool _isFarFromSnake(GridPosition pos, List<GridPosition> segments) {
+    for (final segment in segments) {
+      if (_manhattanDistance(pos, segment) < _minSpawnDistance) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  int _manhattanDistance(GridPosition a, GridPosition b) {
+    return (a.row - b.row).abs() + (a.col - b.col).abs();
   }
 
   @override
@@ -439,4 +459,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void setCurrentTilesForTest(int value) {
     _currentTiles = value;
   }
+  @visibleForTesting
+  void spawnRandomTilesForTest(int count) {
+    _spawnRandomTiles(count);
+  }
+
+  @visibleForTesting
+  int get currentTilesForTest => _currentTiles;
+
+  @visibleForTesting
+  int get minSpawnDistanceForTest => _minSpawnDistance;
 }

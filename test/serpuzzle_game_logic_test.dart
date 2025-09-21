@@ -86,17 +86,104 @@ void main() {
             state.setDirectionForTest(Direction.right);
 
             for (var i = 0; i < path.length; i++) {
-                  final target = path[i];
-                  state.grid.placeLetter(target, letters[i]);
-                  state.setCurrentTilesForTest(5);
-                  state.tickForTest();
-                  await tester.pump();
-                  state.cancelTimersForTest();
+              final target = path[i];
+              state.grid.placeLetter(target, letters[i]);
+              state.setCurrentTilesForTest(5);
+              state.tickForTest();
+              await tester.pump();
+              state.cancelTimersForTest();
             }
 
             expect(state.snake.word.length, equals(3));
             expect(state.snake.word, equals('BCD'));
             expect(state.snake.segments.length, greaterThan(1));
             expect(state.snake.segments.last, equals(path.last));
+          });
+
+  testWidgets('spawnRandomTiles honors requested count and preserves letters',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 7,
+            dictionary: const ['A', 'DOG', 'CAT'],
+            maxWordLength: 4,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+
+        state.spawnRandomTilesForTest(2);
+
+        final grid = state.grid as SerpuzzleGrid;
+
+        int letterCount = 0;
+        for (var i = 0; i < grid.length; i++) {
+          final pos = grid.positionOfIndex(i);
+          if (grid.letterAt(pos).isNotEmpty) {
+            letterCount++;
+          }
+        }
+
+        expect(letterCount, 2);
+        expect(state.currentTilesForTest, 2);
+
+        state.spawnRandomTilesForTest(1);
+
+        int updatedCount = 0;
+        for (var i = 0; i < grid.length; i++) {
+          final pos = grid.positionOfIndex(i);
+          if (grid.letterAt(pos).isNotEmpty) {
+            updatedCount++;
+          }
+        }
+
+        expect(updatedCount, 3);
+        expect(state.currentTilesForTest, 3);
+      });
+
+  testWidgets('spawnRandomTiles keeps distance from the snake body',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 7,
+            dictionary: const ['DOG', 'CAT', 'BEE'],
+            maxWordLength: 4,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+
+        state.spawnRandomTilesForTest(3);
+
+        final grid = state.grid as SerpuzzleGrid;
+        final List<GridPosition> snakeSegments =
+        List<GridPosition>.from(state.snake.segments as Iterable);
+        final minDistance = state.minSpawnDistanceForTest as int;
+
+        int separatedTiles = 0;
+        for (var i = 0; i < grid.length; i++) {
+          final pos = grid.positionOfIndex(i);
+          final letter = grid.letterAt(pos);
+          if (letter.isEmpty) continue;
+
+          separatedTiles++;
+          for (final segment in snakeSegments) {
+            final distance =
+                (pos.row - segment.row).abs() + (pos.col - segment.col).abs();
+            expect(
+              distance >= minDistance,
+              isTrue,
+              reason: 'Tile at ${pos.row},${pos.col} too close to snake',
+            );
+          }
+        }
+
+        expect(separatedTiles, 3);
       });
 }
