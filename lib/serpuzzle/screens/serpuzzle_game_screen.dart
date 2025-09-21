@@ -333,10 +333,12 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             aspectRatio: 1,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                const boardScale = 1.25;
                 const snakeScale = 0.75;
-                final baseTileSize = constraints.maxWidth / widget.gridSize;
-                final tileSize = baseTileSize * boardScale;
+                final availableSize =
+                min(constraints.maxWidth, constraints.maxHeight);
+                final boardSize =
+                availableSize.isFinite ? availableSize : constraints.maxWidth;
+                final tileSize = boardSize / widget.gridSize;
                 final snakeTileSize = tileSize * snakeScale;
                 final snakePositions = _snake.segments.toSet();
                 final letters = _snake.letters;
@@ -351,33 +353,38 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
                     highlighted: _isMatched,
                   ));
                 }
-                return FractionallySizedBox(
-                  widthFactor: boardScale,
-                  heightFactor: boardScale,
-                  child: Stack(
-                    children: [
-                      GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: widget.gridSize,
+                final boardExtent = tileSize * widget.gridSize;
+                return Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: boardExtent,
+                    height: boardExtent,
+                    child: Stack(
+                      children: [
+                        GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: widget.gridSize,
+                          ),
+                          itemCount: _grid.length,
+                          itemBuilder: (context, index) {
+                            final pos = _grid.positionOfIndex(index);
+                            final isSnake = snakePositions.contains(pos);
+                            final highlight = _isMatched && isSnake;
+                            return SerpuzzleTile(
+                              letter: isSnake ? '' : _grid.letterAt(pos),
+                              highlighted: highlight,
+                            );
+                          },
                         ),
-                        itemCount: _grid.length,
-                        itemBuilder: (context, index) {
-                          final pos = _grid.positionOfIndex(index);
-                          final isSnake = snakePositions.contains(pos);
-                          final highlight = _isMatched && isSnake;
-                          return SerpuzzleTile(
-                            letter: isSnake ? '' : _grid.letterAt(pos),
-                            highlighted: highlight,
-                          );
-                        },
-                      ),
-                      SerpuzzleSnakeBody(
-                        segments: segments,
-                        tileSize: snakeTileSize,
-                        segmentScale: snakeScale,
-                      ),
-                    ],
+                        SerpuzzleSnakeBody(
+                          segments: segments,
+                          tileSize: snakeTileSize,
+                          segmentScale: snakeScale,
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -387,6 +394,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       ),
     );
   }
+
   @visibleForTesting
   SerpuzzleSnake get snake => _snake;
 
