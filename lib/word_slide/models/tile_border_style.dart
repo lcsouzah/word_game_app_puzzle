@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 /// Input parameters supplied to a border style when building decorations.
 class TileBorderStyleContext {
   final Color tileColor;
+  final Color borderColor;
   final bool highlighted;
 
   const TileBorderStyleContext({
     required this.tileColor,
+    required this.borderColor,
     required this.highlighted,
   });
 }
@@ -47,10 +49,15 @@ class TileBorderStyle {
 
   TileBorderDecoration buildDecoration({
     required Color tileColor,
+    required Color borderColor,
     required bool highlighted,
   }) =>
       _builder(
-        TileBorderStyleContext(tileColor: tileColor, highlighted: highlighted),
+        TileBorderStyleContext(
+          tileColor: tileColor,
+          borderColor: borderColor,
+          highlighted: highlighted,
+        ),
       );
 }
 
@@ -92,12 +99,12 @@ class TileBorderStyles {
     decorationBuilder: (context) => TileBorderDecoration(
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-        color: context.tileColor.withOpacity(0.5),
+        color: context.borderColor.withOpacity(0.5),
         width: 2,
       ),
       boxShadows: [
         BoxShadow(
-          color: context.tileColor.withOpacity(0.4),
+          color: context.borderColor.withOpacity(0.4),
           blurRadius: 18,
           spreadRadius: 1,
         ),

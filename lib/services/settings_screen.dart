@@ -17,6 +17,15 @@ const _availableTileColors = <Color>[
   Colors.brown,
 ];
 
+const _availableBorderColors = <Color>[
+  Colors.blueGrey,
+  Colors.white,
+  Colors.white60,
+  Colors.amber,
+  Colors.deepPurpleAccent,
+  Colors.pinkAccent,
+];
+
 /// Screen allowing the player to customise tile colour and border image.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -45,6 +54,19 @@ class SettingsScreen extends StatelessWidget {
             onColorSelected: settings.updateTileColor,
           ),
           const SizedBox(height: 24),
+
+          const Text(
+            'Border Colour',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _TileColorPalette(
+            colors: _availableBorderColors,
+            selectedColor: settings.borderColor,
+            onColorSelected: settings.updateBorderColor,
+          ),
+
+          const SizedBox(height: 24),
           const Text(
             'Free Borders',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -54,6 +76,7 @@ class SettingsScreen extends StatelessWidget {
             styles: freeStyles,
             selectedStyleId: settings.borderStyle.id,
             tileColor: settings.tileColor,
+            borderColor: settings.borderColor,
             purchasedBorderIds: purchaseService.purchasedBorderIds,
             onStyleSelected: settings.updateBorderStyle,
             onLockedTap: (style) => _openStore(context),
@@ -69,6 +92,7 @@ class SettingsScreen extends StatelessWidget {
               styles: premiumStyles,
               selectedStyleId: settings.borderStyle.id,
               tileColor: settings.tileColor,
+              borderColor: settings.borderColor,
               purchasedBorderIds: purchaseService.purchasedBorderIds,
               onStyleSelected: settings.updateBorderStyle,
               onLockedTap: (style) => _handleLockedStyleTap(context, style),
@@ -205,11 +229,13 @@ class _TileColorSwatch extends StatelessWidget {
 class _TilePreview extends StatelessWidget {
   final TileBorderStyle style;
   final Color tileColor;
+  final Color borderColor;
   final TileBorderDecoration? decorationOverride;
 
   const _TilePreview({
     required this.style,
     required this.tileColor,
+    required this.borderColor,
     this.decorationOverride,
   });
 
@@ -217,6 +243,7 @@ class _TilePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final styleDecoration = decorationOverride ?? style.buildDecoration(
       tileColor: tileColor,
+      borderColor: borderColor,
       highlighted: false,
     );
     final boxDecoration = BoxDecoration(
@@ -252,6 +279,7 @@ class _StyleGrid extends StatelessWidget {
   final List<TileBorderStyle> styles;
   final String selectedStyleId;
   final Color tileColor;
+  final Color borderColor;
   final Set<String> purchasedBorderIds;
   final void Function(TileBorderStyle style) onStyleSelected;
   final void Function(TileBorderStyle style) onLockedTap;
@@ -260,6 +288,7 @@ class _StyleGrid extends StatelessWidget {
     required this.styles,
     required this.selectedStyleId,
     required this.tileColor,
+    required this.borderColor,
     required this.purchasedBorderIds,
     required this.onStyleSelected,
     required this.onLockedTap,
@@ -285,6 +314,7 @@ class _StyleGrid extends StatelessWidget {
         final style = styles[index];
         final decoration = style.buildDecoration(
           tileColor: tileColor,
+          borderColor: borderColor,
           highlighted: false,
         );
         final isLocked =
@@ -295,6 +325,7 @@ class _StyleGrid extends StatelessWidget {
           style: style,
           decoration: decoration,
           tileColor: tileColor,
+          borderColor: borderColor,
           isLocked: isLocked,
           isSelected: isSelected,
           onTap: isLocked
@@ -310,6 +341,7 @@ class _StyleChip extends StatelessWidget {
   final TileBorderStyle style;
   final TileBorderDecoration decoration;
   final Color tileColor;
+  final Color borderColor;
   final bool isLocked;
   final bool isSelected;
   final VoidCallback onTap;
@@ -318,6 +350,7 @@ class _StyleChip extends StatelessWidget {
     required this.style,
     required this.decoration,
     required this.tileColor,
+    required this.borderColor,
     required this.isLocked,
     required this.isSelected,
     required this.onTap,
@@ -352,6 +385,7 @@ class _StyleChip extends StatelessWidget {
                   child: _TilePreview(
                     style: style,
                     tileColor: tileColor,
+                    borderColor: borderColor,
                     decorationOverride: decoration,
                   ),
                 ),

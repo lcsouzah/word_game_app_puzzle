@@ -9,13 +9,18 @@ import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 class SettingsService extends ChangeNotifier {
   static const _tileColorKey = 'tileColor';
   static const _borderStyleKey = 'borderStyle';
+  static const _borderColorKey = 'borderColor';
   static const _borderAssetPathKey = 'borderAssetPath';
 
   Color _tileColor = Colors.blueGrey;
+  Color _borderColor = Colors.blueGrey;
   String _borderStyleId = TileBorderStyles.defaultStyle.id;
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
+
+  /// Current color used for puzzle borders.
+  Color get borderColor => _borderColor;
 
   /// Currently selected border style.
   TileBorderStyle get borderStyle => TileBorderStyles.byId(_borderStyleId);
@@ -25,8 +30,12 @@ class SettingsService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final colorValue = prefs.getInt(_tileColorKey);
     final borderStyleId = prefs.getString(_borderStyleKey);
+    final borderColorValue = prefs.getInt(_borderColorKey);
     if (colorValue != null) {
       _tileColor = Color(colorValue);
+    }
+    if (borderColorValue != null) {
+      _borderColor = Color(borderColorValue);
     }
     if (borderStyleId != null) {
       final resolved = TileBorderStyles.tryById(borderStyleId);
@@ -41,6 +50,10 @@ class SettingsService extends ChangeNotifier {
       _borderStyleId = TileBorderStyles.migrateLegacyAssetPath(legacyPath);
       await prefs.setString(_borderStyleKey, _borderStyleId);
     }
+    if (!prefs.containsKey(_borderColorKey)) {
+      _borderColor = _tileColor;
+      await prefs.setInt(_borderColorKey, _borderColor.value);
+    }
     await prefs.remove(_borderAssetPathKey);
     notifyListeners();
   }
@@ -50,6 +63,14 @@ class SettingsService extends ChangeNotifier {
     _tileColor = color;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_tileColorKey, color.value);
+    notifyListeners();
+  }
+
+  /// Persists a new border [color] for puzzle tiles.
+  Future<void> updateBorderColor(Color color) async {
+    _borderColor = color;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_borderColorKey, color.value);
     notifyListeners();
   }
 

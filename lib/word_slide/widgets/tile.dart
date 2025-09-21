@@ -10,6 +10,7 @@ class TileWidget extends StatefulWidget {
   final bool highlighted; // 🔴 highlighted on hint logic
   final bool disappearing; // 🔴 disappearing correct word animation
   final Color tileColor;
+  final Color borderColor;
   final TileBorderStyle borderStyle;
 
   TileWidget({
@@ -18,9 +19,10 @@ class TileWidget extends StatefulWidget {
     required this.onTap,
     this.highlighted = false,
     this.disappearing = false,
-    this.tileColor = Colors.blueGrey,
+    Color? borderColor,
     TileBorderStyle? borderStyle,
-  }) : borderStyle = borderStyle ?? TileBorderStyles.none;
+  })  : borderColor = borderColor ?? tileColor,
+        borderStyle = borderStyle ?? TileBorderStyles.none;
 
   @override
   TileWidgetState createState() => TileWidgetState();
@@ -63,6 +65,7 @@ class TileWidgetState extends State<TileWidget>
     final isEmpty = widget.letter.trim().isEmpty;
     final decorationParts = widget.borderStyle.buildDecoration(
       tileColor: widget.tileColor,
+      borderColor: widget.borderColor,
       highlighted: widget.highlighted,
     );
     final baseFillColor = decorationParts.fillColor ?? widget.tileColor;
