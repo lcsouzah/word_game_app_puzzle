@@ -19,10 +19,13 @@ class TileWidget extends StatefulWidget {
     required this.onTap,
     this.highlighted = false,
     this.disappearing = false,
+    Color tileColor = Colors.blueGrey,
     Color? borderColor,
     TileBorderStyle? borderStyle,
-  })  : borderColor = borderColor ?? tileColor,
+  })  : tileColor = tileColor,
+        borderColor = borderColor ?? tileColor,
         borderStyle = borderStyle ?? TileBorderStyles.none;
+
 
   @override
   TileWidgetState createState() => TileWidgetState();
