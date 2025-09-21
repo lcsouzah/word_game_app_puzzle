@@ -45,6 +45,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final List<String> dictionary;
   final int maxWordLength;
   final bool startCentered;
+  final Duration moveDelay;
 
   const SerpuzzleGameScreen({
     super.key,
@@ -52,6 +53,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
     required this.dictionary,
     required this.maxWordLength,
     this.startCentered = true,
+    this.moveDelay = const Duration(milliseconds: 300),
   });
 
   @override
@@ -67,6 +69,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   int _level = 1;
   late WordMatchEngine _engine;
   Timer? _resetTimer;
+  late Duration _moveDelay;
   late int _maxWordLength;
   Timer? _moveTimer;
   Direction _currentDirection = Direction.right;
@@ -85,9 +88,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _letterPool = widget.dictionary
         .expand((w) => w.toUpperCase().split(''))
         .toList();
+    _moveDelay = widget.moveDelay;
     _initBoard();
-    _moveTimer =
-        Timer.periodic(const Duration(milliseconds: 300), (_) => _tick());
+    _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
   }
 
   @override
@@ -411,6 +414,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _moveTimer?.cancel();
     _resetTimer?.cancel();
   }
+
+  @visibleForTesting
+  Duration get moveDelayForTest => _moveDelay;
 
   @visibleForTesting
   void clearGridLettersForTest() {

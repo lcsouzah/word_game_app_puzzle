@@ -38,6 +38,17 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
     return _baseDictionary.where((w) => w.length <= maxLen).toList();
   }
 
+  Duration _moveDelayFor(DifficultyLevel level) {
+    switch (level) {
+      case DifficultyLevel.easy:
+        return const Duration(milliseconds: 500);
+      case DifficultyLevel.moderate:
+        return const Duration(milliseconds: 300);
+      case DifficultyLevel.hard:
+        return const Duration(milliseconds: 200);
+    }
+  }
+
 
   void _startGame() {
     Navigator.push(
@@ -48,6 +59,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           dictionary: _dictionaryFor(_difficulty),
           maxWordLength: _maxWordLengthFor(_difficulty),
           startCentered: _centerStart,
+          moveDelay: _moveDelayFor(_difficulty),
         ),
       ),
     );
