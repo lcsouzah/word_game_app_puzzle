@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:word_game_app_puzzle/models/serpuzzle_grid.dart';
-import 'package:word_game_app_puzzle/screens/serpuzzle_game_screen.dart';
-import 'package:word_game_app_puzzle/utils/direction_enum.dart';
+import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
+import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
+import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_screen.dart';
+import 'package:word_game_app/utils/direction_enum.dart';
 
 void main() {
   testWidgets('snake grows on letters and tail removal waits for growth',
@@ -242,5 +243,47 @@ void main() {
         expect(head.row, equals(0));
         expect(head.col, equals(0));
         expect(state.isGameOverForTest, isFalse);
+      });
+  testWidgets('collisions consume lives before triggering game over',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 5,
+            dictionary: const ['CAT'],
+            maxWordLength: 3,
+            difficulty: DifficultyLevel.moderate,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+        state.cancelTimersForTest();
+
+        Future<void> collideWithWall() async {
+          state.clearGridLettersForTest();
+          state.setGrowSegmentsForTest(0);
+          final GridPosition head = state.snake.segments.last as GridPosition;
+          final int stepsToBoundary = head.col + 1;
+          state.setDirectionForTest(Direction.left);
+          for (var i = 0; i < stepsToBoundary; i++) {
+            state.tickForTest();
+            await tester.pump();
+          }
+        }
+
+        expect(state.livesForTest, equals(2));
+
+        await collideWithWall();
+        await tester.pump();
+        expect(state.livesForTest, equals(1));
+        expect(state.isGameOverForTest, isFalse);
+
+        await collideWithWall();
+        await tester.pump();
+        expect(state.livesForTest, equals(0));
+        expect(state.isGameOverForTest, isTrue);
+        expect(find.text('Game Over'), findsOneWidget);
+
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
       });
 }

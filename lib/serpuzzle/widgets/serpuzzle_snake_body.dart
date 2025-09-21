@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'serpuzzle_snake_head.dart';
 import 'serpuzzle_tile.dart';
 
 /// Data describing a single segment of the snake.
@@ -58,15 +59,52 @@ class SerpuzzleSnakeBody extends StatelessWidget {
               child: SizedBox(
                 width: tileSize,
                 height: tileSize,
-                child: SerpuzzleTile(
-                  letter: segments[i].letter,
-                  highlighted: segments[i].highlighted,
-                  isHead: i == segments.length - 1,
-                ),
+                child: _buildSegment(i),
               ),
             ),
           ),
       ],
     );
+  }
+
+  Widget _buildSegment(int index) {
+    final segment = segments[index];
+    final isHead = index == segments.length - 1;
+    if (!isHead) {
+      return SerpuzzleTile(
+        letter: segment.letter,
+        highlighted: segment.highlighted,
+      );
+    }
+
+    final direction = _resolveHeadDirection();
+    return SerpuzzleSnakeHead(
+      direction: direction,
+      highlighted: segment.highlighted,
+      tileSize: tileSize,
+    );
+  }
+
+  SnakeDirection _resolveHeadDirection() {
+    if (segments.length < 2) {
+      return SnakeDirection.right;
+    }
+
+    final head = segments.last;
+    final previous = segments[segments.length - 2];
+    final rowDelta = head.row - previous.row;
+    final colDelta = head.col - previous.col;
+
+    if (rowDelta > 0) {
+      return SnakeDirection.down;
+    } else if (rowDelta < 0) {
+      return SnakeDirection.up;
+    } else if (colDelta > 0) {
+      return SnakeDirection.right;
+    } else if (colDelta < 0) {
+      return SnakeDirection.left;
+    }
+
+    return SnakeDirection.right;
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
 import 'package:word_game_app/serpuzzle/widgets/portal_animation.dart';
@@ -48,6 +49,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final Duration moveDelay;
   final Duration levelTimeLimit;
   final bool wrapAround;
+  final DifficultyLevel difficulty;
 
   const SerpuzzleGameScreen({
     super.key,
@@ -58,6 +60,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
     this.moveDelay = const Duration(milliseconds: 300),
     this.levelTimeLimit = const Duration(minutes: 1),
     this.wrapAround = false,
+    this.difficulty = DifficultyLevel.easy,
 
   });
 
@@ -86,8 +89,20 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   bool _isGameOver = false;
   late List<String> _letterPool;
   int _currentTiles = 0;
+  int _lives = 0;
 
   int get _tilesNeeded => max(0, 4 - _currentTiles);
+
+  int _initialLivesFor(DifficultyLevel difficulty) {
+    switch (difficulty) {
+      case DifficultyLevel.easy:
+        return 3;
+      case DifficultyLevel.moderate:
+        return 2;
+      case DifficultyLevel.hard:
+        return 1;
+    }
+  }
 
   @override
   void initState() {
@@ -164,7 +179,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
 
-  void _initBoard() {
+  void _initBoard({bool resetLives = false}) {
+    if (resetLives || _lives == 0) {
+      _lives = _initialLivesFor(widget.difficulty);
+    }
+
     _grid = SerpuzzleGrid(rows: widget.gridSize, cols: widget.gridSize);
     GridPosition startPos;
     if (widget.startCentered) {
@@ -176,6 +195,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _snake = SerpuzzleSnake()..append(startPos, '');
     _growSegments = _maxWordLength - 1;
     _currentTiles = 0;
+    _currentDirection = Direction.right;
     _spawnRandomTiles(_tilesNeeded);
   }
 
@@ -185,11 +205,27 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       _score = 0;
       _isMatched = false;
       _level = 1;
-      _initBoard();
+      _initBoard(resetLives: true);
       _isGameOver = false;
       _startLevelTimer(resetElapsed: true);
     });
     _startMoveTimer();
+  }
+
+  void _handleCollision() {
+    _resetTimer?.cancel();
+    if (_lives <= 1) {
+      setState(() {
+        _lives = 0;
+      });
+      _gameOver();
+      return;
+    }
+    setState(() {
+      _lives--;
+      _isMatched = false;
+      _initBoard();
+    });
   }
 
   Future<void> _gameOver() async {
@@ -244,7 +280,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
     final newPos = GridPosition(row, col);
     if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
-      _gameOver();
+      _handleCollision();
       return;
     }
     final letter = _grid.letterAt(newPos);
@@ -437,6 +473,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             Text('Level $_level - Score: $_score'),
             Text('Time: $_formattedTimeRemaining',
                 style: Theme.of(context).textTheme.bodySmall),
+            Text('Lives: $_lives',
+                style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
         actions: [
@@ -576,4 +614,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   @visibleForTesting
   bool get isGameOverForTest => _isGameOver;
+
+  @visibleForTesting
+  int get livesForTest => _lives;
+
 }

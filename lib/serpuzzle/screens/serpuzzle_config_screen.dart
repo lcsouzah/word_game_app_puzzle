@@ -74,6 +74,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           moveDelay: _moveDelayFor(_difficulty),
           levelTimeLimit: _timeLimitFor(_difficulty),
           wrapAround: _wrapAround,
+          difficulty: _difficulty,
         ),
       ),
     );
