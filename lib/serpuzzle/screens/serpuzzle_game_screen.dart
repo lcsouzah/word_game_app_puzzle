@@ -65,6 +65,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late SerpuzzleGrid _grid;
   late SerpuzzleSnake _snake;
   bool _isMatched = false;
+  bool _isPaused = false;
   int _score = 0;
   int _level = 1;
   late WordMatchEngine _engine;
@@ -90,7 +91,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         .toList();
     _moveDelay = widget.moveDelay;
     _initBoard();
-    _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
+    _startMoveTimer();
   }
 
   @override
@@ -98,6 +99,23 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _resetTimer?.cancel();
     _moveTimer?.cancel();
     super.dispose();
+  }
+
+  void _startMoveTimer() {
+    _moveTimer?.cancel();
+    _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
+  }
+
+  void _togglePause() {
+    setState(() {
+      _isPaused = !_isPaused;
+      if (_isPaused) {
+        _moveTimer?.cancel();
+        _moveTimer = null;
+      } else {
+        _startMoveTimer();
+      }
+    });
   }
 
 
@@ -149,7 +167,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   void _tick() {
-    if (_isMatched || _isGameOver) return;
+    if (_isPaused || _isMatched || _isGameOver) return;
     final head = _snake.segments.last;
     int row = head.row;
     int col = head.col;
@@ -345,7 +363,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Level $_level - Score: $_score')),
+      appBar: AppBar(
+        title: Text('Level $_level - Score: $_score'),
+        actions: [
+          IconButton(
+            icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
+            onPressed: _togglePause,
+          ),
+        ],
+      ),
       body: Center(
         child: SwipeDetector(
           onSwipe: _onSwipe,
