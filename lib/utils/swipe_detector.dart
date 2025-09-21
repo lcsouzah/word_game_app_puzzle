@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'direction_enum.dart';
@@ -15,7 +17,14 @@ class SwipeDetector extends StatefulWidget {
 
 class _SwipeDetectorState extends State<SwipeDetector> {
   Offset? _startPosition;
-  static const double _threshold = 20;
+
+  double get _swipeThreshold {
+    final mediaQuery = MediaQuery.maybeOf(context);
+    if (mediaQuery == null) {
+      return 8.0;
+    }
+    return math.max(8.0, mediaQuery.size.shortestSide * 0.01);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +38,7 @@ class _SwipeDetectorState extends State<SwipeDetector> {
       onPanUpdate: (details) {
         if (_startPosition == null) return;
         final offset = details.localPosition - _startPosition!;
-        if (offset.distance < _threshold) return;
+        if (offset.distance < _swipeThreshold) return;
         final absDx = offset.dx.abs();
         final absDy = offset.dy.abs();
         Direction direction;
