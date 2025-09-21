@@ -32,20 +32,15 @@ class SerpuzzleSnake {
       return false;
     }
 
-    final blankIndex = _letters.indexOf('');
-    if (blankIndex == -1) {
-      return false;
+    for (var i = 0; i < body.length - 1; i++) {
+      if (_letters[i].isEmpty) {
+        body.removeAt(i);
+        _letters.removeAt(i);
+        return true;
+      }
     }
 
-    for (var i = blankIndex; i > 0; i--) {
-      final temp = _letters[i - 1];
-      _letters[i - 1] = _letters[i];
-      _letters[i] = temp;
-    }
-
-    body.removeAt(0);
-    _letters.removeAt(0);
-    return true;
+    return false;
   }
 
   void clear() {
