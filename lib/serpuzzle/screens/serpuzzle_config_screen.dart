@@ -49,6 +49,17 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
     }
   }
 
+  Duration _timeLimitFor(DifficultyLevel level) {
+    switch (level) {
+      case DifficultyLevel.easy:
+        return const Duration(minutes: 2);
+      case DifficultyLevel.moderate:
+        return const Duration(minutes: 1, seconds: 30);
+      case DifficultyLevel.hard:
+        return const Duration(minutes: 1);
+    }
+  }
+
 
   void _startGame() {
     Navigator.push(
@@ -60,6 +71,7 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
           maxWordLength: _maxWordLengthFor(_difficulty),
           startCentered: _centerStart,
           moveDelay: _moveDelayFor(_difficulty),
+          levelTimeLimit: _timeLimitFor(_difficulty),
         ),
       ),
     );

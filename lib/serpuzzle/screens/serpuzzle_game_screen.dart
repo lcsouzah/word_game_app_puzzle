@@ -46,6 +46,7 @@ class SerpuzzleGameScreen extends StatefulWidget {
   final int maxWordLength;
   final bool startCentered;
   final Duration moveDelay;
+  final Duration levelTimeLimit;
 
   const SerpuzzleGameScreen({
     super.key,
@@ -54,6 +55,8 @@ class SerpuzzleGameScreen extends StatefulWidget {
     required this.maxWordLength,
     this.startCentered = true,
     this.moveDelay = const Duration(milliseconds: 300),
+    this.levelTimeLimit = const Duration(minutes: 1),
+
   });
 
   @override
@@ -73,6 +76,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late Duration _moveDelay;
   late int _maxWordLength;
   Timer? _moveTimer;
+  Timer? _levelTimer;
+  Duration _elapsed = Duration.zero;
+  late Duration _timeLimit;
   Direction _currentDirection = Direction.right;
   int _growSegments = 0;
   bool _isGameOver = false;
@@ -90,14 +96,17 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         .expand((w) => w.toUpperCase().split(''))
         .toList();
     _moveDelay = widget.moveDelay;
+    _timeLimit = widget.levelTimeLimit;
     _initBoard();
     _startMoveTimer();
+    _startLevelTimer(resetElapsed: true);
   }
 
   @override
   void dispose() {
     _resetTimer?.cancel();
     _moveTimer?.cancel();
+    _levelTimer?.cancel();
     super.dispose();
   }
 
@@ -106,14 +115,48 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
   }
 
+  void _startLevelTimer({bool resetElapsed = false}) {
+    _levelTimer?.cancel();
+    if (resetElapsed) {
+      _elapsed = Duration.zero;
+    }
+    _levelTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _onTimerTick());
+  }
+
+  void _onTimerTick() {
+    if (_isPaused || _isMatched || _isGameOver) {
+      return;
+    }
+    _elapsed += const Duration(seconds: 1);
+    if (_elapsed >= _timeLimit) {
+      _elapsed = _timeLimit;
+      setState(() {});
+      _levelTimer?.cancel();
+      _handleTimeExpired();
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _handleTimeExpired() {
+    if (_isGameOver) {
+      return;
+    }
+    _gameOver();
+  }
+
   void _togglePause() {
     setState(() {
       _isPaused = !_isPaused;
       if (_isPaused) {
         _moveTimer?.cancel();
         _moveTimer = null;
+        _levelTimer?.cancel();
+        _levelTimer = null;
       } else {
         _startMoveTimer();
+        _startLevelTimer();
       }
     });
   }
@@ -142,12 +185,16 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       _level = 1;
       _initBoard();
       _isGameOver = false;
+      _startLevelTimer(resetElapsed: true);
     });
+    _startMoveTimer();
   }
 
   Future<void> _gameOver() async {
     if (_isGameOver) return;
     _isGameOver = true;
+    _levelTimer?.cancel();
+    _moveTimer?.cancel();
     final finalScore = _score;
     await showDialog(
       context: context,
@@ -283,7 +330,17 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     setState(() {
       _isMatched = false;
       _initBoard();
+      _startLevelTimer(resetElapsed: true);
     });
+  }
+
+  String get _formattedTimeRemaining {
+    final remaining = _timeLimit - _elapsed;
+    final clamped = remaining.isNegative ? Duration.zero : remaining;
+    final minutes = clamped.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds =
+    clamped.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   String _randomLetter() {
@@ -364,7 +421,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Level $_level - Score: $_score'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Level $_level - Score: $_score'),
+            Text('Time: $_formattedTimeRemaining',
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
@@ -467,10 +531,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void cancelTimersForTest() {
     _moveTimer?.cancel();
     _resetTimer?.cancel();
+    _levelTimer?.cancel();
   }
 
   @visibleForTesting
   Duration get moveDelayForTest => _moveDelay;
+
+  @visibleForTesting
+  Duration get elapsedForTest => _elapsed;
 
   @visibleForTesting
   void clearGridLettersForTest() {
