@@ -180,6 +180,76 @@ void main() {
         expect(state.currentTilesForTest, 3);
       });
 
+  testWidgets('prefix failure deducts lives and triggers game over at zero',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 5,
+            dictionary: const ['DOG'],
+            maxWordLength: 3,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+
+        expect(state.livesForTest, equals(3));
+        expect(find.text('Lives: 3'), findsOneWidget);
+
+        Future<GridPosition> feedWrongLetter() async {
+          final GridPosition head = state.snake.segments.last as GridPosition;
+          final candidates = <Direction, GridPosition>{
+            Direction.right: GridPosition(head.row, head.col + 1),
+            Direction.down: GridPosition(head.row + 1, head.col),
+            Direction.left: GridPosition(head.row, head.col - 1),
+            Direction.up: GridPosition(head.row - 1, head.col),
+          };
+
+          for (final entry in candidates.entries) {
+            final candidate = entry.value;
+            if (state.grid.inBounds(candidate)) {
+              state.grid.placeLetter(candidate, 'Z');
+              state.setCurrentTilesForTest(1);
+              state.setDirectionForTest(entry.key);
+              state.tickForTest();
+              await tester.pump();
+              state.cancelTimersForTest();
+              return candidate;
+            }
+          }
+
+          throw StateError('No in-bounds move available');
+        }
+
+        final firstTarget = await feedWrongLetter();
+        expect(state.livesForTest, equals(2));
+        expect(find.text('Lives: 2'), findsOneWidget);
+        expect(state.snake.segments.length, equals(1));
+        expect(state.snake.segments.last, equals(firstTarget));
+
+        state.clearGridLettersForTest();
+
+        final secondTarget = await feedWrongLetter();
+        expect(state.livesForTest, equals(1));
+        expect(find.text('Lives: 1'), findsOneWidget);
+        expect(state.snake.segments.last, equals(secondTarget));
+
+        state.clearGridLettersForTest();
+
+        await feedWrongLetter();
+        await tester.pump();
+
+        expect(state.livesForTest, equals(0));
+        expect(state.isGameOverForTest, isTrue);
+        expect(find.text('Lives: 0'), findsOneWidget);
+        expect(find.text('Game Over'), findsOneWidget);
+
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+      });
+
   testWidgets('spawnRandomTiles keeps distance from the snake body',
           (tester) async {
         await tester.pumpWidget(MaterialApp(
