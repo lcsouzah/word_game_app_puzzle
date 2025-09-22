@@ -292,7 +292,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
       _resetTimer?.cancel();
+      if (_lives <= 1) {
+        setState(() {
+          _lives = 0;
+        });
+        _handleCollision();
+        return;
+      }
       setState(() {
+        _lives--;
         _snake
           ..clear()
           ..append(newPos, '');
