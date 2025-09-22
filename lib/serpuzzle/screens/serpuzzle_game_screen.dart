@@ -480,15 +480,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Level $_level - Score: $_score'),
-              Text('Time: $_formattedTimeRemaining',
-                  style: Theme.of(context).textTheme.bodySmall),
-              Text('Lives: $_lives',
-                  style: Theme.of(context).textTheme.bodySmall),
-            ],
+          title: _SerpuzzleHeaderStatus(
+            level: _level,
+            score: _score,
+            timeRemaining: _formattedTimeRemaining,
+            lives: _lives,
           ),
           actions: [
             IconButton(
@@ -657,4 +653,107 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @visibleForTesting
   int get livesForTest => _lives;
 
+}
+
+class _SerpuzzleHeaderStatus extends StatelessWidget {
+  const _SerpuzzleHeaderStatus({
+    required this.level,
+    required this.score,
+    required this.timeRemaining,
+    required this.lives,
+  });
+
+  final int level;
+  final int score;
+  final String timeRemaining;
+  final int lives;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final labelStyle = (textTheme.labelLarge ?? textTheme.bodyMedium ??
+        const TextStyle())
+        .copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
+    );
+    final backgroundColor =
+    theme.colorScheme.surfaceVariant.withOpacity(0.75);
+    final iconColor = theme.colorScheme.primary;
+
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(48),
+      child: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Wrap(
+          spacing: 7,
+          runSpacing: 4,
+          children: [
+            _StatusBadge(
+              icon: Icons.flag,
+              label: 'Level $level',
+              labelStyle: labelStyle,
+              backgroundColor: backgroundColor,
+              iconColor: iconColor,
+            ),
+            _StatusBadge(
+              icon: Icons.emoji_events,
+              label: 'Score $score',
+              labelStyle: labelStyle,
+              backgroundColor: backgroundColor,
+              iconColor: iconColor,
+            ),
+            _StatusBadge(
+              icon: Icons.timer,
+              label: 'Time $timeRemaining',
+              labelStyle: labelStyle,
+              backgroundColor: backgroundColor,
+              iconColor: iconColor,
+            ),
+            _StatusBadge(
+              icon: Icons.favorite,
+              label: 'Lives $lives',
+              labelStyle: labelStyle,
+              backgroundColor: backgroundColor,
+              iconColor: iconColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
+    required this.icon,
+    required this.label,
+    required this.labelStyle,
+    required this.backgroundColor,
+    required this.iconColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final TextStyle labelStyle;
+  final Color backgroundColor;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      avatar: Icon(icon, size: 12, color: iconColor),
+      label: Text(label, style: labelStyle),
+      backgroundColor: backgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    );
+  }
 }
