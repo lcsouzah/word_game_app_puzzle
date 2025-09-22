@@ -15,6 +15,24 @@ class SerpuzzleSnake {
     _letters.add(letter);
   }
 
+  /// Moves the current head letter (if any) onto the previous segment and
+  /// clears the head entry so the head itself remains blank.
+  void transferHeadLetterToPrevious() {
+    if (body.length < 2) {
+      return;
+    }
+
+    final headIndex = _letters.length - 1;
+    final previousIndex = headIndex - 1;
+    final headLetter = _letters[headIndex];
+    if (headLetter.isEmpty) {
+      return;
+    }
+
+    _letters[previousIndex] = headLetter;
+    _letters[headIndex] = '';
+  }
+
   /// Removes positions and letters in the range [start, end).
   void clearRange(int start, int end) {
     if (start < 0 || end > body.length || start >= end) return;

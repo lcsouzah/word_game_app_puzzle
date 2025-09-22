@@ -304,6 +304,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
     setState(() {
       _snake.append(newPos, letter);
+      if (letter.isNotEmpty) {
+        _snake.transferHeadLetterToPrevious();
+      }
+
       if (_growSegments > 0) {
         _growSegments--;
       } else if (_snake.segments.length > 1) {

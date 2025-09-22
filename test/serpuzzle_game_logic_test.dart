@@ -56,6 +56,41 @@ void main() {
         expect(state.snake.segments.last, equals(nextTarget));
         expect(state.growSegments, equals(0));
       });
+
+  testWidgets('consumed letters shift behind head immediately', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: SerpuzzleGameScreen(
+        gridSize: 5,
+        dictionary: const ['AB'],
+        maxWordLength: 3,
+      ),
+    ));
+
+    final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+    state.cancelTimersForTest();
+    state.clearGridLettersForTest();
+
+    final GridPosition head = state.snake.segments.last as GridPosition;
+    final GridPosition target = GridPosition(head.row, head.col + 1);
+    expect(state.grid.inBounds(target), isTrue);
+
+    state.grid.placeLetter(target, 'A');
+    state.setCurrentTilesForTest(4);
+    state.setGrowSegmentsForTest(0);
+    state.setDirectionForTest(Direction.right);
+
+    state.tickForTest();
+    await tester.pump();
+    state.cancelTimersForTest();
+
+    final letters = List<String>.from(state.snake.letters);
+    expect(letters.length, greaterThan(1));
+    expect(letters.last, isEmpty);
+    expect(letters[letters.length - 2], equals('A'));
+
+    expect(find.text('A'), findsOneWidget);
+  });
   
   testWidgets('snake trims only overflow segments when exceeding max word',
           (tester) async {
