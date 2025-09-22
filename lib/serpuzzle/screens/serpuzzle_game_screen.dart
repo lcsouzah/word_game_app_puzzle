@@ -479,92 +479,118 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Level $_level - Score: $_score'),
-            Text('Time: $_formattedTimeRemaining',
-                style: Theme.of(context).textTheme.bodySmall),
-            Text('Lives: $_lives',
-                style: Theme.of(context).textTheme.bodySmall),
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Level $_level - Score: $_score'),
+              Text('Time: $_formattedTimeRemaining',
+                  style: Theme.of(context).textTheme.bodySmall),
+              Text('Lives: $_lives',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
+              onPressed: _togglePause,
+            ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-            onPressed: _togglePause,
-          ),
-        ],
-      ),
-      body: Center(
-        child: SwipeDetector(
-          onSwipe: _onSwipe,
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const snakeScale = 0.75;
-                final availableSize =
-                min(constraints.maxWidth, constraints.maxHeight);
-                final boardSize =
-                availableSize.isFinite ? availableSize : constraints.maxWidth;
-                final tileSize = boardSize / widget.gridSize;
-                final snakeTileSize = tileSize * snakeScale;
-                final snakePositions = _snake.segments.toSet();
-                final letters = _snake.letters;
-                final segments = <SnakeSegment>[];
-                for (var i = 0; i < _snake.segments.length; i++) {
-                  final pos = _snake.segments[i];
-                  final isHead = i == _snake.segments.length - 1;
-                  segments.add(SnakeSegment(
-                    row: pos.row,
-                    col: pos.col,
-                    letter: isHead ? '' : letters[i],
-                    highlighted: _isMatched,
-                  ));
-                }
-                final boardExtent = tileSize * widget.gridSize;
-                return Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: boardExtent,
-                    height: boardExtent,
-                    child: Stack(
-                      children: [
-                        GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: widget.gridSize,
+        body: Center(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context)
+                      .colorScheme
+                      .surfaceVariant
+                      .withOpacity(0.9),
+                  Theme.of(context).colorScheme.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SwipeDetector(
+              onSwipe: _onSwipe,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const snakeScale = 0.75;
+                    final availableSize =
+                    min(constraints.maxWidth, constraints.maxHeight);
+                    final boardSize =
+                    availableSize.isFinite ? availableSize : constraints.maxWidth;
+                    final tileSize = boardSize / widget.gridSize;
+                    final snakeTileSize = tileSize * snakeScale;
+                    final snakePositions = _snake.segments.toSet();
+                    final letters = _snake.letters;
+                    final segments = <SnakeSegment>[];
+                    for (var i = 0; i < _snake.segments.length; i++) {
+                      final pos = _snake.segments[i];
+                      final isHead = i == _snake.segments.length - 1;
+                      segments.add(SnakeSegment(
+                        row: pos.row,
+                        col: pos.col,
+                        letter: isHead ? '' : letters[i],
+                        highlighted: _isMatched,
+                      ));
+                    }
+                    final boardExtent = tileSize * widget.gridSize;
+                    return Align(
+                      alignment: Alignment.center,
+                      child: Card(
+                        color: Theme.of(context).colorScheme.surface,
+                        elevation: 8,
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: SizedBox(
+                          width: boardExtent,
+                          height: boardExtent,
+                          child: Stack(
+                            children: [
+                              GridView.builder(
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: widget.gridSize,
+                                ),
+                                itemCount: _grid.length,
+                                itemBuilder: (context, index) {
+                                  final pos = _grid.positionOfIndex(index);
+                                  final isSnake = snakePositions.contains(pos);
+                                  final highlight = _isMatched && isSnake;
+                                  return SerpuzzleTile(
+                                    letter: isSnake ? '' : _grid.letterAt(pos),
+                                    highlighted: highlight,
+                                  );
+                                },
+                              ),
+                              SerpuzzleSnakeBody(
+                                segments: segments,
+                                tileSize: snakeTileSize,
+                                segmentScale: snakeScale,
+                              ),
+                            ],
                           ),
-                          itemCount: _grid.length,
-                          itemBuilder: (context, index) {
-                            final pos = _grid.positionOfIndex(index);
-                            final isSnake = snakePositions.contains(pos);
-                            final highlight = _isMatched && isSnake;
-                            return SerpuzzleTile(
-                              letter: isSnake ? '' : _grid.letterAt(pos),
-                              highlighted: highlight,
-                            );
-                          },
                         ),
-                        SerpuzzleSnakeBody(
-                          segments: segments,
-                          tileSize: snakeTileSize,
-                          segmentScale: snakeScale,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        )
     );
   }
+
 
   @visibleForTesting
   SerpuzzleSnake get snake => _snake;
