@@ -33,6 +33,46 @@ class SerpuzzleSnake {
     _letters[headIndex] = '';
   }
 
+  /// Repositions collected letters so that they remain adjacent to the head.
+  ///
+  /// Any blanks that accumulate while the snake moves without collecting
+  /// characters are collapsed so the oldest collected letter sits furthest
+  /// from the head and the newest letter is directly behind the head.
+  void alignLettersBehindHead() {
+    if (_letters.isEmpty) {
+      return;
+    }
+
+    final headIndex = _letters.length - 1;
+    final headLetter = _letters[headIndex];
+    final collected = <String>[];
+
+    for (var i = 0; i < headIndex; i++) {
+      final letter = _letters[i];
+      if (letter.isNotEmpty) {
+        collected.add(letter);
+      }
+    }
+
+    _letters.fillRange(0, _letters.length, '');
+
+    if (collected.isEmpty) {
+      _letters[headIndex] = headLetter;
+      return;
+    }
+
+    var startIndex = headIndex - collected.length;
+    if (startIndex < 0) {
+      startIndex = 0;
+    }
+
+    for (var i = 0; i < collected.length; i++) {
+      _letters[startIndex + i] = collected[i];
+    }
+
+    _letters[headIndex] = headLetter;
+  }
+
   /// Removes positions and letters in the range [start, end).
   void clearRange(int start, int end) {
     if (start < 0 || end > body.length || start >= end) return;
@@ -60,6 +100,7 @@ class SerpuzzleSnake {
 
     return false;
   }
+
 
   void clear() {
     body.clear();

@@ -91,6 +91,63 @@ void main() {
 
     expect(find.text('A'), findsOneWidget);
   });
+
+  testWidgets('letters realign behind head after empty moves', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: SerpuzzleGameScreen(
+        gridSize: 7,
+        dictionary: const ['AB'],
+        maxWordLength: 3,
+      ),
+    ));
+
+    final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+    state.cancelTimersForTest();
+    state.clearGridLettersForTest();
+
+    final collected = <String>['A', 'B'];
+
+    for (final letter in collected) {
+      final head = state.snake.segments.last as GridPosition;
+      final target = GridPosition(head.row, head.col + 1);
+      expect(state.grid.inBounds(target), isTrue);
+
+      state.grid.placeLetter(target, letter);
+      state.setCurrentTilesForTest(5);
+      state.setGrowSegmentsForTest(0);
+      state.setDirectionForTest(Direction.right);
+
+      state.tickForTest();
+      await tester.pump();
+      state.cancelTimersForTest();
+    }
+
+    final headAfterCollect = state.snake.segments.last as GridPosition;
+    final emptyTarget =
+    GridPosition(headAfterCollect.row, headAfterCollect.col + 1);
+    expect(state.grid.inBounds(emptyTarget), isTrue);
+
+    state.setDirectionForTest(Direction.right);
+    state.setGrowSegmentsForTest(0);
+    state.tickForTest();
+    await tester.pump();
+    state.cancelTimersForTest();
+
+    final lettersList = List<String>.from(state.snake.letters);
+    final headIndex = lettersList.length - 1;
+    final startIndex = headIndex - collected.length;
+
+    expect(lettersList.length, greaterThan(collected.length));
+    expect(startIndex, greaterThanOrEqualTo(0));
+    expect(state.snake.word, equals(collected.join()));
+    expect(
+      lettersList.sublist(startIndex, headIndex).join(),
+      equals(collected.join()),
+    );
+    expect(headIndex, greaterThan(0));
+    expect(lettersList[headIndex - 1], equals(collected.last));
+  });
   
   testWidgets('snake trims only overflow segments when exceeding max word',
           (tester) async {
