@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
+import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
 import 'package:word_game_app/serpuzzle/widgets/portal_animation.dart';
@@ -42,25 +42,26 @@ class WordMatchEngine {
 
 /// Serpuzzle game screen showing the grid and handling swipe input.
 class SerpuzzleGameScreen extends StatefulWidget {
+  final SerpuzzleGameController controller;
   final int gridSize;
   final List<String> dictionary;
   final int maxWordLength;
   final bool startCentered;
   final Duration moveDelay;
-  final Duration levelTimeLimit;
+
   final bool wrapAround;
-  final DifficultyLevel difficulty;
 
   const SerpuzzleGameScreen({
     super.key,
+    required this.controller,
     required this.gridSize,
     required this.dictionary,
     required this.maxWordLength,
     this.startCentered = true,
     this.moveDelay = const Duration(milliseconds: 300),
-    this.levelTimeLimit = const Duration(minutes: 1),
+
     this.wrapAround = false,
-    this.difficulty = DifficultyLevel.easy,
+
 
   });
 
@@ -74,35 +75,18 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late SerpuzzleSnake _snake;
   bool _isMatched = false;
   bool _isPaused = false;
-  int _score = 0;
-  int _level = 1;
   late WordMatchEngine _engine;
   Timer? _resetTimer;
   late Duration _moveDelay;
   late int _maxWordLength;
   Timer? _moveTimer;
-  Timer? _levelTimer;
-  Duration _elapsed = Duration.zero;
-  late Duration _timeLimit;
   Direction _currentDirection = Direction.right;
   int _growSegments = 0;
-  bool _isGameOver = false;
   late List<String> _letterPool;
   int _currentTiles = 0;
-  int _lives = 0;
+  bool _isGameOver = false;
 
   int get _tilesNeeded => max(0, 4 - _currentTiles);
-
-  int _initialLivesFor(DifficultyLevel difficulty) {
-    switch (difficulty) {
-      case DifficultyLevel.easy:
-        return 3;
-      case DifficultyLevel.moderate:
-        return 2;
-      case DifficultyLevel.hard:
-        return 1;
-    }
-  }
 
   @override
   void initState() {
@@ -113,17 +97,20 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         .expand((w) => w.toUpperCase().split(''))
         .toList();
     _moveDelay = widget.moveDelay;
-    _timeLimit = widget.levelTimeLimit;
+    _isPaused = widget.controller.isPaused;
+    widget.controller.addListener(_handleControllerChanged);
+    widget.controller.onTimeExpired ??= _handleTimeExpired;
     _initBoard();
-    _startMoveTimer();
-    _startLevelTimer(resetElapsed: true);
+    if (!_isPaused) {
+      _startMoveTimer();
+    }
   }
 
   @override
   void dispose() {
     _resetTimer?.cancel();
     _moveTimer?.cancel();
-    _levelTimer?.cancel();
+    widget.controller.removeListener(_handleControllerChanged);
     super.dispose();
   }
 
@@ -132,27 +119,26 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
   }
 
-  void _startLevelTimer({bool resetElapsed = false}) {
-    _levelTimer?.cancel();
-    if (resetElapsed) {
-      _elapsed = Duration.zero;
+  void _handleControllerChanged() {
+    final controller = widget.controller;
+    if (_isPaused != controller.isPaused) {
+      setState(() {
+        _isPaused = controller.isPaused;
+        if (_isPaused) {
+          _moveTimer?.cancel();
+          _moveTimer = null;
+        } else {
+          _startMoveTimer();
+        }
+      });
     }
-    _levelTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => _onTimerTick());
-  }
-
-  void _onTimerTick() {
-    if (_isPaused || _isMatched || _isGameOver) {
-      return;
-    }
-    _elapsed += const Duration(seconds: 1);
-    if (_elapsed >= _timeLimit) {
-      _elapsed = _timeLimit;
-      setState(() {});
-      _levelTimer?.cancel();
-      _handleTimeExpired();
-    } else {
-      setState(() {});
+    if (_isGameOver != controller.isGameOver) {
+      setState(() {
+        _isGameOver = controller.isGameOver;
+        if (_isGameOver) {
+          _moveTimer?.cancel();
+        }
+      });
     }
   }
 
@@ -163,27 +149,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _gameOver();
   }
 
-  void _togglePause() {
-    setState(() {
-      _isPaused = !_isPaused;
-      if (_isPaused) {
-        _moveTimer?.cancel();
-        _moveTimer = null;
-        _levelTimer?.cancel();
-        _levelTimer = null;
-      } else {
-        _startMoveTimer();
-        _startLevelTimer();
-      }
-    });
-  }
-
-
-  void _initBoard({bool resetLives = false}) {
-    if (resetLives || _lives == 0) {
-      _lives = _initialLivesFor(widget.difficulty);
-    }
-
+  void _initBoard() {
     _grid = SerpuzzleGrid(rows: widget.gridSize, cols: widget.gridSize);
     GridPosition startPos;
     if (widget.startCentered) {
@@ -202,27 +168,21 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void _resetGame() {
     _resetTimer?.cancel();
     setState(() {
-      _score = 0;
       _isMatched = false;
-      _level = 1;
-      _initBoard(resetLives: true);
+      _initBoard();
       _isGameOver = false;
-      _startLevelTimer(resetElapsed: true);
     });
+    widget.controller.resetForNewGame(startTimer: !_isPaused);
     _startMoveTimer();
   }
 
   void _handleCollision() {
     _resetTimer?.cancel();
-    if (_lives <= 1) {
-      setState(() {
-        _lives = 0;
-      });
+    if (!widget.controller.consumeLife()) {
       _gameOver();
       return;
     }
     setState(() {
-      _lives--;
       _isMatched = false;
       _initBoard();
     });
@@ -231,9 +191,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Future<void> _gameOver() async {
     if (_isGameOver) return;
     _isGameOver = true;
-    _levelTimer?.cancel();
     _moveTimer?.cancel();
-    final finalScore = _score;
+    widget.controller.markGameOver();
+    final finalScore = widget.controller.score;
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -292,15 +252,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
       _resetTimer?.cancel();
-      if (_lives <= 1) {
-        setState(() {
-          _lives = 0;
-        });
+      if (!widget.controller.consumeLife()) {
         _handleCollision();
         return;
       }
       setState(() {
-        _lives--;
         _snake
           ..clear()
           ..append(newPos, '');
@@ -371,10 +327,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     if (_engine.matches(letters)) {
       _resetTimer?.cancel();
       setState(() {
-        _score += letters.length;
         _isMatched = true;
-        _level++;
       });
+      widget.controller.addScore(letters.length);
+      widget.controller.advanceLevel();
       _showLevelTransition();
     }
   }
@@ -383,23 +339,14 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PortalAnimation(level: _level),
+      builder: (_) => PortalAnimation(level: widget.controller.level),
     );
     if (!mounted) return;
     setState(() {
       _isMatched = false;
       _initBoard();
-      _startLevelTimer(resetElapsed: true);
     });
-  }
-
-  String get _formattedTimeRemaining {
-    final remaining = _timeLimit - _elapsed;
-    final clamped = remaining.isNegative ? Duration.zero : remaining;
-    final minutes = clamped.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds =
-    clamped.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+    widget.controller.startLevelTimer(resetElapsed: true);
   }
 
   String _randomLetter() {
@@ -478,112 +425,97 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: _SerpuzzleHeaderStatus(
-            level: _level,
-            score: _score,
-            timeRemaining: _formattedTimeRemaining,
-            lives: _lives,
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context)
+                  .colorScheme
+                  .surfaceVariant
+                  .withOpacity(0.9),
+              Theme.of(context).colorScheme.surface,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          actions: [
-            IconButton(
-              icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-              onPressed: _togglePause,
-            ),
-          ],
         ),
-        body: Center(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context)
-                      .colorScheme
-                      .surfaceVariant
-                      .withOpacity(0.9),
-                  Theme.of(context).colorScheme.surface,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: SwipeDetector(
-              onSwipe: _onSwipe,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const snakeScale = 0.75;
-                    final availableSize =
-                    min(constraints.maxWidth, constraints.maxHeight);
-                    final boardSize =
-                    availableSize.isFinite ? availableSize : constraints.maxWidth;
-                    final tileSize = boardSize / widget.gridSize;
-                    final snakeTileSize = tileSize * snakeScale;
-                    final snakePositions = _snake.segments.toSet();
-                    final letters = _snake.letters;
-                    final segments = <SnakeSegment>[];
-                    for (var i = 0; i < _snake.segments.length; i++) {
-                      final pos = _snake.segments[i];
-                      final isHead = i == _snake.segments.length - 1;
-                      segments.add(SnakeSegment(
-                        row: pos.row,
-                        col: pos.col,
-                        letter: isHead ? '' : letters[i],
-                        highlighted: _isMatched,
-                      ));
-                    }
-                    final boardExtent = tileSize * widget.gridSize;
-                    return Align(
-                      alignment: Alignment.center,
-                      child: Card(
-                        color: Theme.of(context).colorScheme.surface,
-                        elevation: 8,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: SizedBox(
-                          width: boardExtent,
-                          height: boardExtent,
-                          child: Stack(
-                            children: [
-                              GridView.builder(
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: widget.gridSize,
-                                ),
-                                itemCount: _grid.length,
-                                itemBuilder: (context, index) {
-                                  final pos = _grid.positionOfIndex(index);
-                                  final isSnake = snakePositions.contains(pos);
-                                  final highlight = _isMatched && isSnake;
-                                  return SerpuzzleTile(
-                                    letter: isSnake ? '' : _grid.letterAt(pos),
-                                    highlighted: highlight,
-                                  );
-                                },
-                              ),
-                              SerpuzzleSnakeBody(
-                                segments: segments,
-                                tileSize: snakeTileSize,
-                                segmentScale: snakeScale,
-                              ),
-                            ],
+        child: SwipeDetector(
+          onSwipe: _onSwipe,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const snakeScale = 0.75;
+                final availableSize =
+                min(constraints.maxWidth, constraints.maxHeight);
+                final boardSize = availableSize.isFinite
+                    ? availableSize
+                    : constraints.maxWidth;
+                final tileSize = boardSize / widget.gridSize;
+                final snakeTileSize = tileSize * snakeScale;
+                final snakePositions = _snake.segments.toSet();
+                final letters = _snake.letters;
+                final segments = <SnakeSegment>[];
+                for (var i = 0; i < _snake.segments.length; i++) {
+                  final pos = _snake.segments[i];
+                  final isHead = i == _snake.segments.length - 1;
+                  segments.add(SnakeSegment(
+                    row: pos.row,
+                    col: pos.col,
+                    letter: isHead ? '' : letters[i],
+                    highlighted: _isMatched,
+                  ));
+                }
+                final boardExtent = tileSize * widget.gridSize;
+                return Align(
+                  alignment: Alignment.center,
+                  child: Card(
+                    color: Theme.of(context).colorScheme.surface,
+                    elevation: 8,
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: SizedBox(
+                      width: boardExtent,
+                      height: boardExtent,
+                      child: Stack(
+                        children: [
+                          GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: widget.gridSize,
+                            ),
+                            itemCount: _grid.length,
+                            itemBuilder: (context, index) {
+                              final pos = _grid.positionOfIndex(index);
+                              final isSnake = snakePositions.contains(pos);
+                              final highlight = _isMatched && isSnake;
+                              return SerpuzzleTile(
+                                letter: isSnake ? '' : _grid.letterAt(pos),
+                                highlighted: highlight,
+                              );
+                            },
                           ),
-                        ),
+                          SerpuzzleSnakeBody(
+                            segments: segments,
+                            tileSize: snakeTileSize,
+                            segmentScale: snakeScale,
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-        )
+        ),
+      ),
     );
   }
 
@@ -614,14 +546,13 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void cancelTimersForTest() {
     _moveTimer?.cancel();
     _resetTimer?.cancel();
-    _levelTimer?.cancel();
   }
 
   @visibleForTesting
   Duration get moveDelayForTest => _moveDelay;
 
   @visibleForTesting
-  Duration get elapsedForTest => _elapsed;
+  Duration get elapsedForTest => widget.controller.elapsed;
 
   @visibleForTesting
   void clearGridLettersForTest() {
@@ -651,109 +582,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   bool get isGameOverForTest => _isGameOver;
 
   @visibleForTesting
-  int get livesForTest => _lives;
+  int get livesForTest => widget.controller.lives;
 
 }
 
-class _SerpuzzleHeaderStatus extends StatelessWidget {
-  const _SerpuzzleHeaderStatus({
-    required this.level,
-    required this.score,
-    required this.timeRemaining,
-    required this.lives,
-  });
-
-  final int level;
-  final int score;
-  final String timeRemaining;
-  final int lives;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.textTheme;
-    final labelStyle = (textTheme.labelLarge ?? textTheme.bodyMedium ??
-        const TextStyle())
-        .copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.2,
-    );
-    final backgroundColor =
-    theme.colorScheme.surfaceVariant.withOpacity(0.75);
-    final iconColor = theme.colorScheme.primary;
-
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(48),
-      child: Container(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Wrap(
-          spacing: 7,
-          runSpacing: 4,
-          children: [
-            _StatusBadge(
-              icon: Icons.flag,
-              label: 'Level $level',
-              labelStyle: labelStyle,
-              backgroundColor: backgroundColor,
-              iconColor: iconColor,
-            ),
-            _StatusBadge(
-              icon: Icons.emoji_events,
-              label: 'Score $score',
-              labelStyle: labelStyle,
-              backgroundColor: backgroundColor,
-              iconColor: iconColor,
-            ),
-            _StatusBadge(
-              icon: Icons.timer,
-              label: 'Time $timeRemaining',
-              labelStyle: labelStyle,
-              backgroundColor: backgroundColor,
-              iconColor: iconColor,
-            ),
-            _StatusBadge(
-              icon: Icons.favorite,
-              label: 'Lives $lives',
-              labelStyle: labelStyle,
-              backgroundColor: backgroundColor,
-              iconColor: iconColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({
-    required this.icon,
-    required this.label,
-    required this.labelStyle,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final TextStyle labelStyle;
-  final Color backgroundColor;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      avatar: Icon(icon, size: 12, color: iconColor),
-      label: Text(label, style: labelStyle),
-      backgroundColor: backgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    );
-  }
-}
+typedef SerpuzzleGameScreenState = _SerpuzzleGameScreenState;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'serpuzzle_snake_head.dart';
-import 'serpuzzle_tile.dart';
+import 'serpuzzle_snake_segment_tile.dart';
 
 /// Data describing a single segment of the snake.
 class SnakeSegment {
@@ -71,7 +71,7 @@ class SerpuzzleSnakeBody extends StatelessWidget {
     final segment = segments[index];
     final isHead = index == segments.length - 1;
     if (!isHead) {
-      return SerpuzzleTile(
+      return SerpuzzleSnakeSegmentTile(
         letter: segment.letter,
         highlighted: segment.highlighted,
       );
