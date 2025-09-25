@@ -142,42 +142,113 @@ class _TilePatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final diagonalPaint = Paint()
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke
-      ..color = baseColor.withValues(alpha: 0.14);
+    final rect = Offset.zero & size;
+    final background = RRect.fromRectAndRadius(
+      rect.deflate(size.shortestSide * 0.12),
+      Radius.circular(size.shortestSide * 0.24),
+    );
+    final backdropPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          highlightColor.withValues(alpha: 0.18),
+          baseColor.withValues(alpha: 0.1),
+        ],
+      ).createShader(background.outerRect);
+    canvas.drawRRect(background, backdropPaint);
 
-    final offset = size.shortestSide * 0.18;
+    final bubblePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = highlightColor.withValues(alpha: 0.22);
+    final bubbleRadius = size.shortestSide * 0.1;
     canvas
-      ..drawLine(
-        Offset(-offset, offset),
-        Offset(size.width + offset, size.height - offset),
-        diagonalPaint,
+      ..drawCircle(
+        Offset(size.width * 0.3, size.height * 0.32),
+        bubbleRadius,
+        bubblePaint,
       )
-      ..drawLine(
-        Offset(-offset, size.height - offset),
-        Offset(size.width + offset, offset),
-        diagonalPaint..color = highlightColor.withValues(alpha: 0.12),
+      ..drawCircle(
+        Offset(size.width * 0.68, size.height * 0.3),
+        bubbleRadius * 0.82,
+        bubblePaint..color = highlightColor.withValues(alpha: 0.16),
+      )
+      ..drawCircle(
+        Offset(size.width * 0.48, size.height * 0.68),
+        bubbleRadius * 0.75,
+        bubblePaint..color = baseColor.withValues(alpha: 0.18),
       );
 
-    final circlePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = highlightColor.withValues(alpha: 0.15);
-    canvas.drawCircle(
-      size.center(Offset.zero),
-      size.shortestSide * 0.32,
-      circlePaint,
-    );
-
-    final glowPaint = Paint()
+    final cheekPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = baseColor.withValues(alpha: 0.05);
-    canvas.drawCircle(
-      size.center(Offset.zero),
-      size.shortestSide * 0.22,
-      glowPaint,
-    );
+      ..color = baseColor.withValues(alpha: 0.2);
+    final cheekRadius = size.shortestSide * 0.07;
+    canvas
+      ..drawCircle(
+        Offset(size.width * 0.36, size.height * 0.52),
+        cheekRadius,
+        cheekPaint,
+      )
+      ..drawCircle(
+        Offset(size.width * 0.64, size.height * 0.52),
+        cheekRadius,
+        cheekPaint,
+      );
+
+    final eyePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = baseColor.withValues(alpha: 0.35);
+    final eyeRadius = size.shortestSide * 0.045;
+    canvas
+      ..drawCircle(
+        Offset(size.width * 0.38, size.height * 0.45),
+        eyeRadius,
+        eyePaint,
+      )
+      ..drawCircle(
+        Offset(size.width * 0.62, size.height * 0.45),
+        eyeRadius,
+        eyePaint,
+      );
+
+    final smilePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.shortestSide * 0.05
+      ..strokeCap = StrokeCap.round
+      ..color = baseColor.withValues(alpha: 0.28);
+    final smilePath = Path()
+      ..moveTo(size.width * 0.34, size.height * 0.62)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.74,
+        size.width * 0.66,
+        size.height * 0.62,
+      );
+    canvas.drawPath(smilePath, smilePaint);
+
+    final sparklePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = size.shortestSide * 0.02
+      ..color = highlightColor.withValues(alpha: 0.4);
+    final sparkOffsets = [
+      Offset(size.width * 0.18, size.height * 0.2),
+      Offset(size.width * 0.82, size.height * 0.22),
+    ];
+    final sparkleLength = size.shortestSide * 0.07;
+    for (final center in sparkOffsets) {
+      canvas
+        ..drawLine(
+          Offset(center.dx - sparkleLength * 0.5, center.dy),
+          Offset(center.dx + sparkleLength * 0.5, center.dy),
+          sparklePaint,
+        )
+        ..drawLine(
+          Offset(center.dx, center.dy - sparkleLength * 0.5),
+          Offset(center.dx, center.dy + sparkleLength * 0.5),
+          sparklePaint,
+        );
+    }
   }
 
   @override

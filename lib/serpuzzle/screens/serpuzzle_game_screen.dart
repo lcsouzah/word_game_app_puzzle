@@ -425,97 +425,61 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context)
-                  .colorScheme
-                  .surfaceVariant
-                  .withOpacity(0.9),
-              Theme.of(context).colorScheme.surface,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SwipeDetector(
-          onSwipe: _onSwipe,
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const snakeScale = 0.75;
-                final availableSize =
-                min(constraints.maxWidth, constraints.maxHeight);
-                final boardSize = availableSize.isFinite
-                    ? availableSize
-                    : constraints.maxWidth;
-                final tileSize = boardSize / widget.gridSize;
-                final snakeTileSize = tileSize * snakeScale;
-                final snakePositions = _snake.segments.toSet();
-                final letters = _snake.letters;
-                final segments = <SnakeSegment>[];
-                for (var i = 0; i < _snake.segments.length; i++) {
-                  final pos = _snake.segments[i];
-                  final isHead = i == _snake.segments.length - 1;
-                  segments.add(SnakeSegment(
-                    row: pos.row,
-                    col: pos.col,
-                    letter: isHead ? '' : letters[i],
-                    highlighted: _isMatched,
-                  ));
-                }
-                final boardExtent = tileSize * widget.gridSize;
-                return Align(
-                  alignment: Alignment.center,
-                  child: Card(
-                    color: Theme.of(context).colorScheme.surface,
-                    elevation: 8,
-                    margin: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: SizedBox(
-                      width: boardExtent,
-                      height: boardExtent,
-                      child: Stack(
-                        children: [
-                          GridView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                            SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: widget.gridSize,
-                            ),
-                            itemCount: _grid.length,
-                            itemBuilder: (context, index) {
-                              final pos = _grid.positionOfIndex(index);
-                              final isSnake = snakePositions.contains(pos);
-                              final highlight = _isMatched && isSnake;
-                              return SerpuzzleTile(
-                                letter: isSnake ? '' : _grid.letterAt(pos),
-                                highlighted: highlight,
-                              );
-                            },
-                          ),
-                          SerpuzzleSnakeBody(
-                            segments: segments,
-                            tileSize: snakeTileSize,
-                            segmentScale: snakeScale,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+    const boardPadding = EdgeInsets.all(16);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final theme = Theme.of(context);
+        final availableWidth = constraints.maxWidth.isFinite
+            ? max(0.0, constraints.maxWidth - boardPadding.horizontal)
+            : double.infinity;
+        final availableHeight = constraints.maxHeight.isFinite
+            ? max(0.0, constraints.maxHeight - boardPadding.vertical)
+            : double.infinity;
+
+        double boardExtent;
+        if (availableWidth.isFinite && availableHeight.isFinite) {
+          boardExtent = min(availableWidth, availableHeight);
+        } else if (availableWidth.isFinite) {
+          boardExtent = availableWidth;
+        } else if (availableHeight.isFinite) {
+          boardExtent = availableHeight;
+        } else {
+          boardExtent = 320;
+        }
+        boardExtent = max(0.0, boardExtent);
+
+        if (boardExtent == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return Center(
+          child: Container(
+            padding: boardPadding,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.surfaceVariant.withOpacity(0.9),
+                  theme.colorScheme.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SwipeDetector(
+              onSwipe: _onSwipe,
+              child: SizedBox.square(
+                dimension: boardExtent,
+                child: _SerpuzzleBoard(
+                  boardExtent: boardExtent,
+                  grid: _grid,
+                  snake: _snake,
+                  isMatched: _isMatched,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -584,6 +548,82 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @visibleForTesting
   int get livesForTest => widget.controller.lives;
 
+}
+
+class _SerpuzzleBoard extends StatelessWidget {
+  const _SerpuzzleBoard({
+    required this.boardExtent,
+    required this.grid,
+    required this.snake,
+    required this.isMatched,
+  });
+
+  final double boardExtent;
+  final SerpuzzleGrid grid;
+  final SerpuzzleSnake snake;
+  final bool isMatched;
+
+  @override
+  Widget build(BuildContext context) {
+    const snakeScale = 0.75;
+    final theme = Theme.of(context);
+    final tileSize = boardExtent / grid.cols;
+    final snakeTileSize = tileSize * snakeScale;
+    final snakePositions = snake.segments.toSet();
+    final letters = snake.letters;
+    final segments = <SnakeSegment>[];
+    for (var i = 0; i < snake.segments.length; i++) {
+      final pos = snake.segments[i];
+      final isHead = i == snake.segments.length - 1;
+      segments.add(
+        SnakeSegment(
+          row: pos.row,
+          col: pos.col,
+          letter: isHead ? '' : letters[i],
+          highlighted: isMatched,
+        ),
+      );
+    }
+
+    return Card(
+      color: theme.colorScheme.surface,
+      elevation: 8,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox.expand(
+        child: Stack(
+          children: [
+            GridView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: grid.cols,
+              ),
+              itemCount: grid.length,
+              itemBuilder: (context, index) {
+                final pos = grid.positionOfIndex(index);
+                final isSnake = snakePositions.contains(pos);
+                final highlight = isMatched && isSnake;
+                return SerpuzzleTile(
+                  letter: isSnake ? '' : grid.letterAt(pos),
+                  highlighted: highlight,
+                );
+              },
+            ),
+            SerpuzzleSnakeBody(
+              segments: segments,
+              tileSize: snakeTileSize,
+              segmentScale: snakeScale,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 typedef SerpuzzleGameScreenState = _SerpuzzleGameScreenState;
