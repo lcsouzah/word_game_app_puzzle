@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
@@ -452,31 +453,140 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           return const SizedBox.shrink();
         }
 
+        final boardRadius = BorderRadius.circular(32);
+        final currentWord = _snake.word;
+        final hasLetters = currentWord.isNotEmpty;
+        final bannerText = hasLetters ? currentWord : 'Collect letters';
+        final celebrating = _isMatched && hasLetters;
+
         return Center(
-          child: Container(
-            padding: boardPadding,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.surfaceVariant.withOpacity(0.9),
-                  theme.colorScheme.surface,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: SwipeDetector(
-              onSwipe: _onSwipe,
-              child: SizedBox.square(
-                dimension: boardExtent,
-                child: _SerpuzzleBoard(
-                  boardExtent: boardExtent,
-                  grid: _grid,
-                  snake: _snake,
-                  isMatched: _isMatched,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: boardRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 40,
+                      offset: const Offset(0, 24),
+                      spreadRadius: -18,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: boardRadius,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      padding: boardPadding,
+                      decoration: BoxDecoration(
+                        borderRadius: boardRadius,
+                        border: Border.all(
+                          color: theme.colorScheme.onSurface.withOpacity(0.08),
+                          width: 1.2,
+                        ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            theme.colorScheme.surface.withOpacity(0.38),
+                            theme.colorScheme.surfaceVariant.withOpacity(0.26),
+                          ],
+                        ),
+                      ),
+                      child: SwipeDetector(
+                        onSwipe: _onSwipe,
+                        child: SizedBox.square(
+                          dimension: boardExtent,
+                          child: _SerpuzzleBoard(
+                            boardExtent: boardExtent,
+                            grid: _grid,
+                            snake: _snake,
+                            isMatched: _isMatched,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 24),
+              AnimatedScale(
+                key: const ValueKey('word-banner-scale'),
+                scale: celebrating ? 1.08 : 1.0,
+                duration: const Duration(milliseconds: 350),
+                curve: celebrating ? Curves.easeOutBack : Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeInOut,
+                  opacity: celebrating ? 1.0 : 0.9,
+                  child: AnimatedContainer(
+                    key: const ValueKey('current-word-banner'),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 28,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: celebrating
+                            ? [
+                          theme.colorScheme.primary.withOpacity(0.95),
+                          theme.colorScheme.secondary.withOpacity(0.85),
+                        ]
+                            : [
+                          theme.colorScheme.surface.withOpacity(0.78),
+                          theme.colorScheme.surfaceVariant.withOpacity(0.56),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: celebrating
+                            ? theme.colorScheme.onPrimary.withOpacity(0.4)
+                            : theme.colorScheme.onSurface.withOpacity(0.12),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (celebrating
+                              ? theme.colorScheme.primary
+                              : Colors.black)
+                              .withOpacity(celebrating ? 0.35 : 0.18),
+                          blurRadius: celebrating ? 26 : 14,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: Text(
+                        bannerText,
+                        key: ValueKey<String>(bannerText),
+                        textAlign: TextAlign.center,
+                        style: (theme.textTheme.headlineSmall ??
+                            const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ))
+                            .copyWith(
+                          letterSpacing: 1.2,
+                          color: celebrating
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -565,10 +675,7 @@ class _SerpuzzleBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const snakeScale = 0.75;
-    final theme = Theme.of(context);
     final tileSize = boardExtent / grid.cols;
-    final snakeTileSize = tileSize * snakeScale;
     final snakePositions = snake.segments.toSet();
     final letters = snake.letters;
     final segments = <SnakeSegment>[];
@@ -585,43 +692,32 @@ class _SerpuzzleBoard extends StatelessWidget {
       );
     }
 
-    return Card(
-      color: theme.colorScheme.surface,
-      elevation: 8,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox.expand(
-        child: Stack(
-          children: [
-            GridView.builder(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: grid.cols,
-              ),
-              itemCount: grid.length,
-              itemBuilder: (context, index) {
-                final pos = grid.positionOfIndex(index);
-                final isSnake = snakePositions.contains(pos);
-                final highlight = isMatched && isSnake;
-                return SerpuzzleTile(
-                  letter: isSnake ? '' : grid.letterAt(pos),
-                  highlighted: highlight,
-                );
-              },
-            ),
-            SerpuzzleSnakeBody(
-              segments: segments,
-              tileSize: snakeTileSize,
-              segmentScale: snakeScale,
-            ),
-          ],
+    return Stack(
+      children: [
+        GridView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: grid.cols,
+          ),
+          itemCount: grid.length,
+          itemBuilder: (context, index) {
+            final pos = grid.positionOfIndex(index);
+            final isSnake = snakePositions.contains(pos);
+            final highlight = isMatched && isSnake;
+            return SerpuzzleTile(
+              letter: isSnake ? '' : grid.letterAt(pos),
+              highlighted: highlight,
+            );
+          },
         ),
-      ),
+        SerpuzzleSnakeBody(
+          segments: segments,
+          tileSize: tileSize,
+          segmentScale: 1.0,
+        ),
+      ],
     );
   }
 }

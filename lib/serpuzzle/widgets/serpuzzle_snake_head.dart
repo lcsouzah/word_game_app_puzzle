@@ -16,23 +16,46 @@ class SerpuzzleSnakeHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final margin = tileSize * 0.075;
-    final borderRadius = tileSize * 0.2;
-    final baseColor = highlighted
-        ? Colors.greenAccent.withValues(alpha: 0.8)
-        : Colors.deepOrange;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final Color baseColor = highlighted ? scheme.secondary : scheme.primary;
+    final Color topEdge = Color.alphaBlend(
+      Colors.white.withOpacity(highlighted ? 0.45 : 0.35),
+      baseColor,
+    );
+    final Color bottomEdge = Color.alphaBlend(
+      Colors.black.withOpacity(highlighted ? 0.5 : 0.4),
+      baseColor,
+    );
+    final Color outline = Color.alphaBlend(
+      scheme.outlineVariant.withOpacity(0.65),
+      baseColor.withOpacity(0.75),
+    );
+
     return Container(
-      margin: EdgeInsets.all(margin),
+      margin: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
         color: baseColor,
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: outline, width: 1.4),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        border: Border(
+          top: BorderSide(color: topEdge, width: 3),
+          left: BorderSide(color: topEdge, width: 3),
+          right: BorderSide(color: bottomEdge, width: 3),
+          bottom: BorderSide(color: bottomEdge, width: 3),
+        ),
       ),
       child: CustomPaint(
         painter: _SnakeHeadPainter(
           direction: direction,
-          arrowColor: highlighted ? Colors.black87 : Colors.white,
-          eyeColor: highlighted ? Colors.white : Colors.black87,
-          tongueColor: highlighted ? Colors.red.shade200 : Colors.redAccent,
+          arrowColor: highlighted ? scheme.onSecondary : scheme.onPrimary,
+          eyeColor: highlighted ? scheme.onSecondary : scheme.onPrimary,
+          tongueColor: highlighted
+              ? scheme.onSecondary.withOpacity(0.9)
+              : Colors.redAccent,
         ),
       ),
     );

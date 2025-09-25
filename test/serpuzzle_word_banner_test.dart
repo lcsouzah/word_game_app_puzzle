@@ -65,6 +65,19 @@ void main() {
 
         await _collectLetter(tester, state, 'B');
 
+        expect(
+          find.descendant(
+            of: bannerFinder,
+            matching: find.text('AB'),
+          ),
+          findsOneWidget,
+        );
+
+        final AnimatedScale scaleWidget = tester.widget(
+          find.byKey(const ValueKey('word-banner-scale')),
+        );
+        expect(scaleWidget.scale, greaterThan(1.0));
+
         // Allow the level transition dialog to appear and dismiss.
         await tester.pump(const Duration(milliseconds: 600));
         await tester.pump();

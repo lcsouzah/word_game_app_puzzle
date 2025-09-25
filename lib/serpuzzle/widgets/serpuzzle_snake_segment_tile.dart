@@ -23,58 +23,44 @@ class SerpuzzleSnakeSegmentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    final Color baseColor = highlighted
-        ? scheme.tertiaryContainer
-        : scheme.primaryContainer;
-    final Color accentColor = highlighted ? scheme.tertiary : scheme.primary;
-    final Color outlineColor = Color.alphaBlend(
-      accentColor.withOpacity(isDark ? 0.55 : 0.35),
-      scheme.outlineVariant.withOpacity(0.6),
+    final Color baseColor = highlighted ? scheme.secondary : scheme.primary;
+    final Color topEdge = Color.alphaBlend(
+      Colors.white.withOpacity(highlighted ? 0.45 : 0.35),
+      baseColor,
+    );
+    final Color bottomEdge = Color.alphaBlend(
+      Colors.black.withOpacity(highlighted ? 0.5 : 0.4),
+      baseColor,
+    );
+    final Color outline = Color.alphaBlend(
+      scheme.outlineVariant.withOpacity(0.65),
+      baseColor.withOpacity(0.75),
     );
 
-    final gradient = LinearGradient(
-      colors: [
-        Color.alphaBlend(
-          accentColor.withOpacity(isDark ? 0.28 : 0.18),
-          baseColor,
-        ),
-        baseColor,
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-
+    final trimmedLetter = letter.trim();
     final textStyle = (theme.textTheme.titleMedium ??
         const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))
         .copyWith(
-      fontWeight: FontWeight.w700,
-      color:
-      highlighted ? scheme.onTertiaryContainer : scheme.onPrimaryContainer,
-      letterSpacing: 0.4,
+      height: 1,
+      letterSpacing: 1.3,
+      color: highlighted ? scheme.onSecondary : scheme.onPrimary,
     );
 
-    final shadowColor = highlighted
-        ? accentColor.withOpacity(isDark ? 0.55 : 0.45)
-        : Colors.black.withOpacity(isDark ? 0.4 : 0.2);
-
-    final trimmedLetter = letter.trim();
-
     return Container(
-      margin: const EdgeInsets.all(3),
+      margin: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: outlineColor, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            offset: const Offset(0, 3),
-            blurRadius: highlighted ? 10 : 6,
-            spreadRadius: highlighted ? 1.5 : 0.5,
-          ),
-        ],
+        color: baseColor,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: outline, width: 1.4),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        border: Border(
+          top: BorderSide(color: topEdge, width: 3),
+          left: BorderSide(color: topEdge, width: 3),
+          right: BorderSide(color: bottomEdge, width: 3),
+          bottom: BorderSide(color: bottomEdge, width: 3),
+        ),
       ),
       alignment: Alignment.center,
       child: trimmedLetter.isEmpty
