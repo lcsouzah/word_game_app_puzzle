@@ -44,14 +44,14 @@ void main() {
         expect(bodyRect.height, closeTo(segmentSize, 0.01));
         expect(bodyRect.left, closeTo(offset, 0.01));
         expect(bodyRect.top, closeTo(offset, 0.01));
-        expect(bodyRect.right, lessThanOrEqualTo(tileSize));
-        expect(bodyRect.bottom, lessThanOrEqualTo(tileSize));
+        expect(bodyRect.right, closeTo(tileSize - offset, 0.01));
+        expect(bodyRect.bottom, closeTo(tileSize - offset, 0.01));
 
         expect(headRect.width, closeTo(segmentSize, 0.01));
         expect(headRect.height, closeTo(segmentSize, 0.01));
         expect(headRect.left, closeTo(tileSize + offset, 0.01));
         expect(headRect.top, closeTo(offset, 0.01));
-        expect(headRect.right, lessThanOrEqualTo(tileSize * 2));
-        expect(headRect.bottom, lessThanOrEqualTo(tileSize));
-      });
+        expect(headRect.right, closeTo(tileSize * 2 - offset, 0.01));
+        expect(headRect.bottom, closeTo(tileSize - offset, 0.01));
+          });
 }

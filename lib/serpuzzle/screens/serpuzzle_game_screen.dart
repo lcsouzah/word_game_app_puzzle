@@ -674,6 +674,7 @@ class _SerpuzzleBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tileSize = boardExtent / grid.cols;
+    const segmentScale = 0.4;
     final snakePositions = snake.segments.toSet();
     final letters = snake.letters;
     final segments = <SnakeSegment>[];
@@ -741,7 +742,7 @@ class _SerpuzzleBoard extends StatelessWidget {
             SerpuzzleSnakeBody(
               segments: segments,
               tileSize: tileSize,
-              segmentScale: 1.0,
+              segmentScale: segmentScale,
             ),
           ],
         ),
