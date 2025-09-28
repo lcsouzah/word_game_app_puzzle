@@ -240,7 +240,19 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     }
 
     final newPos = GridPosition(row, col);
-    if (!_grid.inBounds(newPos) || _snake.segments.contains(newPos)) {
+    final segments = _snake.segments;
+    final letters = _snake.letters;
+    final bool willDropTailBlank = _growSegments <= 0 &&
+        segments.length > 1 &&
+        letters.isNotEmpty &&
+        letters.first.isEmpty;
+    final bool collidesWithBody = segments.contains(newPos);
+    final bool collidesWithTail = collidesWithBody &&
+        segments.isNotEmpty &&
+        newPos == segments.first &&
+        willDropTailBlank;
+
+    if (!_grid.inBounds(newPos) || (collidesWithBody && !collidesWithTail)) {
       _handleCollision();
       return;
     }

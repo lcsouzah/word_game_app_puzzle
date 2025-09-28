@@ -57,6 +57,52 @@ void main() {
         expect(state.growSegments, equals(0));
       });
 
+  testWidgets('snake can move into tail after blank drop without collision',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 5,
+            dictionary: const ['AB'],
+            maxWordLength: 3,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+
+        final int initialLength = state.snake.segments.length as int;
+        final GridPosition initialHead = state.snake.segments.last as GridPosition;
+        final GridPosition growthTarget =
+        GridPosition(initialHead.row, initialHead.col + 1);
+        expect(state.grid.inBounds(growthTarget), isTrue);
+
+        state.setGrowSegmentsForTest(1);
+        state.setDirectionForTest(Direction.right);
+        state.tickForTest();
+        await tester.pump();
+        state.cancelTimersForTest();
+
+        expect(state.snake.segments.length, initialLength + 1);
+        expect(state.snake.segments.last, equals(growthTarget));
+        expect(state.growSegments, equals(0));
+
+        final List<String> letters = List<String>.from(state.snake.letters);
+        expect(letters, isNotEmpty);
+        expect(letters.first, isEmpty);
+
+        state.setDirectionForTest(Direction.left);
+        state.tickForTest();
+        await tester.pump();
+        state.cancelTimersForTest();
+
+        expect(state.snake.segments.length, initialLength + 1);
+        expect(state.snake.segments.last, equals(initialHead));
+        expect(state.snake.segments.first, equals(growthTarget));
+        expect(state.growSegments, equals(0));
+      });
+
   testWidgets('consumed letters shift behind head immediately', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: SerpuzzleGameScreen(

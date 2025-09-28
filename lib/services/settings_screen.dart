@@ -15,6 +15,21 @@ const _availableTileColors = <Color>[
   Colors.purple,
   Colors.teal,
   Colors.brown,
+  Colors.indigo,
+  Colors.lightBlue,
+  Colors.pink,
+  Colors.yellow,
+  Colors.cyan,
+  Colors.lime,
+  Colors.amber,
+  Colors.deepOrange,
+  Colors.deepPurple,
+  Colors.grey,
+  Colors.lightGreen,
+  Colors.deepPurpleAccent,
+  Colors.pinkAccent,
+  Color(0xFF7E57C2), // Deep lavender
+  Color(0xFF4CAF50), // Balanced emerald
 ];
 
 const _availableBorderColors = <Color>[
@@ -24,6 +39,23 @@ const _availableBorderColors = <Color>[
   Colors.amber,
   Colors.deepPurpleAccent,
   Colors.pinkAccent,
+  Colors.black87,
+  Colors.cyanAccent,
+  Colors.redAccent,
+  Colors.greenAccent,
+  Colors.yellowAccent,
+  Colors.blueAccent,
+  Colors.orangeAccent,
+  Colors.purpleAccent,
+  Colors.tealAccent,
+  Colors.brown,
+  Colors.indigo,
+  Colors.lightBlue,
+  Colors.pink,
+  Colors.yellow,
+  Color(0xFFFFF59D), // Soft gold
+  Color(0xFFB0BEC5), // Frosted steel
+
 ];
 
 /// Screen allowing the player to customise tile colour and border image.
