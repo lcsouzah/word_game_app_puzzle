@@ -39,9 +39,9 @@ class SerpuzzleSnakeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scale = segmentScale <= 0 ? 1.0 : segmentScale;
-    final baseTileSize = tileSize / scale;
-    final offset = (baseTileSize - tileSize) / 2;
+    final effectiveScale = segmentScale <= 0 ? 1.0 : segmentScale;
+    final segmentSize = tileSize * effectiveScale;
+    final offset = (tileSize - segmentSize) / 4;
     return Stack(
       children: [
         for (var i = 0; i < segments.length; i++)
@@ -51,15 +51,15 @@ class SerpuzzleSnakeBody extends StatelessWidget {
             // removed from the list.
             key: ValueKey('${segments[i].row}-${segments[i].col}'),
             duration: const Duration(milliseconds: 150),
-            left: segments[i].col * baseTileSize + offset,
-            top: segments[i].row * baseTileSize + offset,
+            left: segments[i].col * tileSize + offset,
+            top: segments[i].row * tileSize + offset,
             child: AnimatedOpacity(
               opacity: segments[i].fading ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 300),
               child: SizedBox(
-                width: tileSize,
-                height: tileSize,
-                child: _buildSegment(i),
+                width: segmentSize,
+                height: segmentSize,
+                child: _buildSegment(i, segmentSize),
               ),
             ),
           ),
@@ -67,7 +67,7 @@ class SerpuzzleSnakeBody extends StatelessWidget {
     );
   }
 
-  Widget _buildSegment(int index) {
+  Widget _buildSegment(int index, double segmentSize) {
     final segment = segments[index];
     final isHead = index == segments.length - 1;
     if (!isHead) {
@@ -81,9 +81,10 @@ class SerpuzzleSnakeBody extends StatelessWidget {
     return SerpuzzleSnakeHead(
       direction: direction,
       highlighted: segment.highlighted,
-      tileSize: tileSize,
+      tileSize: segmentSize,
     );
   }
+
 
   SnakeDirection _resolveHeadDirection() {
     if (segments.length < 2) {
