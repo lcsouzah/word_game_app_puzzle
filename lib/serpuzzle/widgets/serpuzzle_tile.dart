@@ -22,68 +22,70 @@ class SerpuzzleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isEmpty = letter.trim().isEmpty;
-    const borderRadius = BorderRadius.all(Radius.circular(5));
-    const animationDuration = Duration(milliseconds: 180);
+    const animationDuration = Duration(milliseconds: 160);
+    final baseSurface = theme.colorScheme.surface;
+    final accentSurface = theme.colorScheme.surfaceVariant;
 
-    final Color baseColor = highlighted
-        ? theme.colorScheme.primary
-        : theme.colorScheme.surfaceVariant.withOpacity(isEmpty ? 0.35 : 0.65);
-    final Color topEdge = Color.alphaBlend(
-      Colors.white.withOpacity(highlighted ? 0.4 : 0.25),
-      baseColor,
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: highlighted
+          ? [
+        theme.colorScheme.primary.withOpacity(0.85),
+        theme.colorScheme.primary.withOpacity(0.65),
+      ]
+          : [
+        baseSurface.withOpacity(isEmpty ? 0.18 : 0.32),
+        accentSurface.withOpacity(isEmpty ? 0.16 : 0.28),
+      ],
     );
-    final Color bottomEdge = Color.alphaBlend(
-      Colors.black.withOpacity(highlighted ? 0.45 : 0.35),
-      baseColor,
-    );
-    final Color outline = Color.alphaBlend(
-      theme.colorScheme.outlineVariant.withOpacity(0.6),
-      baseColor.withOpacity(0.7),
-    );
+
+    final borderColor = highlighted
+        ? theme.colorScheme.primaryContainer.withOpacity(0.9)
+        : theme.colorScheme.outlineVariant.withOpacity(0.35);
+
+    final glow = highlighted
+        ? [
+      BoxShadow(
+        color: theme.colorScheme.primary.withOpacity(0.35),
+        blurRadius: 10,
+        spreadRadius: 0.5,
+      ),
+    ]
+        : <BoxShadow>[];
 
     final textStyle = (theme.textTheme.titleMedium ??
-        const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ))
+        const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))
         .copyWith(
       height: 1,
-      letterSpacing: 1.4,
+      letterSpacing: 1.3,
       color: highlighted
           ? theme.colorScheme.onPrimary
-          : theme.colorScheme.onSurface,
+          : theme.colorScheme.onSurface.withOpacity(0.85),
     );
 
-    return AnimatedScale(
-      scale: highlighted ? 1.02 : 1.0,
+    return AnimatedContainer(
       duration: animationDuration,
-      curve: Curves.easeOutQuad,
-      child: AnimatedContainer(
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: borderColor,
+          width: highlighted ? 1.2 : 0.8,
+        ),
+        boxShadow: glow,
+      ),
+      alignment: Alignment.center,
+      child: AnimatedSwitcher(
         duration: animationDuration,
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(
-          color: baseColor,
-          borderRadius: borderRadius,
-          border: Border.all(color: outline, width: 1.4),
-        ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: borderRadius,
-          border: Border(
-            top: BorderSide(color: topEdge, width: 3),
-            left: BorderSide(color: topEdge, width: 3),
-            right: BorderSide(color: bottomEdge, width: 3),
-            bottom: BorderSide(color: bottomEdge, width: 3),
-          ),
-        ),
-        alignment: Alignment.center,
-        child: AnimatedSwitcher(
-          duration: animationDuration,
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          child: isEmpty
-              ? const SizedBox.shrink()
-              : Text(
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: isEmpty
+            ? const SizedBox.shrink()
+            : FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
             letter,
             key: ValueKey(letter),
             style: textStyle,

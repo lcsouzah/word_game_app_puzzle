@@ -453,7 +453,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           return const SizedBox.shrink();
         }
 
-        final boardRadius = BorderRadius.circular(32);
+        final boardRadius = BorderRadius.circular(14);
         final currentWord = _snake.word;
         final hasLetters = currentWord.isNotEmpty;
         final bannerText = hasLetters ? currentWord : 'Collect letters';
@@ -463,50 +463,47 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DecoratedBox(
+              Container(
                 decoration: BoxDecoration(
                   borderRadius: boardRadius,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      theme.colorScheme.surface.withOpacity(0.75),
+                      theme.colorScheme.surfaceVariant.withOpacity(0.55),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.55),
+                    width: 1.6,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 40,
-                      offset: const Offset(0, 24),
-                      spreadRadius: -18,
+                      color: Colors.black.withOpacity(0.18),
+                      blurRadius: 20,
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: boardRadius,
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      padding: boardPadding,
-                      decoration: BoxDecoration(
-                        borderRadius: boardRadius,
-                        border: Border.all(
-                          color: theme.colorScheme.onSurface.withOpacity(0.08),
-                          width: 1.2,
-                        ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            theme.colorScheme.surface.withOpacity(0.38),
-                            theme.colorScheme.surfaceVariant.withOpacity(0.26),
-                          ],
-                        ),
-                      ),
-                      child: SwipeDetector(
-                        onSwipe: _onSwipe,
-                        child: SizedBox.square(
-                          dimension: boardExtent,
-                          child: _SerpuzzleBoard(
-                            boardExtent: boardExtent,
-                            grid: _grid,
-                            snake: _snake,
-                            isMatched: _isMatched,
-                          ),
-                        ),
+                padding: boardPadding,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withOpacity(0.06),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+                    ),
+                  ),
+                  child: SwipeDetector(
+                    onSwipe: _onSwipe,
+                    child: SizedBox.square(
+                      dimension: boardExtent,
+                      child: _SerpuzzleBoard(
+                        boardExtent: boardExtent,
+                        grid: _grid,
+                        snake: _snake,
+                        isMatched: _isMatched,
                       ),
                     ),
                   ),
@@ -592,6 +589,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       },
     );
   }
+
 
 
   @visibleForTesting
@@ -692,34 +690,125 @@ class _SerpuzzleBoard extends StatelessWidget {
       );
     }
 
-    return Stack(
-      children: [
-        GridView.builder(
-          padding: EdgeInsets.zero,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: grid.cols,
+    final theme = Theme.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.surface.withOpacity(0.55),
+              theme.colorScheme.surfaceVariant.withOpacity(0.35),
+            ],
           ),
-          itemCount: grid.length,
-          itemBuilder: (context, index) {
-            final pos = grid.positionOfIndex(index);
-            final isSnake = snakePositions.contains(pos);
-            final highlight = isMatched && isSnake;
-            return SerpuzzleTile(
-              letter: isSnake ? '' : grid.letterAt(pos),
-              highlighted: highlight,
-            );
-          },
         ),
-        SerpuzzleSnakeBody(
-          segments: segments,
-          tileSize: tileSize,
-          segmentScale: 1.0,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(
+              painter: _SerpuzzleBoardBackdropPainter(
+                rows: grid.rows,
+                cols: grid.cols,
+                fineDivisions: 2,
+                lightColor:
+                theme.colorScheme.surfaceVariant.withOpacity(0.18),
+                darkColor:
+                theme.colorScheme.surfaceVariant.withOpacity(0.1),
+                gridLineColor: theme.colorScheme.outline.withOpacity(0.12),
+              ),
+            ),
+            GridView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: grid.cols,
+                childAspectRatio: 1,
+              ),
+              itemCount: grid.length,
+              itemBuilder: (context, index) {
+                final pos = grid.positionOfIndex(index);
+                final isSnake = snakePositions.contains(pos);
+                final highlight = isMatched && isSnake;
+                return SerpuzzleTile(
+                  letter: isSnake ? '' : grid.letterAt(pos),
+                  highlighted: highlight,
+                );
+              },
+            ),
+            SerpuzzleSnakeBody(
+              segments: segments,
+              tileSize: tileSize,
+              segmentScale: 1.0,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
 typedef SerpuzzleGameScreenState = _SerpuzzleGameScreenState;
+
+class _SerpuzzleBoardBackdropPainter extends CustomPainter {
+  final int rows;
+  final int cols;
+  final int fineDivisions;
+  final Color lightColor;
+  final Color darkColor;
+  final Color gridLineColor;
+
+  const _SerpuzzleBoardBackdropPainter({
+    required this.rows,
+    required this.cols,
+    required this.fineDivisions,
+    required this.lightColor,
+    required this.darkColor,
+    required this.gridLineColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fineRows = max(1, rows * fineDivisions);
+    final fineCols = max(1, cols * fineDivisions);
+    final cellWidth = size.width / fineCols;
+    final cellHeight = size.height / fineRows;
+
+    final rect = Rect.fromLTWH(0, 0, cellWidth, cellHeight);
+    final paint = Paint();
+    for (var row = 0; row < fineRows; row++) {
+      for (var col = 0; col < fineCols; col++) {
+        final offset = Offset(col * cellWidth, row * cellHeight);
+        final isLight = (row + col) % 2 == 0;
+        paint.color = isLight ? lightColor : darkColor;
+        canvas.drawRect(rect.shift(offset), paint);
+      }
+    }
+
+    final linePaint = Paint()
+      ..color = gridLineColor
+      ..strokeWidth = 1.0;
+
+    for (var r = 0; r <= fineRows; r++) {
+      final dy = r * cellHeight;
+      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), linePaint);
+    }
+
+    for (var c = 0; c <= fineCols; c++) {
+      final dx = c * cellWidth;
+      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), linePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SerpuzzleBoardBackdropPainter oldDelegate) {
+    return rows != oldDelegate.rows ||
+        cols != oldDelegate.cols ||
+        fineDivisions != oldDelegate.fineDivisions ||
+        lightColor != oldDelegate.lightColor ||
+        darkColor != oldDelegate.darkColor ||
+        gridLineColor != oldDelegate.gridLineColor;
+  }
+}

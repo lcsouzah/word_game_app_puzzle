@@ -32,21 +32,29 @@ class SerpuzzleSnakeHead extends StatelessWidget {
       baseColor.withOpacity(0.75),
     );
 
-    return Container(
-      margin: const EdgeInsets.all(1.5),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: baseColor,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: outline, width: 1.4),
-      ),
-      foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        border: Border(
-          top: BorderSide(color: topEdge, width: 3),
-          left: BorderSide(color: topEdge, width: 3),
-          right: BorderSide(color: bottomEdge, width: 3),
-          bottom: BorderSide(color: bottomEdge, width: 3),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withOpacity(0.92),
+            baseColor.withOpacity(0.78),
+          ],
         ),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: outline, width: 1.1),
+        boxShadow: highlighted
+            ? [
+          BoxShadow(
+            color: scheme.secondary.withOpacity(0.45),
+            blurRadius: 10,
+            spreadRadius: 0.4,
+          ),
+        ]
+            : const [],
       ),
       child: CustomPaint(
         painter: _SnakeHeadPainter(
@@ -55,7 +63,7 @@ class SerpuzzleSnakeHead extends StatelessWidget {
           eyeColor: highlighted ? scheme.onSecondary : scheme.onPrimary,
           tongueColor: highlighted
               ? scheme.onSecondary.withOpacity(0.9)
-              : Colors.redAccent,
+              : Colors.lightGreen,
         ),
       ),
     );

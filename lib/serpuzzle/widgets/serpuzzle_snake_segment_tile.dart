@@ -24,17 +24,13 @@ class SerpuzzleSnakeSegmentTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final Color baseColor = highlighted ? scheme.secondary : scheme.primary;
-    final Color topEdge = Color.alphaBlend(
-      Colors.white.withOpacity(highlighted ? 0.45 : 0.35),
-      baseColor,
-    );
-    final Color bottomEdge = Color.alphaBlend(
-      Colors.black.withOpacity(highlighted ? 0.5 : 0.4),
-      baseColor,
-    );
-    final Color outline = Color.alphaBlend(
-      scheme.outlineVariant.withOpacity(0.65),
-      baseColor.withOpacity(0.75),
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        baseColor.withOpacity(0.92),
+        baseColor.withOpacity(0.78),
+      ],
     );
 
     final trimmedLetter = letter.trim();
@@ -46,28 +42,37 @@ class SerpuzzleSnakeSegmentTile extends StatelessWidget {
       color: highlighted ? scheme.onSecondary : scheme.onPrimary,
     );
 
-    return Container(
-      margin: const EdgeInsets.all(1.5),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: baseColor,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: outline, width: 1.4),
-      ),
-      foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        border: Border(
-          top: BorderSide(color: topEdge, width: 3),
-          left: BorderSide(color: topEdge, width: 3),
-          right: BorderSide(color: bottomEdge, width: 3),
-          bottom: BorderSide(color: bottomEdge, width: 3),
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: highlighted
+              ? scheme.secondaryContainer.withOpacity(0.9)
+              : scheme.outlineVariant.withOpacity(0.35),
+          width: highlighted ? 1.2 : 0.9,
         ),
+        boxShadow: highlighted
+            ? [
+          BoxShadow(
+            color: scheme.secondary.withOpacity(0.45),
+            blurRadius: 10,
+            spreadRadius: 0.4,
+          ),
+        ]
+            : const [],
       ),
       alignment: Alignment.center,
       child: trimmedLetter.isEmpty
           ? const SizedBox.shrink()
-          : Text(
-        trimmedLetter,
-        style: textStyle,
+          : FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          trimmedLetter,
+          style: textStyle,
+        ),
       ),
     );
   }
