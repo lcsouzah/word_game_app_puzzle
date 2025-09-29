@@ -221,6 +221,127 @@ class TileBorderStyles {
     ),
   );
 
+  static final TileBorderStyle neonGlow = TileBorderStyle(
+    id: 'neon_glow',
+    displayName: 'Neon Glow',
+    isPremium: true,
+    decorationBuilder: (context) {
+      final glowColor = Colors.cyanAccent.withOpacity(context.highlighted ? 0.85 : 0.6);
+      final pulseColor = Colors.pinkAccent.withOpacity(context.highlighted ? 0.6 : 0.35);
+      return TileBorderDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF3A0CA3),
+            Color(0xFF4361EE),
+            Color(0xFF4CC9F0),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: Colors.black.withOpacity(0.45),
+          width: 1.4,
+        ),
+        boxShadows: [
+          BoxShadow(
+            color: glowColor,
+            blurRadius: 28,
+            spreadRadius: 3,
+          ),
+          BoxShadow(
+            color: pulseColor,
+            blurRadius: 18,
+            spreadRadius: 1,
+          ),
+        ],
+      );
+    },
+  );
+
+  static final TileBorderStyle frostedGlass = TileBorderStyle(
+    id: 'frosted_glass',
+    displayName: 'Frosted Glass',
+    isPremium: false,
+    decorationBuilder: (context) => TileBorderDecoration(
+      borderRadius: BorderRadius.circular(16),
+      gradient: LinearGradient(
+        colors: [
+          Colors.white.withOpacity(0.75),
+          Colors.white.withOpacity(0.35),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: Border.all(
+        color: Colors.white.withOpacity(context.highlighted ? 0.9 : 0.6),
+        width: 1.8,
+      ),
+      boxShadows: const [
+        BoxShadow(
+          color: Color(0x33000000),
+          blurRadius: 20,
+          offset: Offset(0, 10),
+        ),
+      ],
+      foregroundDecoration: BoxDecoration(
+        gradient: RadialGradient(
+          colors: [
+            Colors.white.withOpacity(context.highlighted ? 0.35 : 0.15),
+            Colors.white.withOpacity(0.0),
+          ],
+          center: Alignment.topLeft,
+          radius: 1.2,
+        ),
+      ),
+      fillColor: context.tileColor.withOpacity(0.3),
+    ),
+  );
+
+  static final TileBorderStyle lavaEdge = TileBorderStyle(
+    id: 'lava_edge',
+    displayName: 'Lava Edge',
+    isPremium: true,
+    decorationBuilder: (context) => TileBorderDecoration(
+      borderRadius: BorderRadius.circular(12),
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xFFFF9E00),
+          Color(0xFFFF4D00),
+          Color(0xFFB00020),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      border: Border.all(
+        color: Colors.deepOrangeAccent.withOpacity(context.highlighted ? 0.9 : 0.7),
+        width: 2.4,
+      ),
+      boxShadows: const [
+        BoxShadow(
+          color: Color(0x66FF6D00),
+          blurRadius: 22,
+          offset: Offset(0, 8),
+        ),
+        BoxShadow(
+          color: Color(0x33D32F2F),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+      foregroundDecoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.35),
+            Colors.white.withOpacity(0.0),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+    ),
+  );
+
   static final Map<String, TileBorderStyle> _stylesById = {
     for (final style in [
       _none,
@@ -230,6 +351,9 @@ class TileBorderStyles {
       goldGloss,
       silverGlow,
       bronzeEdge,
+      neonGlow,
+      frostedGlass,
+      lavaEdge,
     ])
       style.id: style,
   };

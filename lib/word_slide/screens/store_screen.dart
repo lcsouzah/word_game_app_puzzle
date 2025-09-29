@@ -3,13 +3,23 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
 import 'package:word_game_app/services/in_app_purchase_service.dart';
+import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
 /// Simple data class that describes a border product available for purchase.
 class BorderProduct {
-  final String id;
-  final String assetPath;
+  final String styleId;
+  final Color previewTileColor;
+  final Color previewBorderColor;
 
-  const BorderProduct({required this.id, required this.assetPath});
+  const BorderProduct({
+    required this.styleId,
+    required this.previewTileColor,
+    required this.previewBorderColor,
+  });
+
+  String get id => styleId;
+
+  TileBorderStyle get style => TileBorderStyles.byId(styleId);
 }
 
 /// Screen that displays the available borders and allows the user to purchase
@@ -23,12 +33,34 @@ class StoreScreen extends StatefulWidget {
 }
 
 class StoreScreenState extends State<StoreScreen> {
-  // Example border products. The images should exist in the assets folder and
-  // correspond to the product identifiers in the store.
+  // Premium border products backed by TileBorderStyle identifiers so the
+  // preview matches the in-game appearance.
   final List<BorderProduct> _borders = const [
-    BorderProduct(id: 'border_gold', assetPath: 'assets/images/borders/gold.png'),
-    BorderProduct(id: 'border_silver', assetPath: 'assets/images/borders/silver.png'),
-    BorderProduct(id: 'border_bronze', assetPath: 'assets/images/borders/bronze.png'),
+    BorderProduct(
+      styleId: 'gold_gloss',
+      previewTileColor: const Color(0xFF2B2D42),
+      previewBorderColor: const Color(0xFFFFD700),
+    ),
+    BorderProduct(
+      styleId: 'silver_glow',
+      previewTileColor: const Color(0xFF1F2933),
+      previewBorderColor: const Color(0xFFCFD8DC),
+    ),
+    BorderProduct(
+      styleId: 'bronze_edge',
+      previewTileColor: const Color(0xFF3A2D21),
+      previewBorderColor: const Color(0xFFCC7A00),
+    ),
+    BorderProduct(
+      styleId: 'neon_glow',
+      previewTileColor: const Color(0xFF141021),
+      previewBorderColor: const Color(0xFF4CC9F0),
+    ),
+    BorderProduct(
+      styleId: 'lava_edge',
+      previewTileColor: const Color(0xFF2C1000),
+      previewBorderColor: const Color(0xFFFF6D00),
+    ),
   ];
 
   late Future<List<ProductDetails>> _productsFuture;
@@ -83,13 +115,9 @@ class StoreScreenState extends State<StoreScreen> {
                     ? null
                     : () => service.buy(product),
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(border.assetPath, fit: BoxFit.cover),
-                      ),
-                    ),
+                    _BorderPreview(border: border),
                     if (!owned)
                       Positioned.fill(
                         child: Container(
@@ -130,6 +158,42 @@ class StoreScreenState extends State<StoreScreen> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _BorderPreview extends StatelessWidget {
+  final BorderProduct border;
+
+  const _BorderPreview({required this.border});
+
+  @override
+  Widget build(BuildContext context) {
+    final decoration = border.style.buildDecoration(
+      tileColor: border.previewTileColor,
+      borderColor: border.previewBorderColor,
+      highlighted: true,
+    );
+    final borderRadius = decoration.borderRadius ?? BorderRadius.circular(12);
+
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          gradient: decoration.gradient,
+          border: decoration.border,
+          boxShadow: decoration.boxShadows,
+          color: decoration.fillColor ?? Colors.transparent,
+        ),
+        foregroundDecoration: decoration.foregroundDecoration,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Container(color: border.previewTileColor),
+          ),
+        ),
       ),
     );
   }
