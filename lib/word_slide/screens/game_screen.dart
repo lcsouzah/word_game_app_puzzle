@@ -403,23 +403,17 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
                       return IgnorePointer(
                         ignoring: pauseManager.isPaused,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, animation) {
-                            return ScaleTransition(
-                                scale: animation, child: child);
-                          },
-                          child: TileWidget(
-                            key: ValueKey(letter + index.toString()),
-                            letter: letter,
-                            onTap: () => _handleTileTap(index),
-                            highlighted: _highlightedIndices.contains(index),
-                            disappearing:
-                            _disappearingIndices.contains(index),
-                            tileColor: settings.tileColor,
-                            borderColor: settings.borderColor,
-                            borderStyle: settings.borderStyle,
-                          ),
+                        child: TileWidget(
+                          key: ValueKey<int>(index),
+                          letter: letter,
+                          onTap: () => _handleTileTap(index),
+                          highlighted: _highlightedIndices.contains(index),
+                          disappearing:
+                          _disappearingIndices.contains(index),
+                          tileColor: settings.tileColor,
+                          borderColor: settings.borderColor,
+                          borderStyle: settings.borderStyle,
+                          animationStyle: settings.tileAnimationStyle,
                         ),
                       );
                     },
@@ -433,7 +427,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 }
-
 
 
 

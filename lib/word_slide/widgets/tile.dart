@@ -1,6 +1,7 @@
 //Y:\word_game_app_puzzle\lib\widget\tile.dart
 
 import 'package:flutter/material.dart';
+import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
 
@@ -12,6 +13,7 @@ class TileWidget extends StatefulWidget {
   final Color tileColor;
   final Color borderColor;
   final TileBorderStyle borderStyle;
+  final TileAnimationStyle animationStyle;
 
   TileWidget({
     super.key,
@@ -22,9 +24,11 @@ class TileWidget extends StatefulWidget {
     Color tileColor = Colors.blueGrey,
     Color? borderColor,
     TileBorderStyle? borderStyle,
+    TileAnimationStyle? animationStyle,
   })  : tileColor = tileColor,
         borderColor = borderColor ?? tileColor,
-        borderStyle = borderStyle ?? TileBorderStyles.none;
+        borderStyle = borderStyle ?? TileBorderStyles.none,
+        animationStyle = animationStyle ?? TileAnimationStyles.defaultStyle;
 
 
   @override
@@ -35,6 +39,84 @@ class TileWidget extends StatefulWidget {
 class TileWidgetState extends State<TileWidget>
     with SingleTickerProviderStateMixin {
   double _scale = 1.0;
+  late final AnimationController _idleController;
+  Animation<double>? _idleOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _idleController = AnimationController(
+      vsync: this,
+      duration: _resolveIdleDuration(widget.animationStyle),
+    );
+    _refreshIdleAnimation(restart: true);
+  }
+
+  @override
+  void didUpdateWidget(TileWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final styleChanged =
+        oldWidget.animationStyle.id != widget.animationStyle.id ||
+            oldWidget.animationStyle.behavior !=
+                widget.animationStyle.behavior ||
+            oldWidget.animationStyle.idleLoopPeriod !=
+                widget.animationStyle.idleLoopPeriod ||
+            oldWidget.animationStyle.idleOpacityLowerBound !=
+                widget.animationStyle.idleOpacityLowerBound;
+
+    if (styleChanged) {
+      _idleController.duration =
+          _resolveIdleDuration(widget.animationStyle);
+    }
+
+    if (styleChanged || oldWidget.letter != widget.letter) {
+      _refreshIdleAnimation(restart: styleChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _idleController.dispose();
+    super.dispose();
+  }
+
+  Duration _resolveIdleDuration(TileAnimationStyle style) {
+    return style.idleLoopPeriod ?? const Duration(milliseconds: 1500);
+  }
+
+  double _resolveIdleLowerBound(TileAnimationStyle style) {
+    final lower = style.idleOpacityLowerBound ?? 0.5;
+    return lower.clamp(0.0, 1.0);
+  }
+
+  void _refreshIdleAnimation({bool restart = false}) {
+    final shouldAnimateBlink =
+        widget.animationStyle.behavior == TileAnimationBehavior.blink &&
+            widget.letter.trim().isNotEmpty;
+
+    if (shouldAnimateBlink) {
+      final lowerBound =
+      _resolveIdleLowerBound(widget.animationStyle);
+      _idleOpacity = Tween<double>(
+        begin: 1.0,
+        end: lowerBound,
+      ).animate(
+        CurvedAnimation(
+          parent: _idleController,
+          curve: Curves.easeInOut,
+        ),
+      );
+      if (restart || !_idleController.isAnimating) {
+        _idleController.repeat(reverse: true);
+      }
+    } else {
+      if (_idleController.isAnimating) {
+        _idleController.stop();
+      }
+      _idleController.value = 0.0;
+      _idleOpacity = null;
+    }
+  }
 
   void _onTapDown(_) {
     setState(() {
@@ -62,9 +144,103 @@ class TileWidgetState extends State<TileWidget>
     });
   }
 
+  Widget _wrapWithIdleAnimation(Widget child) {
+    final idleOpacity = _idleOpacity;
+    if (idleOpacity == null) {
+      return child;
+    }
+    return AnimatedBuilder(
+      animation: idleOpacity,
+      builder: (_, __) => Opacity(
+        opacity: idleOpacity.value,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _applyActiveTransition(Widget child) {
+    final style = widget.animationStyle;
+    return AnimatedSwitcher(
+      duration: style.transitionDuration,
+      switchInCurve: style.switchInCurve,
+      switchOutCurve: style.switchOutCurve,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (animatedChild, animation) {
+        switch (style.behavior) {
+          case TileAnimationBehavior.slide:
+            final position = animation.drive(
+              Tween<Offset>(
+                begin: const Offset(0.0, 0.18),
+                end: Offset.zero,
+              ),
+            );
+            return SlideTransition(
+              position: position,
+              child: FadeTransition(
+                opacity: animation,
+                child: animatedChild,
+              ),
+            );
+          case TileAnimationBehavior.teleport:
+            final fade = FadeTransition(
+              opacity: animation,
+              child: animatedChild,
+            );
+            final scaleAnimation = animation.drive(
+              Tween<double>(begin: 0.9, end: 1.0),
+            );
+            return ScaleTransition(
+              scale: scaleAnimation,
+              child: fade,
+            );
+          case TileAnimationBehavior.blink:
+            return FadeTransition(
+              opacity: animation,
+              child: animatedChild,
+            );
+          case TileAnimationBehavior.puff:
+            final overshoot = style.puffScaleFactor ?? 1.1;
+            final sequence = TweenSequence<double>([
+              TweenSequenceItem<double>(
+                tween: Tween<double>(
+                  begin: 0.85,
+                  end: overshoot,
+                ).chain(CurveTween(curve: Curves.easeOut)),
+                weight: 60,
+              ),
+              TweenSequenceItem<double>(
+                tween: Tween<double>(
+                  begin: overshoot,
+                  end: 1.0,
+                ).chain(CurveTween(curve: Curves.easeIn)),
+                weight: 40,
+              ),
+            ]);
+            final scale = animation.drive(sequence);
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: scale,
+                child: animatedChild,
+              ),
+            );
+        }
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-
+    final style = widget.animationStyle;
     final isEmpty = widget.letter.trim().isEmpty;
     final decorationParts = widget.borderStyle.buildDecoration(
       tileColor: widget.tileColor,
@@ -96,48 +272,53 @@ class TileWidgetState extends State<TileWidget>
         defaultShadow,
     ];
 
+    final tileSurface = AnimatedContainer(
+      key: ValueKey<String>(widget.letter),
+      duration: style.transitionDuration,
+      curve: style.switchInCurve,
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: useGradient
+            ? null
+            : isEmpty
+            ? Colors.transparent
+            : widget.highlighted
+            ? Colors.greenAccent.withValues(alpha: 0.8)
+            : (_scale != 1.0
+            ? baseFillColor.withValues(alpha: 0.5)
+            : baseFillColor),
+        gradient: useGradient ? decorationParts.gradient : null,
+        borderRadius: borderRadius,
+        border: decorationParts.border,
+        boxShadow: combinedShadows,
+      ),
+      foregroundDecoration: decorationParts.foregroundDecoration,
+      alignment: Alignment.center,
+      child: isEmpty
+          ? const SizedBox.shrink()
+          : Text(
+        widget.letter,
+        style: const TextStyle(
+          fontSize: 28.0,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+
+    final animatedTile = _applyActiveTransition(tileSurface);
+    final idleAnimatedTile = _wrapWithIdleAnimation(animatedTile);
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: AnimatedScale(
-        scale: widget.disappearing ? 0.0 : _scale, // shrink when disappearing
-        duration: const Duration(milliseconds: 50),
+        scale: widget.disappearing ? 0.0 : _scale,
+        duration: const Duration(milliseconds: 90),
         curve: Curves.easeInOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 50),
-          curve: Curves.easeOutBack,
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: useGradient
-                ? null
-                : isEmpty
-                ? Colors.transparent
-                : widget.highlighted
-                ? Colors.greenAccent.withValues(alpha: 0.8)
-                : (_scale != 1.0
-                ? baseFillColor.withValues(alpha: 0.5)
-                : baseFillColor),
-            gradient: useGradient ? decorationParts.gradient : null,
-            borderRadius: borderRadius,
-            border: decorationParts.border,
-            boxShadow: combinedShadows,
-          ),
-          foregroundDecoration: decorationParts.foregroundDecoration,
-          alignment: Alignment.center,
-          child: isEmpty // 🟢 empty tile black
-              ? const SizedBox.shrink() // 🟢 empty tile black
-              : Text(
-            widget.letter,
-            style: const TextStyle(
-              fontSize: 28.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        child: idleAnimatedTile,
       ),
     );
   }
-
 }
