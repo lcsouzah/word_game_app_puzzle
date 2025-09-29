@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:word_game_app/word_slide/models/board_style.dart';
+import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
 /// Provides persisted user settings for tile appearance.
@@ -13,11 +14,13 @@ class SettingsService extends ChangeNotifier {
   static const _borderColorKey = 'borderColor';
   static const _borderAssetPathKey = 'borderAssetPath';
   static const _boardStyleKey = 'boardStyle';
+  static const _tileAnimationStyleKey = 'tileAnimationStyle';
 
   Color _tileColor = Colors.blueGrey;
   Color _borderColor = Colors.blueGrey;
   String _borderStyleId = TileBorderStyles.defaultStyle.id;
   String _boardStyleId = BoardStyles.defaultStyle.id;
+  String _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
@@ -31,6 +34,10 @@ class SettingsService extends ChangeNotifier {
   /// Currently selected board style.
   BoardStyle get boardStyle => BoardStyles.byId(_boardStyleId);
 
+  /// Currently selected tile animation style.
+  TileAnimationStyle get tileAnimationStyle =>
+      TileAnimationStyles.byId(_tileAnimationStyleId);
+
   /// Loads previously saved settings from [SharedPreferences].
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,6 +45,7 @@ class SettingsService extends ChangeNotifier {
     final borderStyleId = prefs.getString(_borderStyleKey);
     final borderColorValue = prefs.getInt(_borderColorKey);
     final boardStyleId = prefs.getString(_boardStyleKey);
+    final tileAnimationStyleId = prefs.getString(_tileAnimationStyleKey);
 
     if (colorValue != null) {
       _tileColor = Color(colorValue);
@@ -74,6 +82,17 @@ class SettingsService extends ChangeNotifier {
       _boardStyleId = BoardStyles.defaultStyle.id;
       await prefs.setString(_boardStyleKey, _boardStyleId);
     }
+    if (tileAnimationStyleId != null) {
+      final resolved = TileAnimationStyles.tryById(tileAnimationStyleId);
+      if (resolved != null) {
+        _tileAnimationStyleId = resolved.id;
+      } else {
+        _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
+      }
+    } else {
+      _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
+    }
+    await prefs.setString(_tileAnimationStyleKey, _tileAnimationStyleId);
     await prefs.remove(_borderAssetPathKey);
     notifyListeners();
   }
@@ -119,6 +138,21 @@ class SettingsService extends ChangeNotifier {
     _boardStyleId = style.id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_boardStyleKey, style.id);
+    notifyListeners();
+  }
+
+  /// Persists a new tile animation [style].
+  Future<void> updateTileAnimationStyle(
+      TileAnimationStyle style, {
+        bool allowPremium = false,
+      }) async {
+    if (style.isPremium && !allowPremium) {
+      throw StateError(
+          'Attempted to select premium tile animation without access.');
+    }
+    _tileAnimationStyleId = style.id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tileAnimationStyleKey, style.id);
     notifyListeners();
   }
 }
