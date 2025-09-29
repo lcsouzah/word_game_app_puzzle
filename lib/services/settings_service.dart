@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:word_game_app/word_slide/models/board_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
 /// Provides persisted user settings for tile appearance.
@@ -11,10 +12,12 @@ class SettingsService extends ChangeNotifier {
   static const _borderStyleKey = 'borderStyle';
   static const _borderColorKey = 'borderColor';
   static const _borderAssetPathKey = 'borderAssetPath';
+  static const _boardStyleKey = 'boardStyle';
 
   Color _tileColor = Colors.blueGrey;
   Color _borderColor = Colors.blueGrey;
   String _borderStyleId = TileBorderStyles.defaultStyle.id;
+  String _boardStyleId = BoardStyles.defaultStyle.id;
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
@@ -25,12 +28,17 @@ class SettingsService extends ChangeNotifier {
   /// Currently selected border style.
   TileBorderStyle get borderStyle => TileBorderStyles.byId(_borderStyleId);
 
+  /// Currently selected board style.
+  BoardStyle get boardStyle => BoardStyles.byId(_boardStyleId);
+
   /// Loads previously saved settings from [SharedPreferences].
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     final colorValue = prefs.getInt(_tileColorKey);
     final borderStyleId = prefs.getString(_borderStyleKey);
     final borderColorValue = prefs.getInt(_borderColorKey);
+    final boardStyleId = prefs.getString(_boardStyleKey);
+
     if (colorValue != null) {
       _tileColor = Color(colorValue);
     }
@@ -53,6 +61,18 @@ class SettingsService extends ChangeNotifier {
     if (!prefs.containsKey(_borderColorKey)) {
       _borderColor = _tileColor;
       await prefs.setInt(_borderColorKey, _borderColor.value);
+    }
+    if (boardStyleId != null) {
+      final resolved = BoardStyles.tryById(boardStyleId);
+      if (resolved != null) {
+        _boardStyleId = resolved.id;
+      } else {
+        _boardStyleId = BoardStyles.defaultStyle.id;
+        await prefs.setString(_boardStyleKey, _boardStyleId);
+      }
+    } else {
+      _boardStyleId = BoardStyles.defaultStyle.id;
+      await prefs.setString(_boardStyleKey, _boardStyleId);
     }
     await prefs.remove(_borderAssetPathKey);
     notifyListeners();
@@ -85,6 +105,20 @@ class SettingsService extends ChangeNotifier {
     _borderStyleId = style.id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_borderStyleKey, style.id);
+    notifyListeners();
+  }
+
+  /// Persists a new board [style].
+  Future<void> updateBoardStyle(
+      BoardStyle style, {
+        bool allowPremium = false,
+      }) async {
+    if (style.isPremium && !allowPremium) {
+      throw StateError('Attempted to select premium board without access.');
+    }
+    _boardStyleId = style.id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_boardStyleKey, style.id);
     notifyListeners();
   }
 }

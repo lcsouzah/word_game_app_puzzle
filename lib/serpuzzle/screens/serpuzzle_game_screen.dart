@@ -84,6 +84,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   Direction _currentDirection = Direction.right;
   int _growSegments = 0;
   late List<String> _letterPool;
+  late Set<String> _safeStartLetters;
+  late List<String> _safeStartLetterList;
   int _currentTiles = 0;
   bool _isGameOver = false;
 
@@ -97,6 +99,11 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _letterPool = widget.dictionary
         .expand((w) => w.toUpperCase().split(''))
         .toList();
+    _safeStartLetters = widget.dictionary
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase())
+        .toSet();
+    _safeStartLetterList = _safeStartLetters.toList();
     _moveDelay = widget.moveDelay;
     _isPaused = widget.controller.isPaused;
     widget.controller.addListener(_handleControllerChanged);
@@ -366,6 +373,13 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     return _letterPool[_rand.nextInt(_letterPool.length)];
   }
 
+  String _randomSafeStartLetter() {
+    if (_safeStartLetterList.isEmpty) {
+      return _randomLetter();
+    }
+    return _safeStartLetterList[_rand.nextInt(_safeStartLetterList.length)];
+  }
+
   /// Minimum Manhattan distance a spawned tile must maintain from the snake.
   static const int _minSpawnDistance = 2;
 
@@ -413,7 +427,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       letters.addAll(target.split(''));
     }
     while (letters.length < spawnCount) {
-      letters.add(_randomLetter());
+      letters.add(_randomSafeStartLetter());
     }
     letters.shuffle(_rand);
 
@@ -661,6 +675,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   @visibleForTesting
   int get minSpawnDistanceForTest => _minSpawnDistance;
+
+  @visibleForTesting
+  Set<String> get safeStartLettersForTest => _safeStartLetters;
 
   @visibleForTesting
   bool get isGameOverForTest => _isGameOver;

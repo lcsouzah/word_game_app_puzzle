@@ -12,14 +12,24 @@ class InAppPurchaseService extends ChangeNotifier {
   final InAppPurchase _iap = InAppPurchase.instance;
   late final StreamSubscription<List<PurchaseDetails>> _subscription;
 
-  final Set<String> _purchasedBorderIds = <String>{};
+  static const _prefsProductsKey = 'purchased_products';
+  static const _legacyBorderKey = 'purchased_borders';
+
+  final Set<String> _purchasedProductIds = <String>{};
   bool _available = false;
 
   /// Returns whether the underlying store is available.
   bool get isAvailable => _available;
 
-  /// Returns a read only view of the purchased border IDs.
-  Set<String> get purchasedBorderIds => _purchasedBorderIds;
+  /// Returns a read only view of the purchased product IDs.
+  Set<String> get purchasedProductIds => _purchasedProductIds;
+
+  /// Convenience getter preserved for border specific checks.
+  Set<String> get purchasedBorderIds => _purchasedProductIds;
+
+  /// Returns whether the provided [productId] has been purchased.
+  bool isProductPurchased(String productId) =>
+      _purchasedProductIds.contains(productId);
 
   /// Initializes the connection to the store and loads any previously
   /// purchased border IDs from storage. This should be called once when the
@@ -56,20 +66,37 @@ class InAppPurchaseService extends ChangeNotifier {
 
   Future<void> _loadPurchasedIds() async {
     final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList('purchased_borders') ?? <String>[];
-    _purchasedBorderIds.addAll(ids);
+    final storedProducts = prefs.getStringList(_prefsProductsKey);
+    if (storedProducts != null) {
+      _purchasedProductIds.addAll(storedProducts);
+      return;
+    }
+
+    // Legacy migration path from when we only tracked borders.
+    final legacyBorders = prefs.getStringList(_legacyBorderKey);
+    if (legacyBorders != null && legacyBorders.isNotEmpty) {
+      _purchasedProductIds.addAll(legacyBorders);
+      await prefs.setStringList(
+        _prefsProductsKey,
+        _purchasedProductIds.toList(),
+      );
+      await prefs.remove(_legacyBorderKey);
+    }
   }
 
   Future<void> _savePurchasedIds() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('purchased_borders', _purchasedBorderIds.toList());
+    await prefs.setStringList(
+      _prefsProductsKey,
+      _purchasedProductIds.toList(),
+    );
   }
 
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final PurchaseDetails purchase in purchases) {
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
-        _purchasedBorderIds.add(purchase.productID);
+        _purchasedProductIds.add(purchase.productID);
         await _savePurchasedIds();
         await _iap.completePurchase(purchase);
       }

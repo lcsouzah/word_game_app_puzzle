@@ -283,6 +283,41 @@ void main() {
         expect(state.currentTilesForTest, 3);
       });
 
+  testWidgets('spawnRandomTiles filler letters come from safe starts',
+          (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          home: SerpuzzleGameScreen(
+            gridSize: 7,
+            dictionary: const ['DOG', 'CAT'],
+            maxWordLength: 4,
+          ),
+        ));
+
+        final dynamic state = tester.state(find.byType(SerpuzzleGameScreen));
+
+        state.cancelTimersForTest();
+        state.clearGridLettersForTest();
+
+        expect(state.safeStartLettersForTest, containsAll(<String>{'D', 'C'}));
+
+        state.spawnRandomTilesForTest(1);
+
+        final grid = state.grid as SerpuzzleGrid;
+        final spawnedLetters = <String>[];
+        for (var i = 0; i < grid.length; i++) {
+          final pos = grid.positionOfIndex(i);
+          final letter = grid.letterAt(pos);
+          if (letter.isNotEmpty) {
+            spawnedLetters.add(letter);
+          }
+        }
+
+        expect(spawnedLetters, hasLength(1));
+        final letter = spawnedLetters.single;
+        expect(state.safeStartLettersForTest.contains(letter), isTrue,
+            reason: 'Filler letter $letter should be a safe start');
+      });
+
   testWidgets('prefix failure deducts lives and triggers game over at zero',
           (tester) async {
         await tester.pumpWidget(MaterialApp(

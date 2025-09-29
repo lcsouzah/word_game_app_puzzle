@@ -9,6 +9,7 @@ import 'package:word_game_app/word_slide/models/alphabet_game.dart';
 import 'package:word_game_app/word_slide/widgets/tap_feedback_overlay.dart';
 import 'package:word_game_app/word_slide/widgets/tile.dart';
 import 'package:word_game_app/services/settings_service.dart';
+import 'package:word_game_app/word_slide/models/board_style.dart';
 
 class GameScreen extends StatefulWidget {
   final Function(String) onCorrectWord;
@@ -315,6 +316,16 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final pauseManager = Provider.of<PauseManager>(context);
     final settings = context.watch<SettingsService>();
+    final boardStyleDecoration = settings.boardStyle
+        .buildDecoration(BoardStyleContext(theme: Theme.of(context)));
+    final boardBoxDecoration = BoxDecoration(
+      color: boardStyleDecoration.backgroundColor,
+      gradient: boardStyleDecoration.backgroundGradient,
+      borderRadius: boardStyleDecoration.borderRadius,
+      border: boardStyleDecoration.border,
+      boxShadow: boardStyleDecoration.boxShadows,
+      image: boardStyleDecoration.backgroundImage,
+    );
 
 
     debugPrint('💡 BUILD → hintsUsed=$_hintsUsed | maxHints=$_maxHints');
@@ -371,49 +382,57 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             ),
 
 
-            body: Stack(
-                children: [
-                  //Game board
-                  GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        body: Stack(
+          children: [
+            //Game board
+            Container(
+              decoration: boardBoxDecoration,
+              child: ClipRRect(
+                borderRadius: boardStyleDecoration.borderRadius,
+                child: Padding(
+                  padding: boardStyleDecoration.padding,
+                  child: GridView.builder(
+                    padding: EdgeInsets.zero,
+                    gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,
                     ),
                     itemCount: 16,
                     itemBuilder: (context, index) {
                       final letter = widget.game.letters[index];
 
-
                       return IgnorePointer(
                         ignoring: pauseManager.isPaused,
                         child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, animation) {
-                          return ScaleTransition(scale: animation, child: child);
-                        },
-                        child: TileWidget(
-                          key: ValueKey(letter + index.toString()),
-                          letter: letter,
-                          onTap: () => _handleTileTap(index),
-                          highlighted: _highlightedIndices.contains(index), // stays green glow
-                          disappearing: _disappearingIndices.contains(index), // wont shrink on hint
-
-
-                          tileColor: settings.tileColor,
-                          borderColor: settings.borderColor,
-                          borderStyle: settings.borderStyle,
-
-                        ),
+                          duration: const Duration(milliseconds: 200),
+                          transitionBuilder: (child, animation) {
+                            return ScaleTransition(
+                                scale: animation, child: child);
+                          },
+                          child: TileWidget(
+                            key: ValueKey(letter + index.toString()),
+                            letter: letter,
+                            onTap: () => _handleTileTap(index),
+                            highlighted: _highlightedIndices.contains(index),
+                            disappearing:
+                            _disappearingIndices.contains(index),
+                            tileColor: settings.tileColor,
+                            borderColor: settings.borderColor,
+                            borderStyle: settings.borderStyle,
+                          ),
                         ),
                       );
                     },
                   ),
-                ],
+                ),
+              ),
             ),
+          ],
         ),
+      ),
     );
   }
 }
-
 
 
 
