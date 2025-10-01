@@ -32,6 +32,21 @@ class SerpuzzleSnakeHead extends StatelessWidget {
       baseColor.withOpacity(0.75),
     );
 
+    final shadows = <BoxShadow>[
+      BoxShadow(
+        color: bottomEdge.withOpacity(highlighted ? 0.55 : 0.4),
+        offset: const Offset(0, 1.6),
+        blurRadius: highlighted ? 5 : 3,
+        spreadRadius: highlighted ? 0.6 : 0.2,
+      ),
+      if (highlighted)
+        BoxShadow(
+          color: scheme.secondary.withOpacity(0.45),
+          blurRadius: 10,
+          spreadRadius: 0.4,
+        ),
+    ];
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeInOut,
@@ -40,21 +55,15 @@ class SerpuzzleSnakeHead extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            baseColor.withOpacity(0.92),
-            baseColor.withOpacity(0.78),
+            topEdge,
+            baseColor,
+            bottomEdge,
           ],
+          stops: const [0, 0.55, 1],
         ),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: outline, width: 1.1),
-        boxShadow: highlighted
-            ? [
-          BoxShadow(
-            color: scheme.secondary.withOpacity(0.45),
-            blurRadius: 10,
-            spreadRadius: 0.4,
-          ),
-        ]
-            : const [],
+        boxShadow: shadows,
       ),
       child: CustomPaint(
         painter: _SnakeHeadPainter(

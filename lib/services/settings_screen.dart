@@ -35,11 +35,14 @@ class SettingsScreen extends StatelessWidget {
     final settings = context.watch<SettingsService>();
     final purchaseService = context.watch<InAppPurchaseService>();
 
+    final selectedAnimationStyle = settings.tileAnimationStyle;
     final freeStyles = TileBorderStyles.freeStyles.toList();
     final premiumStyles = TileBorderStyles.premiumStyles.toList();
     final freeBoardStyles = BoardStyles.freeStyles.toList();
     final premiumBoardStyles = BoardStyles.premiumStyles.toList();
-    final purchasedProductIds = purchaseService.purchasedBorderIds;
+    final freeAnimationStyles = TileAnimationStyles.freeStyles.toList();
+    final premiumAnimationStyles = TileAnimationStyles.premiumStyles.toList();
+    final purchasedProductIds = purchaseService.purchasedProductIds;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -145,6 +148,46 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
+          const Text(
+            'Tile Animations',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _TileAnimationGrid(
+            styles: freeAnimationStyles,
+            selectedStyleId: selectedAnimationStyle.id,
+            purchasedProductIds: purchasedProductIds,
+            onStyleSelected: (style) => unawaited(
+              settings.updateTileAnimationStyle(
+                style,
+                allowPremium: true,
+              ),
+            ),
+            onLockedTap: (style) => _openStore(context),
+          ),
+          if (premiumAnimationStyles.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Premium Animations',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _TileAnimationGrid(
+              styles: premiumAnimationStyles,
+              selectedStyleId: selectedAnimationStyle.id,
+              purchasedProductIds: purchasedProductIds,
+              onStyleSelected: (style) => unawaited(
+                settings.updateTileAnimationStyle(
+                  style,
+                  allowPremium:
+                  !style.isPremium || purchasedProductIds.contains(style.id),
+                ),
+              ),
+              onLockedTap: (style) =>
+                  _handleLockedAnimationStyleTap(context, style),
+            ),
+          ],
+          const SizedBox(height: 24),
           Card(
             child: ListTile(
               leading: const Icon(Icons.storefront),
@@ -165,7 +208,6 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
   void _handleLockedStyleTap(BuildContext context, TileBorderStyle style) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -182,6 +224,20 @@ class SettingsScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${style.displayName} is a premium board. Visit the store to unlock it.'),
+        action: SnackBarAction(
+          label: 'Store',
+          onPressed: () => _openStore(context),
+        ),
+      ),
+    );
+  }
+
+  void _handleLockedAnimationStyleTap(
+      BuildContext context, TileAnimationStyle style) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            '${style.displayName} is a premium animation. Visit the store to unlock it.'),
         action: SnackBarAction(
           label: 'Store',
           onPressed: () => _openStore(context),
@@ -665,6 +721,138 @@ class _StyleChip extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
+    );
+  }
+}
+
+class _TileAnimationGrid extends StatelessWidget {
+  final List<TileAnimationStyle> styles;
+  final String selectedStyleId;
+  final Set<String> purchasedProductIds;
+  final void Function(TileAnimationStyle style) onStyleSelected;
+  final void Function(TileAnimationStyle style) onLockedTap;
+
+  const _TileAnimationGrid({
+    required this.styles,
+    required this.selectedStyleId,
+    required this.purchasedProductIds,
+    required this.onStyleSelected,
+    required this.onLockedTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (styles.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.4,
+      ),
+      itemCount: styles.length,
+      itemBuilder: (context, index) {
+        final style = styles[index];
+        final isLocked =
+            style.isPremium && !purchasedProductIds.contains(style.id);
+        final isSelected = selectedStyleId == style.id;
+
+        return _TileAnimationChip(
+          style: style,
+          isLocked: isLocked,
+          isSelected: isSelected,
+          onTap:
+          isLocked ? () => onLockedTap(style) : () => onStyleSelected(style),
+        );
+      },
+    );
+  }
+}
+
+class _TileAnimationChip extends StatelessWidget {
+  final TileAnimationStyle style;
+  final bool isLocked;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TileAnimationChip({
+    required this.style,
+    required this.isLocked,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final highlightColor = theme.colorScheme.secondary;
+    final borderColor = isSelected
+        ? highlightColor
+        : theme.dividerColor.withOpacity(0.6);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: borderColor,
+              width: isSelected ? 2.4 : 1.2,
+            ),
+            color: theme.cardColor.withOpacity(isSelected ? 0.9 : 0.8),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: highlightColor.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(style.icon, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      style.displayName,
+                      style: theme.textTheme.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isLocked)
+                    const Icon(
+                      Icons.lock,
+                      size: 18,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  style.description,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
