@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_safe_screen.dart';
 
@@ -178,21 +179,21 @@ class _SerpuzzleConfigScreenState extends State<SerpuzzleConfigScreen> {
                             ),
                           ],
                           style: ButtonStyle(
-                            backgroundColor: MaterialStateProperty.resolveWith(
-                                  (states) => states.contains(MaterialState.selected)
+                            backgroundColor: WidgetStateProperty.resolveWith(
+                                  (states) => states.contains(WidgetState.selected)
                                   ? palette.segmentSelectedBackground
                                   : palette.segmentBackground,
                             ),
-                            foregroundColor: MaterialStateProperty.resolveWith(
-                                  (states) => states.contains(MaterialState.selected)
+                            foregroundColor: WidgetStateProperty.resolveWith(
+                                  (states) => states.contains(WidgetState.selected)
                                   ? palette.segmentSelectedForeground
                                   : palette.segmentForeground,
                             ),
-                            side: MaterialStateProperty.all(
+                            side: WidgetStateProperty.all(
                               BorderSide(color: palette.segmentBorder),
                             ),
-                            elevation: MaterialStateProperty.resolveWith(
-                                  (states) => states.contains(MaterialState.selected) ? 2 : 0,
+                            elevation: WidgetStateProperty.resolveWith(
+                                  (states) => states.contains(WidgetState.selected) ? 2 : 0,
                             ),
                           ),
                           selected: {_difficulty},
