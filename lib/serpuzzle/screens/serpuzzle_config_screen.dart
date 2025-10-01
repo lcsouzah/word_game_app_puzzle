@@ -443,7 +443,7 @@ class _SerpuzzleToggleTile extends StatelessWidget {
               Switch(
                 value: value,
                 onChanged: onChanged,
-                activeColor: palette.switchActiveThumb,
+                activeThumbColor: palette.switchActiveThumb,
                 inactiveThumbColor: palette.switchInactiveThumb,
                 inactiveTrackColor: palette.switchInactiveTrack,
                 activeTrackColor: palette.switchActiveTrack,
