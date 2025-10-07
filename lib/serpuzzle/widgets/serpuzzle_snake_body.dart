@@ -51,8 +51,8 @@ class SerpuzzleSnakeBody extends StatelessWidget {
             // removed from the list.
             key: ValueKey('${segments[i].row}-${segments[i].col}'),
             duration: const Duration(milliseconds: 150),
-            left: segments[i].col * scaledTileSize + offset,
-            top: segments[i].row * scaledTileSize + offset,
+            left: segments[i].col * tileSize + offset,
+            top: segments[i].row * tileSize + offset,
             child: AnimatedOpacity(
               opacity: segments[i].fading ? 0.0 : 1.0,
               duration: const Duration(milliseconds: 300),
