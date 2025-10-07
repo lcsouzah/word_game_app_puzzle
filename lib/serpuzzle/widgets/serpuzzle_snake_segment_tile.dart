@@ -28,10 +28,24 @@ class SerpuzzleSnakeSegmentTile extends StatelessWidget {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        baseColor.withOpacity(0.92),
-        baseColor.withOpacity(0.78),
+        Color.alphaBlend(Colors.white.withOpacity(0.16), baseColor),
+        baseColor.withOpacity(0.82),
       ],
     );
+
+    final glowColor = highlighted ? scheme.secondary : scheme.primary;
+    final List<BoxShadow> glow = [
+      BoxShadow(
+        color: glowColor.withOpacity(highlighted ? 0.45 : 0.32),
+        blurRadius: highlighted ? 22 : 16,
+        spreadRadius: highlighted ? 2.6 : 1.4,
+      ),
+      BoxShadow(
+        color: Colors.black.withOpacity(0.25),
+        offset: const Offset(0, 3),
+        blurRadius: 10,
+      ),
+    ];
 
     final trimmedLetter = letter.trim();
     final textStyle = (theme.textTheme.titleMedium ??
@@ -48,21 +62,7 @@ class SerpuzzleSnakeSegmentTile extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: highlighted
-              ? scheme.secondaryContainer.withOpacity(0.9)
-              : scheme.outlineVariant.withOpacity(0.35),
-          width: highlighted ? 1.2 : 0.9,
-        ),
-        boxShadow: highlighted
-            ? [
-          BoxShadow(
-            color: scheme.secondary.withOpacity(0.45),
-            blurRadius: 10,
-            spreadRadius: 0.4,
-          ),
-        ]
-            : const [],
+        boxShadow: glow,
       ),
       alignment: Alignment.center,
       child: trimmedLetter.isEmpty

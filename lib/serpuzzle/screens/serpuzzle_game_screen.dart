@@ -777,14 +777,18 @@ class _SerpuzzleBoard extends StatelessWidget {
           children: [
             CustomPaint(
               painter: _SerpuzzleBoardBackdropPainter(
-                rows: grid.rows,
-                cols: grid.cols,
-                fineDivisions: 2,
-                lightColor:
-                theme.colorScheme.surfaceVariant.withOpacity(0.18),
-                darkColor:
-                theme.colorScheme.surfaceVariant.withOpacity(0.1),
-                gridLineColor: theme.colorScheme.outline.withOpacity(0.12),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.colorScheme.surfaceVariant.withOpacity(0.28),
+                    theme.colorScheme.surface.withOpacity(0.4),
+                    theme.colorScheme.surfaceVariant.withOpacity(0.18),
+                  ],
+                  stops: const [0.0, 0.55, 1.0],
+                ),
+                fallbackColor:
+                theme.colorScheme.surfaceVariant.withOpacity(0.24),
               ),
             ),
             GridView.builder(
@@ -821,62 +825,29 @@ class _SerpuzzleBoard extends StatelessWidget {
 typedef SerpuzzleGameScreenState = _SerpuzzleGameScreenState;
 
 class _SerpuzzleBoardBackdropPainter extends CustomPainter {
-  final int rows;
-  final int cols;
-  final int fineDivisions;
-  final Color lightColor;
-  final Color darkColor;
-  final Color gridLineColor;
+  final Gradient? gradient;
+  final Color fallbackColor;
 
   const _SerpuzzleBoardBackdropPainter({
-    required this.rows,
-    required this.cols,
-    required this.fineDivisions,
-    required this.lightColor,
-    required this.darkColor,
-    required this.gridLineColor,
+    this.gradient,
+    required this.fallbackColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fineRows = max(1, rows * fineDivisions);
-    final fineCols = max(1, cols * fineDivisions);
-    final cellWidth = size.width / fineCols;
-    final cellHeight = size.height / fineRows;
-
-    final rect = Rect.fromLTWH(0, 0, cellWidth, cellHeight);
+    final rect = Offset.zero & size;
     final paint = Paint();
-    for (var row = 0; row < fineRows; row++) {
-      for (var col = 0; col < fineCols; col++) {
-        final offset = Offset(col * cellWidth, row * cellHeight);
-        final isLight = (row + col) % 2 == 0;
-        paint.color = isLight ? lightColor : darkColor;
-        canvas.drawRect(rect.shift(offset), paint);
-      }
+    if (gradient != null) {
+      paint.shader = gradient!.createShader(rect);
+    } else {
+      paint.color = fallbackColor;
     }
-
-    final linePaint = Paint()
-      ..color = gridLineColor
-      ..strokeWidth = 1.0;
-
-    for (var r = 0; r <= fineRows; r++) {
-      final dy = r * cellHeight;
-      canvas.drawLine(Offset(0, dy), Offset(size.width, dy), linePaint);
-    }
-
-    for (var c = 0; c <= fineCols; c++) {
-      final dx = c * cellWidth;
-      canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), linePaint);
-    }
+    canvas.drawRect(rect, paint);
   }
 
   @override
   bool shouldRepaint(covariant _SerpuzzleBoardBackdropPainter oldDelegate) {
-    return rows != oldDelegate.rows ||
-        cols != oldDelegate.cols ||
-        fineDivisions != oldDelegate.fineDivisions ||
-        lightColor != oldDelegate.lightColor ||
-        darkColor != oldDelegate.darkColor ||
-        gridLineColor != oldDelegate.gridLineColor;
+    return gradient != oldDelegate.gradient ||
+        fallbackColor != oldDelegate.fallbackColor;
   }
 }

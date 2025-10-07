@@ -31,28 +31,28 @@ class SerpuzzleTile extends StatelessWidget {
       end: Alignment.bottomRight,
       colors: highlighted
           ? [
-        theme.colorScheme.primary.withOpacity(0.85),
-        theme.colorScheme.primary.withOpacity(0.65),
+        theme.colorScheme.primary.withOpacity(0.9),
+        theme.colorScheme.primary.withOpacity(0.7),
       ]
           : [
-        baseSurface.withOpacity(isEmpty ? 0.18 : 0.32),
-        accentSurface.withOpacity(isEmpty ? 0.16 : 0.28),
+        baseSurface.withOpacity(isEmpty ? 0.12 : 0.26),
+        accentSurface.withOpacity(isEmpty ? 0.1 : 0.22),
       ],
     );
 
-    final borderColor = highlighted
-        ? theme.colorScheme.primaryContainer.withOpacity(0.9)
-        : theme.colorScheme.outlineVariant.withOpacity(0.35);
-
-    final glow = highlighted
-        ? [
+    final glow = <BoxShadow>[
       BoxShadow(
-        color: theme.colorScheme.primary.withOpacity(0.35),
-        blurRadius: 10,
-        spreadRadius: 0.5,
+        color: Colors.black.withOpacity(highlighted ? 0.2 : 0.12),
+        blurRadius: highlighted ? 16 : 10,
+        offset: Offset(0, highlighted ? 6 : 3),
       ),
-    ]
-        : <BoxShadow>[];
+      if (highlighted)
+        BoxShadow(
+          color: theme.colorScheme.primary.withOpacity(0.28),
+          blurRadius: 24,
+          spreadRadius: 2,
+        ),
+    ];
 
     final textStyle = (theme.textTheme.titleMedium ??
         const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))
@@ -70,10 +70,6 @@ class SerpuzzleTile extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: borderColor,
-          width: highlighted ? 1.2 : 0.8,
-        ),
         boxShadow: glow,
       ),
       alignment: Alignment.center,
