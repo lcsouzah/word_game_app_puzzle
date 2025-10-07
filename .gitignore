@@ -43,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/app
 
 # 🔐 Sensitive config files – DO NOT TRACK
 .env            # Local environment variables

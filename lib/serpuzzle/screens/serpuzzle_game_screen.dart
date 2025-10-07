@@ -82,6 +82,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   late int _maxWordLength;
   Timer? _moveTimer;
   Direction _currentDirection = Direction.right;
+  Direction? _pendingDirection;
+  bool _consumeSpawnOnNextTick = false;
+  bool _isMovementReady = false;
+  bool _controllerResetPending = false;
   int _growSegments = 0;
   late List<String> _letterPool;
   late Set<String> _safeStartLetters;
@@ -123,6 +127,9 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   void _startMoveTimer() {
+    if (!_isMovementReady || _controllerResetPending || _isPaused || _isMatched || _isGameOver) {
+      return;
+    }
     _moveTimer?.cancel();
     _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
   }
@@ -148,6 +155,12 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         }
       });
     }
+    if (_controllerResetPending && !controller.isGameOver) {
+      _controllerResetPending = false;
+      if (_isMovementReady && !_isPaused) {
+        _startMoveTimer();
+      }
+    }
   }
 
   void _handleTimeExpired() {
@@ -170,18 +183,23 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     _growSegments = _maxWordLength - 1;
     _currentTiles = 0;
     _currentDirection = Direction.right;
+    _pendingDirection = _currentDirection;
+    _consumeSpawnOnNextTick = true;
+    _isMovementReady = false;
     _spawnRandomTiles(_tilesNeeded);
   }
 
   void _resetGame() {
     _resetTimer?.cancel();
+    _moveTimer?.cancel();
+    _moveTimer = null;
     setState(() {
       _isMatched = false;
       _initBoard();
       _isGameOver = false;
     });
+    _controllerResetPending = true;
     widget.controller.resetForNewGame(startTimer: !_isPaused);
-    _startMoveTimer();
   }
 
   void _handleCollision() {
@@ -190,10 +208,13 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       _gameOver();
       return;
     }
+    _moveTimer?.cancel();
+    _moveTimer = null;
     setState(() {
       _isMatched = false;
       _initBoard();
     });
+    _controllerResetPending = true;
   }
 
   Future<void> _gameOver() async {
@@ -220,7 +241,17 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   void _tick() {
-    if (_isPaused || _isMatched || _isGameOver) return;
+    if (_isPaused || _isMatched || _isGameOver || !_isMovementReady || _controllerResetPending) {
+      return;
+    }
+    if (_pendingDirection != null) {
+      _currentDirection = _pendingDirection!;
+      _pendingDirection = null;
+      if (_consumeSpawnOnNextTick) {
+        _consumeSpawnOnNextTick = false;
+        return;
+      }
+    }
     final head = _snake.segments.last;
     int row = head.row;
     int col = head.col;
@@ -325,8 +356,15 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
 
   void _onSwipe(Direction direction) {
     if (_isMatched || _isGameOver) return;
-    if (_isOppositeDirection(direction, _currentDirection)) return;
-    _currentDirection = direction;
+    final activeDirection = _pendingDirection ?? _currentDirection;
+    if (_isOppositeDirection(direction, activeDirection)) return;
+    _pendingDirection = direction;
+    if (!_isMovementReady) {
+      _isMovementReady = true;
+      if (!_controllerResetPending) {
+        _startMoveTimer();
+      }
+    }
   }
 
   bool _isOppositeDirection(Direction a, Direction b) {
