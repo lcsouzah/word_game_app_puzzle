@@ -3,225 +3,95 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
+import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
 import 'package:word_game_app/serpuzzle/widgets/portal_animation.dart';
 import 'package:word_game_app/serpuzzle/widgets/serpuzzle_snake_body.dart';
 import 'package:word_game_app/serpuzzle/widgets/serpuzzle_tile.dart';
 import 'package:word_game_app/utils/direction_enum.dart';
 import 'package:word_game_app/utils/swipe_detector.dart';
 
-/// Very small word-matching engine. Checks if the collected letters
-/// form any word in the provided [dictionary] and provides prefix lookups
-/// to quickly rule out impossible paths.
-class WordMatchEngine {
-  final Set<String> dictionary;
-  final Set<String> prefixes;
-
-  WordMatchEngine(List<String> words)
-      : dictionary = words.map((e) => e.toUpperCase()).toSet(),
-        prefixes = (() {
-          // Include the empty string so that an empty sequence of letters is
-          // treated as a valid prefix. This allows the game logic to advance
-          // over blank tiles without resetting the snake.
-          final set = <String>{''};
-          for (final w in words) {
-            final upper = w.toUpperCase();
-            for (var i = 1; i <= upper.length; i++) {
-              set.add(upper.substring(0, i));
-            }
-          }
-          return set;
-        })();
-
-  bool matches(String letters) => dictionary.contains(letters.toUpperCase());
-
-  /// Returns `true` if [letters] is a prefix of any word in [dictionary].
-  bool hasPrefix(String letters) => prefixes.contains(letters.toUpperCase());
-}
-
 /// Serpuzzle game screen showing the grid and handling swipe input.
 class SerpuzzleGameScreen extends StatefulWidget {
-  final SerpuzzleGameController controller;
-  final int gridSize;
-  final List<String> dictionary;
-  final int maxWordLength;
-  final bool startCentered;
-  final Duration moveDelay;
-
-  final bool wrapAround;
-
   const SerpuzzleGameScreen({
     super.key,
     required this.controller,
-    required this.gridSize,
-    required this.dictionary,
-    required this.maxWordLength,
-    this.startCentered = true,
-    this.moveDelay = const Duration(milliseconds: 300),
-
-    this.wrapAround = false,
-
-
   });
+
+  final SerpuzzleGameController controller;
 
   @override
   State<SerpuzzleGameScreen> createState() => _SerpuzzleGameScreenState();
 }
 
 class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
-  final Random _rand = Random();
-  late SerpuzzleGrid _grid;
-  late SerpuzzleSnake _snake;
-  bool _isMatched = false;
-  bool _isPaused = false;
-  late WordMatchEngine _engine;
-  Timer? _resetTimer;
-  late Duration _moveDelay;
-  late int _maxWordLength;
-  Timer? _moveTimer;
-  Direction _currentDirection = Direction.right;
-  Direction? _pendingDirection;
-  bool _consumeSpawnOnNextTick = false;
-  bool _isMovementReady = false;
-  bool _controllerResetPending = false;
-  int _growSegments = 0;
-  late List<String> _letterPool;
-  late Set<String> _safeStartLetters;
-  late List<String> _safeStartLetterList;
-  int _currentTiles = 0;
-  bool _isGameOver = false;
-
-  int get _tilesNeeded => max(0, 4 - _currentTiles);
+  Listenable? _boardListenable;
+  bool _handlingMatch = false;
+  bool _handlingGameOver = false;
 
   @override
   void initState() {
     super.initState();
-    _engine = WordMatchEngine(widget.dictionary);
-    _maxWordLength = widget.maxWordLength;
-    _letterPool = widget.dictionary
-        .expand((w) => w.toUpperCase().split(''))
-        .toList();
-    _safeStartLetters = widget.dictionary
-        .where((w) => w.isNotEmpty)
-        .map((w) => w[0].toUpperCase())
-        .toSet();
-    _safeStartLetterList = _safeStartLetters.toList();
-    _moveDelay = widget.moveDelay;
-    _isPaused = widget.controller.isPaused;
-    widget.controller.addListener(_handleControllerChanged);
-    widget.controller.onTimeExpired ??= _handleTimeExpired;
-    _initBoard();
-    if (!_isPaused) {
-      _startMoveTimer();
+    _attachController(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant SerpuzzleGameScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      _detachController(oldWidget.controller);
+      _attachController(widget.controller);
     }
   }
 
   @override
   void dispose() {
-    _resetTimer?.cancel();
-    _moveTimer?.cancel();
-    widget.controller.removeListener(_handleControllerChanged);
+    _detachController(widget.controller);
     super.dispose();
   }
 
-  void _startMoveTimer() {
-    if (!_isMovementReady || _controllerResetPending || _isPaused || _isMatched || _isGameOver) {
-      return;
-    }
-    _moveTimer?.cancel();
-    _moveTimer = Timer.periodic(_moveDelay, (_) => _tick());
+  void _attachController(SerpuzzleGameController controller) {
+    _boardListenable = Listenable.merge([
+      controller.gridListenable,
+      controller.snakeListenable,
+      controller.isMatchedListenable,
+    ]);
+    controller.isMatchedListenable.addListener(_handleMatchChanged);
+    controller.isGameOverListenable.addListener(_handleGameOverChanged);
   }
 
-  void _handleControllerChanged() {
-    final controller = widget.controller;
-    if (_isPaused != controller.isPaused) {
-      setState(() {
-        _isPaused = controller.isPaused;
-        if (_isPaused) {
-          _moveTimer?.cancel();
-          _moveTimer = null;
-        } else {
-          _startMoveTimer();
-        }
-      });
-    }
-    if (_isGameOver != controller.isGameOver) {
-      setState(() {
-        _isGameOver = controller.isGameOver;
-        if (_isGameOver) {
-          _moveTimer?.cancel();
-        }
-      });
-    }
-    if (_controllerResetPending && !controller.isGameOver) {
-      _controllerResetPending = false;
-      if (_isMovementReady && !_isPaused) {
-        _startMoveTimer();
-      }
-    }
+  void _detachController(SerpuzzleGameController controller) {
+    controller.isMatchedListenable.removeListener(_handleMatchChanged);
+    controller.isGameOverListenable.removeListener(_handleGameOverChanged);
+    _boardListenable = null;
   }
 
-  void _handleTimeExpired() {
-    if (_isGameOver) {
-      return;
-    }
-    _gameOver();
-  }
-
-  void _initBoard() {
-    _grid = SerpuzzleGrid(rows: widget.gridSize, cols: widget.gridSize);
-    GridPosition startPos;
-    if (widget.startCentered) {
-      startPos = GridPosition(widget.gridSize ~/ 2, widget.gridSize ~/ 2);
-    } else {
-      startPos = GridPosition(
-          _rand.nextInt(widget.gridSize), _rand.nextInt(widget.gridSize));
-    }
-    _snake = SerpuzzleSnake()..append(startPos, '');
-    _growSegments = _maxWordLength - 1;
-    _currentTiles = 0;
-    _currentDirection = Direction.right;
-    _pendingDirection = _currentDirection;
-    _consumeSpawnOnNextTick = true;
-    _isMovementReady = false;
-    _spawnRandomTiles(_tilesNeeded);
-  }
-
-  void _resetGame() {
-    _resetTimer?.cancel();
-    _moveTimer?.cancel();
-    _moveTimer = null;
-    setState(() {
-      _isMatched = false;
-      _initBoard();
-      _isGameOver = false;
+  void _handleMatchChanged() {
+    if (!mounted || _handlingMatch) return;
+    if (!widget.controller.isMatched) return;
+    _handlingMatch = true;
+    Future.microtask(() async {
+      await _showLevelTransition();
+      if (!mounted) return;
+      widget.controller.prepareNextLevel();
+      _handlingMatch = false;
     });
-    _controllerResetPending = true;
-    widget.controller.resetForNewGame(startTimer: !_isPaused);
   }
 
-  void _handleCollision() {
-    _resetTimer?.cancel();
-    if (!widget.controller.consumeLife()) {
-      _gameOver();
-      return;
-    }
-    _moveTimer?.cancel();
-    _moveTimer = null;
-    setState(() {
-      _isMatched = false;
-      _initBoard();
+  void _handleGameOverChanged() {
+    if (!mounted || _handlingGameOver) return;
+    if (!widget.controller.isGameOver) return;
+    _handlingGameOver = true;
+    Future.microtask(() async {
+      await _showGameOverDialog();
+      if (!mounted) return;
+      widget.controller.resetForNewGame(startTimer: !widget.controller.isPaused);
+      _handlingGameOver = false;
     });
-    _controllerResetPending = true;
   }
 
-  Future<void> _gameOver() async {
-    if (_isGameOver) return;
-    _isGameOver = true;
-    _moveTimer?.cancel();
-    widget.controller.markGameOver();
+  Future<void> _showGameOverDialog() async {
     final finalScore = widget.controller.score;
     await showDialog(
       context: context,
@@ -236,161 +106,6 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
         ],
       ),
     );
-    if (!mounted) return;
-    _resetGame();
-  }
-
-  void _tick() {
-    if (_isPaused || _isMatched || _isGameOver || !_isMovementReady || _controllerResetPending) {
-      return;
-    }
-    if (_pendingDirection != null) {
-      _currentDirection = _pendingDirection!;
-      _pendingDirection = null;
-      if (_consumeSpawnOnNextTick) {
-        _consumeSpawnOnNextTick = false;
-        return;
-      }
-    }
-    final head = _snake.segments.last;
-    int row = head.row;
-    int col = head.col;
-    switch (_currentDirection) {
-      case Direction.up:
-        row -= 1;
-        break;
-      case Direction.down:
-        row += 1;
-        break;
-      case Direction.left:
-        col -= 1;
-        break;
-      case Direction.right:
-        col += 1;
-        break;
-    }
-
-    if (widget.wrapAround) {
-      final rows = _grid.rows;
-      final cols = _grid.cols;
-      row = ((row % rows) + rows) % rows;
-      col = ((col % cols) + cols) % cols;
-    }
-
-    final newPos = GridPosition(row, col);
-    final segments = _snake.segments;
-    final letters = _snake.letters;
-    final bool willDropTailBlank = _growSegments <= 0 &&
-        segments.length > 1 &&
-        letters.isNotEmpty &&
-        letters.first.isEmpty;
-    final bool collidesWithBody = segments.contains(newPos);
-    final bool collidesWithTail = collidesWithBody &&
-        segments.isNotEmpty &&
-        newPos == segments.first &&
-        willDropTailBlank;
-
-    if (!_grid.inBounds(newPos) || (collidesWithBody && !collidesWithTail)) {
-      _handleCollision();
-      return;
-    }
-    final letter = _grid.letterAt(newPos);
-    if (letter.isNotEmpty) {
-      _growSegments++;
-      _grid.placeLetter(newPos, '');
-      _currentTiles--;
-    }
-    final potentialWord = _snake.word + letter;
-    if (!_engine.hasPrefix(potentialWord)) {
-      _resetTimer?.cancel();
-      if (!widget.controller.consumeLife()) {
-        _handleCollision();
-        return;
-      }
-      setState(() {
-        _snake
-          ..clear()
-          ..append(newPos, '');
-        _growSegments = _maxWordLength - 1;
-        _spawnRandomTiles(_tilesNeeded);
-      });
-      return;
-    }
-
-    setState(() {
-      _snake.append(newPos, letter);
-      if (letter.isNotEmpty) {
-        _snake.transferHeadLetterToPrevious();
-      }
-
-      if (_growSegments > 0) {
-        _growSegments--;
-      } else if (_snake.segments.length > 1) {
-        _snake.dropFirstBlankSegment();
-      }
-      while (_snake.word.length > _maxWordLength &&
-          _snake.segments.length > 1) {
-        _snake.clearRange(0, 1);
-      }
-      _snake.alignLettersBehindHead();
-      if (letter.isNotEmpty) {
-        _spawnRandomTiles(_tilesNeeded);
-      }
-    });
-    _validate();
-    if (!_isMatched) {
-      _resetTimer?.cancel();
-      _resetTimer = Timer(const Duration(seconds: 2), () {
-        if (!mounted) return;
-        setState(() {
-          final headPos = _snake.segments.last;
-          _snake
-            ..clear()
-            ..append(headPos, '');
-          _growSegments = _maxWordLength - 1;
-          _spawnRandomTiles(_tilesNeeded);
-        });
-      });
-    }
-  }
-
-  void _onSwipe(Direction direction) {
-    if (_isMatched || _isGameOver) return;
-    final activeDirection = _pendingDirection ?? _currentDirection;
-    if (_isOppositeDirection(direction, activeDirection)) return;
-    _pendingDirection = direction;
-    if (!_isMovementReady) {
-      _isMovementReady = true;
-      if (!_controllerResetPending) {
-        _startMoveTimer();
-      }
-    }
-  }
-
-  bool _isOppositeDirection(Direction a, Direction b) {
-    switch (a) {
-      case Direction.up:
-        return b == Direction.down;
-      case Direction.down:
-        return b == Direction.up;
-      case Direction.left:
-        return b == Direction.right;
-      case Direction.right:
-        return b == Direction.left;
-    }
-  }
-
-  void _validate() {
-    final letters = _snake.word;
-    if (_engine.matches(letters)) {
-      _resetTimer?.cancel();
-      setState(() {
-        _isMatched = true;
-      });
-      widget.controller.addScore(letters.length);
-      widget.controller.advanceLevel();
-      _showLevelTransition();
-    }
   }
 
   Future<void> _showLevelTransition() async {
@@ -399,98 +114,16 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       barrierDismissible: false,
       builder: (_) => PortalAnimation(level: widget.controller.level),
     );
-    if (!mounted) return;
-    setState(() {
-      _isMatched = false;
-      _initBoard();
-    });
-    widget.controller.startLevelTimer(resetElapsed: true);
   }
 
-  String _randomLetter() {
-    return _letterPool[_rand.nextInt(_letterPool.length)];
-  }
-
-  String _randomSafeStartLetter() {
-    if (_safeStartLetterList.isEmpty) {
-      return _randomLetter();
-    }
-    return _safeStartLetterList[_rand.nextInt(_safeStartLetterList.length)];
-  }
-
-  /// Minimum Manhattan distance a spawned tile must maintain from the snake.
-  static const int _minSpawnDistance = 2;
-
-  /// Selects a random word (up to four letters) from the dictionary and
-  /// places its letters on the board. Any remaining slots are filled with
-  /// random letters. This guarantees that at least one valid word can always
-  /// be formed from the visible tiles.
-  void _spawnRandomTiles(int count) {
-    if (count <= 0) return;
-
-    final empties = <GridPosition>[];
-    for (var i = 0; i < _grid.length; i++) {
-      final pos = _grid.positionOfIndex(i);
-      if (_grid.letterAt(pos).isEmpty && !_snake.segments.contains(pos)) {
-        empties.add(pos);
-      }
-    }
-    if (empties.isEmpty) {
-      return;
-    }
-
-    final farPositions = empties
-        .where((pos) => _isFarFromSnake(pos, _snake.segments))
-        .toList();
-    final spawnPositions = farPositions.isNotEmpty ? farPositions : empties;
-    spawnPositions.shuffle(_rand);
-
-    final spawnCount = min(count, spawnPositions.length);
-    if (spawnCount <= 0) {
-      return;
-    }
-
-    final maxWordLength = min(4, spawnCount);
-    final candidates = widget.dictionary
-        .where((w) => w.isNotEmpty && w.length <= maxWordLength)
-        .toList();
-    String? target;
-    if (candidates.isNotEmpty) {
-      target =
-          candidates[_rand.nextInt(candidates.length)].toUpperCase();
-    }
-
-    final letters = <String>[];
-    if (target != null) {
-      letters.addAll(target.split(''));
-    }
-    while (letters.length < spawnCount) {
-      letters.add(_randomSafeStartLetter());
-    }
-    letters.shuffle(_rand);
-
-    for (var i = 0; i < spawnCount; i++) {
-      _grid.placeLetter(spawnPositions[i], letters[i]);
-    }
-    _currentTiles += spawnCount;
-  }
-
-  bool _isFarFromSnake(GridPosition pos, List<GridPosition> segments) {
-    for (final segment in segments) {
-      if (_manhattanDistance(pos, segment) < _minSpawnDistance) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  int _manhattanDistance(GridPosition a, GridPosition b) {
-    return (a.row - b.row).abs() + (a.col - b.col).abs();
+  void _onSwipe(Direction direction) {
+    widget.controller.queueDirection(direction);
   }
 
   @override
   Widget build(BuildContext context) {
     const boardPadding = EdgeInsets.all(16);
+    final listenable = _boardListenable ?? widget.controller.snakeListenable;
     return LayoutBuilder(
       builder: (context, constraints) {
         final theme = Theme.of(context);
@@ -517,212 +150,212 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
           return const SizedBox.shrink();
         }
 
-        final boardRadius = BorderRadius.circular(14);
-        final currentWord = _snake.word;
-        final hasLetters = currentWord.isNotEmpty;
-        final bannerText = hasLetters ? currentWord : 'Collect letters';
-        final celebrating = _isMatched && hasLetters;
+        return AnimatedBuilder(
+          animation: listenable,
+          builder: (context, _) {
+            final snake = widget.controller.snake;
+            final grid = widget.controller.grid;
+            final currentWord = snake.word;
+            final hasLetters = currentWord.isNotEmpty;
+            final bannerText = hasLetters ? currentWord : 'Collect letters';
+            final celebrating = widget.controller.isMatched && hasLetters;
+            final boardRadius = BorderRadius.circular(14);
 
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: boardRadius,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.surface.withOpacity(0.75),
-                      theme.colorScheme.surfaceVariant.withOpacity(0.55),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.55),
-                    width: 1.6,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.18),
-                      blurRadius: 20,
-                      offset: const Offset(0, 14),
-                    ),
-                  ],
-                ),
-                padding: boardPadding,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white.withOpacity(0.06),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withOpacity(0.35),
-                    ),
-                  ),
-                  child: SwipeDetector(
-                    onSwipe: _onSwipe,
-                    child: SizedBox.square(
-                      dimension: boardExtent,
-                      child: _SerpuzzleBoard(
-                        boardExtent: boardExtent,
-                        grid: _grid,
-                        snake: _snake,
-                        isMatched: _isMatched,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              AnimatedScale(
-                key: const ValueKey('word-banner-scale'),
-                scale: celebrating ? 1.08 : 1.0,
-                duration: const Duration(milliseconds: 350),
-                curve: celebrating ? Curves.easeOutBack : Curves.easeOutCubic,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeInOut,
-                  opacity: celebrating ? 1.0 : 0.9,
-                  child: AnimatedContainer(
-                    key: const ValueKey('current-word-banner'),
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 28,
-                    ),
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: boardRadius,
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: celebrating
-                            ? [
-                          theme.colorScheme.primary.withOpacity(0.95),
-                          theme.colorScheme.secondary.withOpacity(0.85),
-                        ]
-                            : [
-                          theme.colorScheme.surface.withOpacity(0.78),
-                          theme.colorScheme.surfaceVariant.withOpacity(0.56),
+                        colors: [
+                          theme.colorScheme.surface.withOpacity(0.75),
+                          theme.colorScheme.surfaceVariant.withOpacity(0.55),
                         ],
                       ),
                       border: Border.all(
-                        color: celebrating
-                            ? theme.colorScheme.onPrimary.withOpacity(0.4)
-                            : theme.colorScheme.onSurface.withOpacity(0.12),
-                        width: 1.2,
+                        color:
+                        theme.colorScheme.outlineVariant.withOpacity(0.55),
+                        width: 1.6,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (celebrating
-                              ? theme.colorScheme.primary
-                              : Colors.black)
-                              .withOpacity(celebrating ? 0.35 : 0.18),
-                          blurRadius: celebrating ? 26 : 14,
-                          offset: const Offset(0, 10),
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 20,
+                          offset: const Offset(0, 14),
                         ),
                       ],
                     ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: Text(
-                        bannerText,
-                        key: ValueKey<String>(bannerText),
-                        textAlign: TextAlign.center,
-                        style: (theme.textTheme.headlineSmall ??
-                            const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ))
-                            .copyWith(
-                          letterSpacing: 1.2,
-                          color: celebrating
-                              ? theme.colorScheme.onPrimary
-                              : theme.colorScheme.onSurfaceVariant,
+                    padding: boardPadding,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white.withOpacity(0.06),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant
+                              .withOpacity(0.35),
+                        ),
+                      ),
+                      child: SwipeDetector(
+                        onSwipe: _onSwipe,
+                        child: SizedBox.square(
+                          dimension: boardExtent,
+                          child: _SerpuzzleBoard(
+                            boardExtent: boardExtent,
+                            grid: grid,
+                            snake: snake,
+                            isMatched: widget.controller.isMatched,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  AnimatedScale(
+                    key: const ValueKey('word-banner-scale'),
+                    scale: celebrating ? 1.08 : 1.0,
+                    duration: const Duration(milliseconds: 350),
+                    curve:
+                    celebrating ? Curves.easeOutBack : Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeInOut,
+                      opacity: celebrating ? 1.0 : 0.9,
+                      child: AnimatedContainer(
+                        key: const ValueKey('current-word-banner'),
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 28,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(32),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: celebrating
+                                ? [
+                              theme.colorScheme.primary
+                                  .withOpacity(0.95),
+                              theme.colorScheme.secondary
+                                  .withOpacity(0.85),
+                            ]
+                                : [
+                              theme.colorScheme.surface.withOpacity(0.78),
+                              theme.colorScheme.surfaceVariant
+                                  .withOpacity(0.56),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: celebrating
+                                ? theme.colorScheme.onPrimary.withOpacity(0.4)
+                                : theme.colorScheme.onSurface
+                                .withOpacity(0.12),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (celebrating
+                                  ? theme.colorScheme.primary
+                                  : Colors.black)
+                                  .withOpacity(celebrating ? 0.35 : 0.18),
+                              blurRadius: celebrating ? 26 : 14,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: Text(
+                            bannerText,
+                            key: ValueKey<String>(bannerText),
+                            textAlign: TextAlign.center,
+                            style: (theme.textTheme.headlineSmall ??
+                                const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ))
+                                .copyWith(
+                              letterSpacing: 1.2,
+                              color: celebrating
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-
+  @visibleForTesting
+  SerpuzzleSnake get snake => widget.controller.snake;
 
   @visibleForTesting
-  SerpuzzleSnake get snake => _snake;
+  SerpuzzleGrid get grid => widget.controller.grid;
 
   @visibleForTesting
-  SerpuzzleGrid get grid => _grid;
+  int get growSegments => widget.controller.growSegmentsForTest;
 
   @visibleForTesting
-  int get growSegments => _growSegments;
+  void setGrowSegmentsForTest(int value) =>
+      widget.controller.setGrowSegmentsForTest(value);
 
   @visibleForTesting
-  void setGrowSegmentsForTest(int value) {
-    _growSegments = value;
-  }
+  void setDirectionForTest(Direction direction) =>
+      widget.controller.setDirectionForTest(direction);
 
   @visibleForTesting
-  void setDirectionForTest(Direction direction) {
-    _currentDirection = direction;
-  }
+  void tickForTest() => widget.controller.tickForTest();
 
   @visibleForTesting
-  void tickForTest() => _tick();
+  void cancelTimersForTest() => widget.controller.cancelTimersForTest();
 
   @visibleForTesting
-  void cancelTimersForTest() {
-    _moveTimer?.cancel();
-    _resetTimer?.cancel();
-  }
-
-  @visibleForTesting
-  Duration get moveDelayForTest => _moveDelay;
+  Duration get moveDelayForTest => widget.controller.moveDelayForTest;
 
   @visibleForTesting
   Duration get elapsedForTest => widget.controller.elapsed;
 
   @visibleForTesting
-  void clearGridLettersForTest() {
-    for (var i = 0; i < _grid.length; i++) {
-      final pos = _grid.positionOfIndex(i);
-      _grid.placeLetter(pos, '');
-    }
-    _currentTiles = 0;
-  }
+  void clearGridLettersForTest() => widget.controller.clearGridLettersForTest();
 
   @visibleForTesting
-  void setCurrentTilesForTest(int value) {
-    _currentTiles = value;
-  }
-  @visibleForTesting
-  void spawnRandomTilesForTest(int count) {
-    _spawnRandomTiles(count);
-  }
+  void setCurrentTilesForTest(int value) =>
+      widget.controller.setCurrentTilesForTest(value);
 
   @visibleForTesting
-  int get currentTilesForTest => _currentTiles;
+  void spawnRandomTilesForTest(int count) =>
+      widget.controller.spawnRandomTilesForTest(count);
 
   @visibleForTesting
-  int get minSpawnDistanceForTest => _minSpawnDistance;
+  int get currentTilesForTest => widget.controller.currentTilesForTest;
 
   @visibleForTesting
-  Set<String> get safeStartLettersForTest => _safeStartLetters;
+  int get minSpawnDistanceForTest => widget.controller.minSpawnDistanceForTest;
 
   @visibleForTesting
-  bool get isGameOverForTest => _isGameOver;
+  Set<String> get safeStartLettersForTest =>
+      widget.controller.safeStartLettersForTest;
 
   @visibleForTesting
-  int get livesForTest => widget.controller.lives;
+  bool get isGameOverForTest => widget.controller.isGameOverForTest;
 
+  @visibleForTesting
+  int get livesForTest => widget.controller.livesForTest;
 }
 
 class _SerpuzzleBoard extends StatelessWidget {

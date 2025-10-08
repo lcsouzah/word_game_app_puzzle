@@ -43,6 +43,12 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
     _controller = SerpuzzleGameController(
       levelTimeLimit: widget.levelTimeLimit,
       initialLives: _initialLivesFor(widget.difficulty),
+      gridSize: widget.gridSize,
+      dictionary: widget.dictionary,
+      maxWordLength: widget.maxWordLength,
+      startCentered: widget.startCentered,
+      moveDelay: widget.moveDelay,
+      wrapAround: widget.wrapAround,
     );
   }
 
@@ -168,12 +174,6 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
       body: SerpuzzleGameScreen(
         key: _gameKey,
         controller: _controller,
-        gridSize: widget.gridSize,
-        dictionary: widget.dictionary,
-        maxWordLength: widget.maxWordLength,
-        startCentered: widget.startCentered,
-        moveDelay: widget.moveDelay,
-        wrapAround: widget.wrapAround,
       ),
     );
   }
