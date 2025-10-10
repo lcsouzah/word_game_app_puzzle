@@ -405,7 +405,7 @@ class _SerpuzzleBoard extends StatelessWidget {
             ],
           ),
         ),
-        child: Stack(
+        child: RepaintBoundary(child: Stack(
           fit: StackFit.expand,
           children: [
             CustomPaint(
@@ -450,7 +450,7 @@ class _SerpuzzleBoard extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

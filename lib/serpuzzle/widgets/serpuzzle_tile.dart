@@ -23,36 +23,8 @@ class SerpuzzleTile extends StatelessWidget {
     final theme = Theme.of(context);
     final isEmpty = letter.trim().isEmpty;
     const animationDuration = Duration(milliseconds: 160);
-    final baseSurface = theme.colorScheme.surface;
-    final accentSurface = theme.colorScheme.surfaceVariant;
 
-    final gradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: highlighted
-          ? [
-        theme.colorScheme.primary.withOpacity(0.9),
-        theme.colorScheme.primary.withOpacity(0.7),
-      ]
-          : [
-        baseSurface.withOpacity(isEmpty ? 0.12 : 0.26),
-        accentSurface.withOpacity(isEmpty ? 0.1 : 0.22),
-      ],
-    );
 
-    final glow = <BoxShadow>[
-      BoxShadow(
-        color: Colors.black.withOpacity(highlighted ? 0.2 : 0.12),
-        blurRadius: highlighted ? 16 : 10,
-        offset: Offset(0, highlighted ? 6 : 3),
-      ),
-      if (highlighted)
-        BoxShadow(
-          color: theme.colorScheme.primary.withOpacity(0.28),
-          blurRadius: 24,
-          spreadRadius: 2,
-        ),
-    ];
 
     final textStyle = (theme.textTheme.titleMedium ??
         const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))
@@ -62,17 +34,13 @@ class SerpuzzleTile extends StatelessWidget {
       color: highlighted
           ? theme.colorScheme.onPrimary
           : theme.colorScheme.onSurface.withOpacity(0.85),
+      shadows: const [Shadow(blurRadius: 6, offset: Offset(0, 2))],
     );
+
 
     return AnimatedContainer(
       duration: animationDuration,
       curve: Curves.easeInOut,
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: glow,
-      ),
-      alignment: Alignment.center,
       child: AnimatedSwitcher(
         duration: animationDuration,
         switchInCurve: Curves.easeOutCubic,

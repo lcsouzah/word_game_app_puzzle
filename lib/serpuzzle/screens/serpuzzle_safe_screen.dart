@@ -5,6 +5,7 @@ import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_screen.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 
+
 class SerpuzzleSafeScreen extends StatefulWidget {
   const SerpuzzleSafeScreen({
     super.key,
@@ -36,6 +37,9 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
   final GlobalKey<SerpuzzleGameScreenState> _gameKey = GlobalKey();
   PauseManager? _pauseManager;
   bool _bootstrappedTimer = false;
+  bool get _isOverlayBlocking =>
+      (_pauseManager?.isPaused ?? false) || _controller.isPaused;
+
 
   @override
   void initState() {
@@ -99,6 +103,59 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
       pauseManager.pause(PauseReason.manual);
     }
   }
+
+  Widget _buildPauseOverlay() {
+    return Center(
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 160),
+        scale: _isOverlayBlocking ? 1 : 0.95,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: _isOverlayBlocking ? 1 : 0,
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 280, maxWidth: 360),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.pause_circle_filled, size: 40),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Paused',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 12),
+                    AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) => Wrap(
+                        spacing: 12,
+                        children: [
+                          _Badge(icon: Icons.flag, label: 'Level ${_controller.level}'),
+                          _Badge(icon: Icons.timer, label: _controller.formattedRemaining),
+                          _Badge(icon: Icons.favorite, label: 'Lives ${_controller.lives}'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Resume'),
+                      onPressed: _togglePause,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   Future<void> _handleBonusLifePurchase() async {
     final pauseManager = _pauseManager;
@@ -171,9 +228,29 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
           ),
         ],
       ),
-      body: SerpuzzleGameScreen(
-        key: _gameKey,
-        controller: _controller,
+      body: WillPopScope(
+        onWillPop: () async => !_isOverlayBlocking, // block back while overlay active
+        child: Stack(
+          children: [
+            // Game layer – blocked when overlay is active
+            IgnorePointer(
+              ignoring: _isOverlayBlocking,
+              child: SerpuzzleGameScreen(
+                key: _gameKey,
+                controller: _controller,
+              ),
+            ),
+
+            // Input shield above the game when paused/overlayed
+            if (_isOverlayBlocking)
+              const ModalBarrier(
+                dismissible: false,
+                color: Colors.transparent, // use Colors.black45 if you want a dim background
+              ),
+            if (_isOverlayBlocking)
+              _buildPauseOverlay(),
+          ],
+        ),
       ),
     );
   }
@@ -243,6 +320,7 @@ class _StatusBadge extends StatelessWidget {
     required this.color,
   });
 
+
   final IconData icon;
   final String label;
   final TextStyle labelStyle;
@@ -261,6 +339,24 @@ class _StatusBadge extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Chip(
+      visualDensity: VisualDensity.compact,
+      avatar: Icon(icon, size: 14, color: theme.colorScheme.primary),
+      label: Text(label, style: theme.textTheme.labelMedium),
+      backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

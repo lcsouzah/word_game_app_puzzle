@@ -90,6 +90,8 @@ class SerpuzzleGameController extends ChangeNotifier {
   bool _isMovementReady = false;
   Direction _currentDirection = Direction.right;
   Direction? _pendingDirection;
+  Direction? _bufferedDirection; // holds one extra queued input
+  bool _hasStartedInput = false;
   int _growSegments = 0;
   int _currentTiles = 0;
   bool _disposed = false;
@@ -211,9 +213,15 @@ class SerpuzzleGameController extends ChangeNotifier {
 
   void queueDirection(Direction direction) {
     if (isMatched || _isGameOver || _isPaused) return;
+    _hasStartedInput = true;
     final activeDirection = _pendingDirection ?? _currentDirection;
     if (_isOppositeDirection(direction, activeDirection)) return;
-    _pendingDirection = direction;
+    if (_pendingDirection == null) {
+      _pendingDirection = direction;
+    } else if (_bufferedDirection == null &&
+        !_isOppositeDirection(direction, _pendingDirection!)) {
+      _bufferedDirection = direction; // keep one extra input
+    }
     if (!_isMovementReady) {
       _isMovementReady = true;
       _startMoveTimer();
@@ -284,13 +292,19 @@ class SerpuzzleGameController extends ChangeNotifier {
   }
 
   void _tick() {
-    if (_isPaused || isMatched || _isGameOver || !_isMovementReady) {
+    if (_isPaused || isMatched || _isGameOver || !_isMovementReady || !_hasStartedInput) {
       return;
     }
+
     if (_pendingDirection != null) {
       _currentDirection = _pendingDirection!;
       _pendingDirection = null;
-      if (_consumeSpawnOnNextTick) {
+    if (_bufferedDirection != null) {
+      _currentDirection = _bufferedDirection!;
+      _bufferedDirection = null;
+      }
+
+    if (_consumeSpawnOnNextTick) {
         _consumeSpawnOnNextTick = false;
         return;
       }
@@ -451,9 +465,10 @@ class SerpuzzleGameController extends ChangeNotifier {
     _growSegments = _maxWordLength - 1;
     _currentTiles = 0;
     _currentDirection = Direction.right;
-    _pendingDirection = _currentDirection;
-    _consumeSpawnOnNextTick = true;
+    _pendingDirection = null;
+    _consumeSpawnOnNextTick = false;
     _isMovementReady = false;
+    _hasStartedInput = false;
     isMatchedNotifier.value = false;
     _spawnRandomTiles(_tilesNeeded);
     gridNotifier.value++;
