@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
 import 'package:word_game_app/utils/direction_enum.dart';
@@ -38,6 +39,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     this.startCentered = true,
     this.moveDelay = const Duration(milliseconds: 300),
     this.wrapAround = false,
+    this.enableHaptics = false,
   })  : _lives = initialLives,
         _maxWordLength = maxWordLength,
         _engine = WordMatchEngine(dictionary),
@@ -58,6 +60,8 @@ class SerpuzzleGameController extends ChangeNotifier {
   final bool startCentered;
   final Duration moveDelay;
   final bool wrapAround;
+  final bool enableHaptics;
+
 
   final ValueNotifier<int> gridNotifier = ValueNotifier(0);
   final ValueNotifier<int> snakeNotifier = ValueNotifier(0);
@@ -355,6 +359,9 @@ class SerpuzzleGameController extends ChangeNotifier {
 
     final letter = _grid.letterAt(newPos);
     if (letter.isNotEmpty) {
+      if (enableHaptics) {
+        HapticFeedback.lightImpact();
+      }
       _growSegments++;
       _grid.placeLetter(newPos, '');
       _currentTiles--;
@@ -442,6 +449,9 @@ class SerpuzzleGameController extends ChangeNotifier {
         _moveTimer = null;
         addScore(letters.length);
         advanceLevel();
+        if (enableHaptics) {
+          HapticFeedback.mediumImpact();
+        }
       }
     }
   }
