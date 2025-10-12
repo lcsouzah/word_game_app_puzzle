@@ -49,6 +49,28 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Sound Effects'),
+                  subtitle: const Text('Enable taps and celebration sounds'),
+                  value: settings.soundEnabled,
+                  onChanged: (value) =>
+                      unawaited(settings.updateSoundEnabled(value)),
+                ),
+                SwitchListTile(
+                  title: const Text('Haptic Feedback'),
+                  subtitle:
+                  const Text('Vibrate on tile moves and completed words'),
+                  value: settings.hapticsEnabled,
+                  onChanged: (value) =>
+                      unawaited(settings.updateHapticsEnabled(value)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           const Text(
             'Tile Colour',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

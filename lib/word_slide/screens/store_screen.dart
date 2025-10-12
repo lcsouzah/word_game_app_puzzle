@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
+import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
@@ -37,6 +38,147 @@ class AnimationProduct {
 
   String get id => style.id;
 }
+
+class _CosmeticOption {
+  final String id;
+  final String title;
+  final String subtitle;
+  final Color? color;
+  final Gradient? gradient;
+  final IconData icon;
+
+  const _CosmeticOption({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    this.color,
+    this.gradient,
+    this.icon = Icons.auto_awesome,
+  });
+}
+
+class _SelectableOption {
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  const _SelectableOption({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+}
+
+const _tileSkinOptions = <_CosmeticOption>[
+  _CosmeticOption(
+    id: 'default',
+    title: 'Classic',
+    subtitle: 'Match theme colour',
+    color: Color(0xFF546E7A),
+    icon: Icons.grid_view,
+  ),
+  _CosmeticOption(
+    id: 'wood',
+    title: 'Wood Grain',
+    subtitle: 'Warm handcrafted tiles',
+    color: Color(0xFF8D6E63),
+    icon: Icons.park,
+  ),
+  _CosmeticOption(
+    id: 'neon',
+    title: 'Neon Pulse',
+    subtitle: 'Electric city glow',
+    color: Color(0xFF00F5D4),
+    icon: Icons.bolt,
+  ),
+  _CosmeticOption(
+    id: 'crystal',
+    title: 'Crystal Ice',
+    subtitle: 'Cool shimmering finish',
+    color: Color(0xFF80DEEA),
+    icon: Icons.ac_unit,
+  ),
+];
+
+const _boardSkinOptions = <_CosmeticOption>[
+  _CosmeticOption(
+    id: 'classic',
+    title: 'Luminous',
+    subtitle: 'Default radiant board',
+    gradient: LinearGradient(
+      colors: [Color(0xFF2F3E5C), Color(0xFF1B253A)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    icon: Icons.dashboard_customize,
+  ),
+  _CosmeticOption(
+    id: 'galaxy',
+    title: 'Galaxy Drift',
+    subtitle: 'Stellar swirl and nebula glow',
+    gradient: LinearGradient(
+      colors: [Color(0xFF1B2735), Color(0xFF090A0F), Color(0xFF3A1C71)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    icon: Icons.auto_awesome,
+  ),
+  _CosmeticOption(
+    id: 'cyber',
+    title: 'Cyber Grid',
+    subtitle: 'High-tech holo sheen',
+    gradient: LinearGradient(
+      colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+    ),
+    icon: Icons.memory,
+  ),
+];
+
+const _soundPackOptions = <_SelectableOption>[
+  _SelectableOption(
+    id: 'classic',
+    title: 'Classic',
+    subtitle: 'Default mix of chimes and clicks',
+    icon: Icons.music_note,
+  ),
+  _SelectableOption(
+    id: 'arcade',
+    title: 'Arcade',
+    subtitle: 'Retro cabinet beeps',
+    icon: Icons.gamepad,
+  ),
+  _SelectableOption(
+    id: 'zen',
+    title: 'Zen',
+    subtitle: 'Soft chimes and ambience',
+    icon: Icons.self_improvement,
+  ),
+];
+
+const _trailOptions = <_SelectableOption>[
+  _SelectableOption(
+    id: 'sparkle',
+    title: 'Sparkle',
+    subtitle: 'Bright glitter trail',
+    icon: Icons.auto_awesome,
+  ),
+  _SelectableOption(
+    id: 'lightning',
+    title: 'Lightning',
+    subtitle: 'Crackling energy streak',
+    icon: Icons.flash_on,
+  ),
+  _SelectableOption(
+    id: 'aurora',
+    title: 'Aurora',
+    subtitle: 'Flowing ribbon of light',
+    icon: Icons.landscape,
+  ),
+];
 
 /// Screen that displays the available borders and animation styles and allows
 /// the user to purchase or restore them. Purchased items are marked with a
@@ -114,6 +256,8 @@ class StoreScreenState extends State<StoreScreen> {
   @override
   Widget build(BuildContext context) {
     final service = context.watch<InAppPurchaseService>();
+    final cosmetics = context.watch<CosmeticManager>();
+
 
     return Scaffold(
       appBar: AppBar(
@@ -139,6 +283,42 @@ class StoreScreenState extends State<StoreScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const _SectionHeader(title: 'Tile Skins'),
+              const SizedBox(height: 12),
+              _CosmeticChoiceGrid(
+                options: _tileSkinOptions,
+                selectedId: cosmetics.tileSkin,
+                onSelected: (id) => cosmetics.setSkin('tile', id),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Board Themes'),
+              const SizedBox(height: 12),
+              _CosmeticChoiceGrid(
+                options: _boardSkinOptions,
+                selectedId: cosmetics.boardSkin,
+                onSelected: (id) => cosmetics.setSkin('board', id),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Sound Packs'),
+              const SizedBox(height: 12),
+              _SelectableList(
+                options: _soundPackOptions,
+                selectedId: cosmetics.soundPack,
+                onChanged: (id) => cosmetics.setSkin('sound', id),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Word Trail Effects'),
+              const SizedBox(height: 12),
+              _SelectableList(
+                options: _trailOptions,
+                selectedId: cosmetics.trailEffect,
+                onChanged: (id) => cosmetics.setSkin('trail', id),
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: 'Coins & Premium'),
+              const SizedBox(height: 12),
+              const _MonetizationRow(),
+              const SizedBox(height: 32),
               const _SectionHeader(title: 'Premium Borders'),
               const SizedBox(height: 12),
               _StoreGrid(
@@ -218,6 +398,190 @@ class _BorderPreview extends StatelessWidget {
           child: Container(color: border.previewTileColor),
         ),
       ),
+    );
+  }
+}
+
+class _CosmeticChoiceGrid extends StatelessWidget {
+  final List<_CosmeticOption> options;
+  final String selectedId;
+  final ValueChanged<String> onSelected;
+
+  const _CosmeticChoiceGrid({
+    required this.options,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: options.map((option) {
+        final selected = option.id == selectedId;
+        final baseColor = selected
+            ? theme.colorScheme.secondaryContainer
+            : theme.colorScheme.surface;
+        return Material(
+          color: baseColor,
+          elevation: selected ? 6 : 2,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: () => onSelected(option.id),
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              width: 140,
+              height: 140,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: option.gradient == null
+                            ? option.color
+                            : null,
+                        gradient: option.gradient,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: selected
+                              ? theme.colorScheme.onSecondaryContainer
+                              : theme.dividerColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: option.gradient == null
+                          ? Icon(option.icon,
+                          color: Colors.white.withOpacity(0.9))
+                          : Icon(option.icon,
+                          color: Colors.white.withOpacity(0.9)),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      option.title,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      option.subtitle,
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _SelectableList extends StatelessWidget {
+  final List<_SelectableOption> options;
+  final String selectedId;
+  final ValueChanged<String> onChanged;
+
+  const _SelectableList({
+    required this.options,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: options.map((option) {
+        return Card(
+          child: RadioListTile<String>(
+            value: option.id,
+            groupValue: selectedId,
+            onChanged: (value) {
+              if (value != null) {
+                onChanged(value);
+              }
+            },
+            title: Text(option.title),
+            subtitle: Text(option.subtitle),
+            secondary: Icon(option.icon),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _MonetizationRow extends StatelessWidget {
+  const _MonetizationRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Card(
+            elevation: 3,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.monetization_on, size: 36),
+                  const SizedBox(height: 12),
+                  const Text('Coin Bundles'),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('In-app coin purchases coming soon!'),
+                        ),
+                      );
+                    },
+                    child: const Text('Coming soon'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Card(
+            elevation: 3,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.play_circle_fill, size: 36),
+                  const SizedBox(height: 12),
+                  const Text('Rewarded Ads'),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Watch-to-earn rewards are on the roadmap.'),
+                        ),
+                      );
+                    },
+                    child: const Text('Stay tuned'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

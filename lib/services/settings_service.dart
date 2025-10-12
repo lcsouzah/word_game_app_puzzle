@@ -15,12 +15,16 @@ class SettingsService extends ChangeNotifier {
   static const _borderAssetPathKey = 'borderAssetPath';
   static const _boardStyleKey = 'boardStyle';
   static const _tileAnimationStyleKey = 'tileAnimationStyle';
+  static const _soundEnabledKey = 'soundEnabled';
+  static const _hapticsEnabledKey = 'hapticsEnabled';
 
   Color _tileColor = Colors.blueGrey;
   Color _borderColor = Colors.blueGrey;
   String _borderStyleId = TileBorderStyles.defaultStyle.id;
   String _boardStyleId = BoardStyles.defaultStyle.id;
   String _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
+  bool _soundEnabled = true;
+  bool _hapticsEnabled = true;
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
@@ -38,6 +42,10 @@ class SettingsService extends ChangeNotifier {
   TileAnimationStyle get tileAnimationStyle =>
       TileAnimationStyles.byId(_tileAnimationStyleId);
 
+  bool get soundEnabled => _soundEnabled;
+
+  bool get hapticsEnabled => _hapticsEnabled;
+
   /// Loads previously saved settings from [SharedPreferences].
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -46,6 +54,8 @@ class SettingsService extends ChangeNotifier {
     final borderColorValue = prefs.getInt(_borderColorKey);
     final boardStyleId = prefs.getString(_boardStyleKey);
     final tileAnimationStyleId = prefs.getString(_tileAnimationStyleKey);
+    final soundEnabled = prefs.getBool(_soundEnabledKey);
+    final hapticsEnabled = prefs.getBool(_hapticsEnabledKey);
 
     if (colorValue != null) {
       _tileColor = Color(colorValue);
@@ -94,6 +104,18 @@ class SettingsService extends ChangeNotifier {
     }
     await prefs.setString(_tileAnimationStyleKey, _tileAnimationStyleId);
     await prefs.remove(_borderAssetPathKey);
+
+    if (soundEnabled != null) {
+      _soundEnabled = soundEnabled;
+    } else {
+      await prefs.setBool(_soundEnabledKey, _soundEnabled);
+    }
+
+    if (hapticsEnabled != null) {
+      _hapticsEnabled = hapticsEnabled;
+    } else {
+      await prefs.setBool(_hapticsEnabledKey, _hapticsEnabled);
+    }
     notifyListeners();
   }
 
@@ -153,6 +175,20 @@ class SettingsService extends ChangeNotifier {
     _tileAnimationStyleId = style.id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tileAnimationStyleKey, style.id);
+    notifyListeners();
+  }
+
+  Future<void> updateSoundEnabled(bool value) async {
+    _soundEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_soundEnabledKey, value);
+    notifyListeners();
+  }
+
+  Future<void> updateHapticsEnabled(bool value) async {
+    _hapticsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hapticsEnabledKey, value);
     notifyListeners();
   }
 }
