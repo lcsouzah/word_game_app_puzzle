@@ -58,6 +58,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       controller.gridListenable,
       controller.snakeListenable,
       controller.isMatchedListenable,
+      controller.justEatenCell,
     ]);
     controller.isMatchedListenable.addListener(_handleMatchChanged);
     controller.isGameOverListenable.addListener(_handleGameOverChanged);
@@ -389,6 +390,7 @@ class _SerpuzzleBoard extends StatelessWidget {
     final tileSize = boardExtent / grid.cols;
     const segmentScale = 0.4;
     final snakePositions = snake.segments.toSet();
+    final justEatenCell = controller.justEatenCell.value;
     final letters = snake.letters;
     final segments = <SnakeSegment>[];
     for (var i = 0; i < snake.segments.length; i++) {
@@ -451,9 +453,11 @@ class _SerpuzzleBoard extends StatelessWidget {
                   final pos = grid.positionOfIndex(index);
                   final isSnake = snakePositions.contains(pos);
                   final highlight = isMatched && isSnake;
+                  final justEaten = justEatenCell != null && justEatenCell == pos;
                   return SerpuzzleTile(
                     letter: isSnake ? '' : grid.letterAt(pos),
                     highlighted: highlight,
+                    justEaten: justEaten,
                   );
                 },
               ),

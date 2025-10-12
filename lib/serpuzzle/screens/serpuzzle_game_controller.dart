@@ -69,6 +69,8 @@ class SerpuzzleGameController extends ChangeNotifier {
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isPausedNotifier;
   final ValueNotifier<_ScorePopup?> scorePopup = ValueNotifier<_ScorePopup?>(null);
+  final ValueNotifier<GridPosition?> justEatenCell =
+  ValueNotifier<GridPosition?>(null);
 
 
   final WordMatchEngine _engine;
@@ -239,6 +241,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     isMatchedNotifier.value = false;
     _resetTimer?.cancel();
     _resetTimer = null;
+    justEatenCell.value = null;
     _initBoard();
     startLevelTimer(resetElapsed: true);
   }
@@ -254,6 +257,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     isMatchedNotifier.value = false;
     isPausedNotifier.value = false;
     scorePopup.value = null;
+    justEatenCell.value = null;
     _moveTimer?.cancel();
     _moveTimer = null;
     _resetTimer?.cancel();
@@ -276,6 +280,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _resetTimer = null;
     _levelTimer?.cancel();
     scorePopup.value = null;
+    justEatenCell.value = null;
     notifyListeners();
     onGameOver?.call();
   }
@@ -287,6 +292,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _moveTimer?.cancel();
     _resetTimer?.cancel();
     scorePopup.dispose();
+    justEatenCell.dispose();
     super.dispose();
   }
 
@@ -305,18 +311,23 @@ class SerpuzzleGameController extends ChangeNotifier {
       return;
     }
 
+    if (justEatenCell.value != null) {
+      justEatenCell.value = null;
+    }
+
     if (_pendingDirection != null) {
       _currentDirection = _pendingDirection!;
       _pendingDirection = null;
+    }
+
     if (_bufferedDirection != null) {
       _currentDirection = _bufferedDirection!;
       _bufferedDirection = null;
-      }
+    }
 
     if (_consumeSpawnOnNextTick) {
-        _consumeSpawnOnNextTick = false;
-        return;
-      }
+      _consumeSpawnOnNextTick = false;
+      return;
     }
 
     final head = _snake.segments.last;
@@ -367,6 +378,7 @@ class SerpuzzleGameController extends ChangeNotifier {
       _growSegments++;
       _grid.placeLetter(newPos, '');
       _currentTiles--;
+      justEatenCell.value = newPos;
       scorePopup.value = _ScorePopup(
         points: 1,
         gridX: newPos.col,
