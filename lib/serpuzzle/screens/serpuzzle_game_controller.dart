@@ -68,6 +68,8 @@ class SerpuzzleGameController extends ChangeNotifier {
   final ValueNotifier<bool> isMatchedNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isPausedNotifier;
+  final ValueNotifier<_ScorePopup?> scorePopup = ValueNotifier<_ScorePopup?>(null);
+
 
   final WordMatchEngine _engine;
   final Random _rand = Random();
@@ -251,6 +253,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     isGameOverNotifier.value = false;
     isMatchedNotifier.value = false;
     isPausedNotifier.value = false;
+    scorePopup.value = null;
     _moveTimer?.cancel();
     _moveTimer = null;
     _resetTimer?.cancel();
@@ -272,6 +275,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _resetTimer?.cancel();
     _resetTimer = null;
     _levelTimer?.cancel();
+    scorePopup.value = null;
     notifyListeners();
     onGameOver?.call();
   }
@@ -282,6 +286,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _levelTimer?.cancel();
     _moveTimer?.cancel();
     _resetTimer?.cancel();
+    scorePopup.dispose();
     super.dispose();
   }
 
@@ -359,12 +364,15 @@ class SerpuzzleGameController extends ChangeNotifier {
 
     final letter = _grid.letterAt(newPos);
     if (letter.isNotEmpty) {
-      if (enableHaptics) {
-        HapticFeedback.lightImpact();
-      }
       _growSegments++;
       _grid.placeLetter(newPos, '');
       _currentTiles--;
+      scorePopup.value = _ScorePopup(
+        points: 1,
+        gridX: newPos.col,
+        gridY: newPos.row,
+        isWord: false,
+      );
     }
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
@@ -448,10 +456,14 @@ class SerpuzzleGameController extends ChangeNotifier {
         _moveTimer?.cancel();
         _moveTimer = null;
         addScore(letters.length);
+        final headPos = _snake.segments.last;
+        scorePopup.value = _ScorePopup(
+          points: letters.length,
+          gridX: headPos.col,
+          gridY: headPos.row,
+          isWord: true,
+        );
         advanceLevel();
-        if (enableHaptics) {
-          HapticFeedback.mediumImpact();
-        }
       }
     }
   }
@@ -480,6 +492,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _isMovementReady = false;
     _hasStartedInput = false;
     isMatchedNotifier.value = false;
+    scorePopup.value = null;
     _spawnRandomTiles(_tilesNeeded);
     gridNotifier.value++;
     snakeNotifier.value++;
@@ -636,4 +649,18 @@ class SerpuzzleGameController extends ChangeNotifier {
 
   @visibleForTesting
   int get livesForTest => _lives;
+}
+
+class _ScorePopup {
+  const _ScorePopup({
+    required this.points,
+    required this.gridX,
+    required this.gridY,
+    required this.isWord,
+  });
+
+  final int points;
+  final int gridX;
+  final int gridY;
+  final bool isWord;
 }

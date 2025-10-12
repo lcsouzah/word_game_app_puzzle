@@ -208,6 +208,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
                             grid: grid,
                             snake: snake,
                             isMatched: widget.controller.isMatched,
+                            controller: widget.controller,
                           ),
                         ),
                       ),
@@ -364,12 +365,15 @@ class _SerpuzzleBoard extends StatelessWidget {
     required this.grid,
     required this.snake,
     required this.isMatched,
+    required this.controller,
   });
 
   final double boardExtent;
   final SerpuzzleGrid grid;
   final SerpuzzleSnake snake;
   final bool isMatched;
+  final SerpuzzleGameController controller;
+
 
   @override
   Widget build(BuildContext context) {
@@ -405,52 +409,151 @@ class _SerpuzzleBoard extends StatelessWidget {
             ],
           ),
         ),
-        child: RepaintBoundary(child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CustomPaint(
-              painter: _SerpuzzleBoardBackdropPainter(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.surfaceVariant.withOpacity(0.28),
-                    theme.colorScheme.surface.withOpacity(0.4),
-                    theme.colorScheme.surfaceVariant.withOpacity(0.18),
-                  ],
-                  stops: const [0.0, 0.55, 1.0],
+        child: RepaintBoundary(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                painter: _SerpuzzleBoardBackdropPainter(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.surfaceVariant.withOpacity(0.28),
+                      theme.colorScheme.surface.withOpacity(0.4),
+                      theme.colorScheme.surfaceVariant.withOpacity(0.18),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                  fallbackColor:
+                  theme.colorScheme.surfaceVariant.withOpacity(0.24),
                 ),
-                fallbackColor:
-                theme.colorScheme.surfaceVariant.withOpacity(0.24),
               ),
-            ),
-            GridView.builder(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: grid.cols,
-                childAspectRatio: 1,
+              GridView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: grid.cols,
+                  childAspectRatio: 1,
+                ),
+                itemCount: grid.length,
+                itemBuilder: (context, index) {
+                  final pos = grid.positionOfIndex(index);
+                  final isSnake = snakePositions.contains(pos);
+                  final highlight = isMatched && isSnake;
+                  return SerpuzzleTile(
+                    letter: isSnake ? '' : grid.letterAt(pos),
+                    highlighted: highlight,
+                  );
+                },
               ),
-              itemCount: grid.length,
-              itemBuilder: (context, index) {
-                final pos = grid.positionOfIndex(index);
-                final isSnake = snakePositions.contains(pos);
-                final highlight = isMatched && isSnake;
-                return SerpuzzleTile(
-                  letter: isSnake ? '' : grid.letterAt(pos),
-                  highlighted: highlight,
-                );
-              },
-            ),
-            SerpuzzleSnakeBody(
-              segments: segments,
-              tileSize: tileSize,
-              segmentScale: segmentScale,
-            ),
-          ],
+              SerpuzzleSnakeBody(
+                segments: segments,
+                tileSize: tileSize,
+                segmentScale: segmentScale,
+              ),
+              ValueListenableBuilder<Object?>(
+                valueListenable: controller.scorePopup,
+                builder: (context, value, _) {
+                  if (value == null) {
+                    return const SizedBox.shrink();
+                  }
+                  final popup = value as dynamic;
+                  final left = (popup.gridX as num) * tileSize;
+                  final top = (popup.gridY as num) * tileSize;
+                  final isWord = popup.isWord == true;
+                  final textColor = isWord
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface;
+                  final backgroundColor = isWord
+                      ? theme.colorScheme.primary.withOpacity(0.35)
+                      : theme.colorScheme.surface.withOpacity(0.65);
+                  final borderColor = isWord
+                      ? theme.colorScheme.onPrimary.withOpacity(0.45)
+                      : theme.colorScheme.onSurface.withOpacity(0.2);
+                  final shadowColor = (isWord
+                      ? theme.colorScheme.primary
+                      : Colors.black)
+                      .withOpacity(isWord ? 0.3 : 0.18);
+
+                  return Positioned(
+                    left: left,
+                    top: top,
+                    width: tileSize,
+                    height: tileSize,
+                    child: TweenAnimationBuilder<double>(
+                      key: ValueKey<Object>(popup),
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 650),
+                      curve: Curves.easeOutCubic,
+                      onEnd: () {
+                        if (identical(controller.scorePopup.value, popup)) {
+                          controller.scorePopup.value = null;
+                        }
+                      },
+                      builder: (context, progress, child) {
+                        final eased = Curves.easeOut.transform(progress);
+                        final slide = lerpDouble(
+                          0,
+                          -tileSize * 0.75,
+                          eased,
+                        ) ??
+                            0;
+                        final clamped = progress.clamp(0.0, 1.0).toDouble();
+                        final opacity =
+                            1 - Curves.easeInQuad.transform(clamped);
+                        return Opacity(
+                          opacity: opacity.clamp(0.0, 1.0),
+                          child: Transform.translate(
+                            offset: Offset(0, slide),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: backgroundColor,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: borderColor, width: 1.1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: shadowColor,
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 4,
+                              horizontal: 8,
+                            ),
+                            child: Text(
+                              '+${popup.points}',
+                              textAlign: TextAlign.center,
+                              style: (theme.textTheme.titleSmall ??
+                                  const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ))
+                                  .copyWith(
+                                color: textColor,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
   }
 }
