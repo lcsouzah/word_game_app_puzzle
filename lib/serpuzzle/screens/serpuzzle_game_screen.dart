@@ -26,6 +26,8 @@ class SerpuzzleGameScreen extends StatefulWidget {
 }
 
 class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
+  final GlobalKey<PortalAnimationState> _portalKey =
+  PortalAnimation.createKey();
   Listenable? _boardListenable;
   bool _handlingMatch = false;
   bool _handlingGameOver = false;
@@ -109,11 +111,18 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   Future<void> _showLevelTransition() async {
-    await showDialog(
+    final dialogFuture = showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PortalAnimation(level: widget.controller.level),
+      builder: (_) => PortalAnimation(
+        key: _portalKey,
+        level: widget.controller.level,
+      ),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _portalKey.currentState?.play();
+    });
+    await dialogFuture;
   }
 
   void _onSwipe(Direction direction) {
