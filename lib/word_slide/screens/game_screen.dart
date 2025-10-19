@@ -284,13 +284,18 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                   controller.tiles[index],
                                                   builder:
                                                       (context, tile, __) {
+                                                    final displayLetter =
+                                                    settings.useTitleCaseWords
+                                                        ? tile.letter
+                                                        : tile.letter
+                                                        .toUpperCase();
                                                     return IgnorePointer(
                                                       ignoring:
                                                       pauseManager.isPaused,
                                                       child: TileWidget(
                                                         key:
                                                         ValueKey<int>(index),
-                                                        letter: tile.letter,
+                                                        letter: displayLetter,
                                                         onTap: () =>
                                                             controller
                                                                 .onTileTapped(
@@ -299,6 +304,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                         tile.highlighted,
                                                         disappearing:
                                                         tile.disappearing,
+                                                        highlightKind:
+                                                        tile.highlightKind,
                                                         tileColor: tile.letter
                                                             .trim()
                                                             .isEmpty
@@ -311,6 +318,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                         settings.borderStyle,
                                                         animationStyle: settings
                                                             .tileAnimationStyle,
+                                                        hintEffect:
+                                                        cosmetics.hintEffect,
                                                       ),
                                                     );
                                                   },

@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'package:word_game_app/services/settings_screen.dart';
+import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/score_uploader.dart';
 import 'package:word_game_app/word_slide/controllers/word_quest_controller.dart';
@@ -355,6 +356,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   @override
   Widget build(BuildContext context) {
     final pauseManager = Provider.of<PauseManager>(context);
+    final settings = context.watch<SettingsService>();
+
 
     return WillPopScope(
       onWillPop: () async => !_isGameOver,
@@ -465,6 +468,11 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                               return ListView.builder(
                                 itemCount: words.length,
                                 itemBuilder: (context, index) {
+                                  final displayWord =
+                                  _formatWordForDisplay(
+                                    words[index],
+                                    settings.useTitleCaseWords,
+                                  );
                                   return Container(
                                     margin: const EdgeInsets.all(4.0),
                                     padding: const EdgeInsets.all(2.0),
@@ -474,7 +482,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                                       borderRadius: BorderRadius.circular(5.0),
                                     ),
                                     child: Text(
-                                      words[index],
+                                      displayWord,
                                       style: const TextStyle(
                                         fontSize: 18,
                                         color: Colors.black,
@@ -526,6 +534,17 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     _bannerAd.dispose();
     _controller?.dispose();
     super.dispose();
+  }
+
+  String _formatWordForDisplay(String word, bool useTitleCase) {
+    if (word.isEmpty) {
+      return word;
+    }
+    if (!useTitleCase) {
+      return word.toUpperCase();
+    }
+    final lower = word.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
   }
 }
 

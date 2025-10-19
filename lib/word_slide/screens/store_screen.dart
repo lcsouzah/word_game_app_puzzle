@@ -180,6 +180,24 @@ const _trailOptions = <_SelectableOption>[
   ),
 ];
 
+const _freeHintEffectOptions = <_SelectableOption>[
+  _SelectableOption(
+    id: 'pulse',
+    title: 'Soft Pulse',
+    subtitle: 'Cyan outline that gently pulses',
+    icon: Icons.blur_on,
+  ),
+];
+
+const _premiumHintEffectOptions = <_SelectableOption>[
+  _SelectableOption(
+    id: 'aurora',
+    title: 'Aurora Sweep',
+    subtitle: 'Prismatic aura reserved for premium style',
+    icon: Icons.auto_awesome,
+  ),
+];
+
 /// Screen that displays the available borders and animation styles and allows
 /// the user to purchase or restore them. Purchased items are marked with a
 /// check icon while locked ones are dimmed with a lock icon overlay.
@@ -258,115 +276,239 @@ class StoreScreenState extends State<StoreScreen> {
     final service = context.watch<InAppPurchaseService>();
     final cosmetics = context.watch<CosmeticManager>();
 
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Customization Store'),
-        actions: [
-          TextButton(
-            onPressed: service.restorePurchases,
-            child: const Text('Restore', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      body: FutureBuilder<List<ProductDetails>>(
-        future: _productsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final products = {
-            for (final p in snapshot.data ?? <ProductDetails>[]) p.id: p
-          };
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              const _SectionHeader(title: 'Tile Skins'),
-              const SizedBox(height: 12),
-              _CosmeticChoiceGrid(
-                options: _tileSkinOptions,
-                selectedId: cosmetics.tileSkin,
-                onSelected: (id) => cosmetics.setSkin('tile', id),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Customization Store'),
+          actions: [
+            TextButton(
+              onPressed: service.restorePurchases,
+              child:
+              const Text('Restore', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(
+                icon: Icon(Icons.color_lens_outlined),
+                text: 'Cosmetics',
               ),
-              const SizedBox(height: 24),
-              const _SectionHeader(title: 'Board Themes'),
-              const SizedBox(height: 12),
-              _CosmeticChoiceGrid(
-                options: _boardSkinOptions,
-                selectedId: cosmetics.boardSkin,
-                onSelected: (id) => cosmetics.setSkin('board', id),
-              ),
-              const SizedBox(height: 24),
-              const _SectionHeader(title: 'Sound Packs'),
-              const SizedBox(height: 12),
-              _SelectableList(
-                options: _soundPackOptions,
-                selectedId: cosmetics.soundPack,
-                onChanged: (id) => cosmetics.setSkin('sound', id),
-              ),
-              const SizedBox(height: 24),
-              const _SectionHeader(title: 'Word Trail Effects'),
-              const SizedBox(height: 12),
-              _SelectableList(
-                options: _trailOptions,
-                selectedId: cosmetics.trailEffect,
-                onChanged: (id) => cosmetics.setSkin('trail', id),
-              ),
-              const SizedBox(height: 24),
-              const _SectionHeader(title: 'Coins & Premium'),
-              const SizedBox(height: 12),
-              const _MonetizationRow(),
-              const SizedBox(height: 32),
-              const _SectionHeader(title: 'Premium Borders'),
-              const SizedBox(height: 12),
-              _StoreGrid(
-                itemCount: _borders.length,
-                itemBuilder: (context, index) {
-                  final border = _borders[index];
-                  final owned = service.isProductPurchased(border.id);
-                  final product = products[border.id];
-                  return _StoreProductCard(
-                    preview: _BorderPreview(border: border),
-                    title: border.style.displayName,
-                    subtitle: 'Border style',
-                    owned: owned,
-                    product: product,
-                    onTap: product == null
-                        ? null
-                        : () => service.buy(product),
-                  );
-                },
-              ),
-              const SizedBox(height: 32),
-              const _SectionHeader(title: 'Premium Animations'),
-              const SizedBox(height: 12),
-              _StoreGrid(
-                itemCount: _animations.length,
-                itemBuilder: (context, index) {
-                  final animation = _animations[index];
-                  final owned = service.isProductPurchased(animation.id);
-                  final product = products[animation.id];
-                  return _StoreProductCard(
-                    preview: _AnimationPreview(product: animation),
-                    title: animation.style.displayName,
-                    subtitle: animation.style.description,
-                    owned: owned,
-                    product: product,
-                    onTap: product == null
-                        ? null
-                        : () => service.buy(product),
-                  );
-                },
+              Tab(
+                icon: Icon(Icons.stars_outlined),
+                text: 'Premium',
               ),
             ],
-          );
-        },
+          ),
+        ),
+        body: FutureBuilder<List<ProductDetails>>(
+          future: _productsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const TabBarView(
+                children: [
+                  Center(child: CircularProgressIndicator()),
+                  Center(child: CircularProgressIndicator()),
+                ],
+              );
+            }
+
+            final products = {
+              for (final p in snapshot.data ?? <ProductDetails>[]) p.id: p
+            };
+
+            return TabBarView(
+              children: [
+                _buildCosmeticsTab(context, cosmetics),
+                _buildPremiumTab(context, service, cosmetics, products),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCosmeticsTab(
+      BuildContext context,
+      CosmeticManager cosmetics,
+      ) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _StoreSectionCard(
+          title: 'Tile Skins',
+          subtitle: 'Swap the base texture and material of each tile.',
+          child: _CosmeticChoiceGrid(
+            options: _tileSkinOptions,
+            selectedId: cosmetics.tileSkin,
+            onSelected: (id) => cosmetics.setSkin('tile', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Board Themes',
+          subtitle: 'Change the mood of the playfield background.',
+          child: _CosmeticChoiceGrid(
+            options: _boardSkinOptions,
+            selectedId: cosmetics.boardSkin,
+            onSelected: (id) => cosmetics.setSkin('board', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Sound Packs',
+          subtitle: 'Pick the soundtrack for moves and celebrations.',
+          child: _SelectableList(
+            options: _soundPackOptions,
+            selectedId: cosmetics.soundPack,
+            onChanged: (id) => cosmetics.setSkin('sound', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Word Trail Effects',
+          subtitle: 'Customize the particle trail that follows solved words.',
+          child: _SelectableList(
+            options: _trailOptions,
+            selectedId: cosmetics.trailEffect,
+            onChanged: (id) => cosmetics.setSkin('trail', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Hint Effects',
+          subtitle: 'Decide how free hints glow on the puzzle board.',
+          child: _SelectableList(
+            options: _freeHintEffectOptions,
+            selectedId: cosmetics.hintEffect,
+            onChanged: (id) => cosmetics.setSkin('hint', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildPremiumTab(
+      BuildContext context,
+      InAppPurchaseService service,
+      CosmeticManager cosmetics,
+      Map<String, ProductDetails> products,
+      ) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const _StoreSectionCard(
+          title: 'Coins & Premium',
+          subtitle: 'Top up hints or unlock premium bundles and rewards.',
+          child: _MonetizationRow(),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Premium Borders',
+          subtitle: 'Luxurious frames that wrap each tile.',
+          child: _StoreGrid(
+            itemCount: _borders.length,
+            itemBuilder: (context, index) {
+              final border = _borders[index];
+              final owned = service.isProductPurchased(border.id);
+              final product = products[border.id];
+              return _StoreProductCard(
+                preview: _BorderPreview(border: border),
+                title: border.style.displayName,
+                subtitle: 'Border style',
+                owned: owned,
+                product: product,
+                onTap:
+                product == null ? null : () => service.buy(product),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Premium Animations',
+          subtitle: 'Give tiles unique entrances and idle motion.',
+          child: _StoreGrid(
+            itemCount: _animations.length,
+            itemBuilder: (context, index) {
+              final animation = _animations[index];
+              final owned = service.isProductPurchased(animation.id);
+              final product = products[animation.id];
+              return _StoreProductCard(
+                preview: _AnimationPreview(product: animation),
+                title: animation.style.displayName,
+                subtitle: animation.style.description,
+                owned: owned,
+                product: product,
+                onTap:
+                product == null ? null : () => service.buy(product),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _StoreSectionCard(
+          title: 'Premium Hint Effects',
+          subtitle:
+          'Unlock the aurora sweep highlight for purchased players.',
+          child: _SelectableList(
+            options: _premiumHintEffectOptions,
+            selectedId: cosmetics.hintEffect,
+            onChanged: (id) => cosmetics.setSkin('hint', id),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
+class _StoreSectionCard extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  const _StoreSectionCard({
+    required this.title,
+    this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitleStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.75),
+    );
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (subtitle != null && subtitle!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle!, style: subtitleStyle),
+            ],
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
       ),
     );
   }
 }
+
 
 class _BorderPreview extends StatelessWidget {
   final BorderProduct border;
@@ -760,20 +902,7 @@ class _StoreProductCard extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
 
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      title,
-      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-    );
-  }
-}
 
 /// Helper widget that provides the [InAppPurchaseService] for the [StoreScreen].
 /// This can be used when navigating to the store if no provider exists higher

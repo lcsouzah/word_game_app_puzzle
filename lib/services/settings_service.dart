@@ -17,6 +17,7 @@ class SettingsService extends ChangeNotifier {
   static const _tileAnimationStyleKey = 'tileAnimationStyle';
   static const _soundEnabledKey = 'soundEnabled';
   static const _hapticsEnabledKey = 'hapticsEnabled';
+  static const _titleCaseKey = 'titleCaseWOrds';
 
   Color _tileColor = Colors.blueGrey;
   Color _borderColor = Colors.blueGrey;
@@ -25,6 +26,8 @@ class SettingsService extends ChangeNotifier {
   String _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
+  bool _useTitleCaseWords = true;
+
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
@@ -46,6 +49,10 @@ class SettingsService extends ChangeNotifier {
 
   bool get hapticsEnabled => _hapticsEnabled;
 
+  bool get useTitleCaseWords => _useTitleCaseWords;
+
+
+
   /// Loads previously saved settings from [SharedPreferences].
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +63,7 @@ class SettingsService extends ChangeNotifier {
     final tileAnimationStyleId = prefs.getString(_tileAnimationStyleKey);
     final soundEnabled = prefs.getBool(_soundEnabledKey);
     final hapticsEnabled = prefs.getBool(_hapticsEnabledKey);
+    final titleCasePref = prefs.getBool(_titleCaseKey);
 
     if (colorValue != null) {
       _tileColor = Color(colorValue);
@@ -115,6 +123,13 @@ class SettingsService extends ChangeNotifier {
       _hapticsEnabled = hapticsEnabled;
     } else {
       await prefs.setBool(_hapticsEnabledKey, _hapticsEnabled);
+    }
+
+
+    if (titleCasePref != null) {
+      _useTitleCaseWords = titleCasePref;
+    } else {
+      await prefs.setBool(_titleCaseKey, _useTitleCaseWords);
     }
     notifyListeners();
   }
@@ -189,6 +204,12 @@ class SettingsService extends ChangeNotifier {
     _hapticsEnabled = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_hapticsEnabledKey, value);
+    notifyListeners();
+  }
+  Future<void> updateUseTitleCaseWords(bool value) async {
+    _useTitleCaseWords = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_titleCaseKey, value);
     notifyListeners();
   }
 }

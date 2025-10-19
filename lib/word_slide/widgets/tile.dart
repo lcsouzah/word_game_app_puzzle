@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
-
+import 'package:word_game_app/word_slide/models/tile_highlight_kind.dart';
 
 class TileWidget extends StatefulWidget {
   final String letter;
@@ -14,6 +14,9 @@ class TileWidget extends StatefulWidget {
   final Color borderColor;
   final TileBorderStyle borderStyle;
   final TileAnimationStyle animationStyle;
+  final TileHighlightKind? highlightKind;
+  final String hintEffect;
+
 
   TileWidget({
     super.key,
@@ -21,6 +24,8 @@ class TileWidget extends StatefulWidget {
     required this.onTap,
     this.highlighted = false,
     this.disappearing = false,
+    this.highlightKind = TileHighlightKind.none,
+    this.hintEffect = 'pulse',
     Color tileColor = Colors.blueGrey,
     Color? borderColor,
     TileBorderStyle? borderStyle,
@@ -248,8 +253,12 @@ class TileWidgetState extends State<TileWidget>
       highlighted: widget.highlighted,
     );
     final baseFillColor = decorationParts.fillColor ?? widget.tileColor;
+    final bool isHintHighlight =
+        widget.highlighted && widget.highlightKind == TileHighlightKind.hint;
+    final bool isSolvedHighlight =
+        widget.highlighted && widget.highlightKind == TileHighlightKind.solved;
     final bool useGradient = !isEmpty &&
-        !widget.highlighted &&
+        !isSolvedHighlight &&
         decorationParts.gradient != null;
     final borderRadius =
         decorationParts.borderRadius ?? BorderRadius.circular(8);
@@ -260,11 +269,11 @@ class TileWidgetState extends State<TileWidget>
       offset: const Offset(2, 2),
     );
     final List<BoxShadow> combinedShadows = [
-      if (widget.highlighted)
+      if (isSolvedHighlight)
         BoxShadow(
-          color: Colors.greenAccent.withValues(alpha: 0.7),
-          blurRadius: 15,
-          spreadRadius: 3,
+          color: Colors.orangeAccent.withValues(alpha: 0.65),
+          blurRadius: 18,
+          spreadRadius: 3.5,
         ),
       if (decorationParts.boxShadows.isNotEmpty)
         ...decorationParts.boxShadows
@@ -282,8 +291,8 @@ class TileWidgetState extends State<TileWidget>
             ? null
             : isEmpty
             ? Colors.transparent
-            : widget.highlighted
-            ? Colors.greenAccent.withValues(alpha: 0.8)
+            : isSolvedHighlight
+            ? Colors.orangeAccent.withValues(alpha: 0.82)
             : (_scale != 1.0
             ? baseFillColor.withValues(alpha: 0.5)
             : baseFillColor),
@@ -306,7 +315,29 @@ class TileWidgetState extends State<TileWidget>
       ),
     );
 
-    final animatedTile = _applyActiveTransition(tileSurface);
+    final hintOverlay = Positioned.fill(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: isHintHighlight
+            ? _HintEffectLayer(
+          effect: widget.hintEffect,
+          borderRadius: borderRadius,
+        )
+            : const SizedBox.shrink(),
+      ),
+    );
+
+    final tileSurfaceWithOverlay = Stack(
+      fit: StackFit.expand,
+      children: [
+        tileSurface,
+        hintOverlay,
+      ],
+    );
+
+    final animatedTile = _applyActiveTransition(tileSurfaceWithOverlay);
     final idleAnimatedTile = _wrapWithIdleAnimation(animatedTile);
 
     return GestureDetector(
@@ -319,6 +350,118 @@ class TileWidgetState extends State<TileWidget>
         curve: Curves.easeInOut,
         child: idleAnimatedTile,
       ),
+    );
+  }
+}
+
+class _HintEffectLayer extends StatelessWidget {
+  final String effect;
+  final BorderRadius borderRadius;
+
+  const _HintEffectLayer({
+    required this.effect,
+    required this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    switch (effect) {
+      case 'aurora':
+      case 'premium':
+        return _PremiumHintAura(borderRadius: borderRadius);
+      default:
+        return _FreeHintPulse(borderRadius: borderRadius);
+    }
+  }
+}
+
+class _FreeHintPulse extends StatelessWidget {
+  final BorderRadius borderRadius;
+
+  const _FreeHintPulse({required this.borderRadius});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.86, end: 1.0),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: Colors.cyanAccent.withValues(alpha: 0.9),
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.cyanAccent.withValues(alpha: 0.55 * value),
+                  blurRadius: 18 * value,
+                  spreadRadius: 1.4,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PremiumHintAura extends StatelessWidget {
+  final BorderRadius borderRadius;
+
+  const _PremiumHintAura({required this.borderRadius});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.9, end: 1.0),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(
+                width: 3.2,
+                color: const Color(0xFFBB86FC).withValues(alpha: 0.92),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFBB86FC).withValues(alpha: 0.7),
+                  blurRadius: 28,
+                  spreadRadius: 2.8,
+                ),
+                BoxShadow(
+                  color: const Color(0xFF64FFDA).withValues(alpha: 0.45),
+                  blurRadius: 34,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                gradient: LinearGradient(
+                  colors: const [
+                    Color(0x4464FFDA),
+                    Color(0x44BB86FC),
+                    Color(0x44FF9AA2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

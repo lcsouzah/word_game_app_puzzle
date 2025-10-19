@@ -67,6 +67,15 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: (value) =>
                       unawaited(settings.updateHapticsEnabled(value)),
                 ),
+                SwitchListTile(
+                  title: const Text('Title Case Words'),
+                  subtitle: const Text(
+                    'Capitalize the first letter of solved words and tile labels',
+                  ),
+                  value: settings.useTitleCaseWords,
+                  onChanged: (value) =>
+                      unawaited(settings.updateUseTitleCaseWords(value)),
+                ),
               ],
             ),
           ),

@@ -6,27 +6,34 @@ import 'package:flutter/material.dart';
 
 import '../../services/game_feedback_service.dart';
 import '../models/alphabet_game.dart';
+import '../models/tile_highlight_kind.dart';
+
 
 class TileVisualState {
   final String letter;
   final bool highlighted;
   final bool disappearing;
+  final TileHighlightKind highlightKind;
+
 
   const TileVisualState({
     required this.letter,
     required this.highlighted,
     required this.disappearing,
+    required this.highlightKind,
   });
 
   TileVisualState copyWith({
     String? letter,
     bool? highlighted,
     bool? disappearing,
+    TileHighlightKind? highlightKind,
   }) {
     return TileVisualState(
       letter: letter ?? this.letter,
       highlighted: highlighted ?? this.highlighted,
       disappearing: disappearing ?? this.disappearing,
+      highlightKind: highlightKind ?? this.highlightKind,
     );
   }
 }
@@ -60,6 +67,7 @@ class WordQuestController extends ChangeNotifier {
               letter: game.letters[index],
               highlighted: false,
               disappearing: false,
+              highlightKind: TileHighlightKind.none,
             ),
           ),
         );
@@ -131,7 +139,10 @@ class WordQuestController extends ChangeNotifier {
     for (int i = 0; i < indices.length; i++) {
       final idx = indices[i];
       final notifier = tiles[idx];
-      notifier.value = notifier.value.copyWith(highlighted: true);
+      notifier.value = notifier.value.copyWith(
+        highlighted: true,
+        highlightKind: TileHighlightKind.solved,
+      );
       await Future.delayed(const Duration(milliseconds: 110));
     }
 
@@ -153,6 +164,7 @@ class WordQuestController extends ChangeNotifier {
       notifier.value = notifier.value.copyWith(
         disappearing: false,
         highlighted: false,
+        highlightKind: TileHighlightKind.none,
       );
     }
   }
@@ -198,12 +210,18 @@ class WordQuestController extends ChangeNotifier {
     _hintCompleter = Completer<void>();
     for (final idx in indices) {
       final notifier = tiles[idx];
-      notifier.value = notifier.value.copyWith(highlighted: true);
+      notifier.value = notifier.value.copyWith(
+        highlighted: true,
+        highlightKind: TileHighlightKind.hint,
+      );
     }
     await Future.delayed(const Duration(milliseconds: 850));
     for (final idx in indices) {
       final notifier = tiles[idx];
-      notifier.value = notifier.value.copyWith(highlighted: false);
+      notifier.value = notifier.value.copyWith(
+        highlighted: false,
+        highlightKind: TileHighlightKind.none,
+      );
     }
     _hintCompleter?.complete();
   }
@@ -218,8 +236,10 @@ class WordQuestController extends ChangeNotifier {
       letter: game.letters[index],
       highlighted: false,
       disappearing: false,
+      highlightKind: TileHighlightKind.none,
     );
   }
+
 
   @override
   void dispose() {
