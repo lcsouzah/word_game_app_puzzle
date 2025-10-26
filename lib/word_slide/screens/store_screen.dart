@@ -1,9 +1,13 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:provider/provider.dart';
 
 import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
+import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
@@ -182,19 +186,25 @@ const _trailOptions = <_SelectableOption>[
 
 const _freeHintEffectOptions = <_SelectableOption>[
   _SelectableOption(
-    id: 'pulse',
-    title: 'Soft Pulse',
-    subtitle: 'Cyan outline that gently pulses',
+    id: 'ring',
+    title: 'Neon Ring',
+    subtitle: 'Cyan halo that pulses around hints',
     icon: Icons.blur_on,
+  ),
+  _SelectableOption(
+    id: 'spotlight',
+    title: 'Soft Spotlight',
+    subtitle: 'Gentle glow illuminating the tile',
+    icon: Icons.highlight,
   ),
 ];
 
 const _premiumHintEffectOptions = <_SelectableOption>[
   _SelectableOption(
-    id: 'aurora',
-    title: 'Aurora Sweep',
-    subtitle: 'Prismatic aura reserved for premium style',
-    icon: Icons.auto_awesome,
+    id: 'arrow-bounce',
+    title: 'Arrow Bounce',
+    subtitle: 'Animated chevron guiding the next move',
+    icon: Icons.double_arrow,
   ),
 ];
 
@@ -275,6 +285,8 @@ class StoreScreenState extends State<StoreScreen> {
   Widget build(BuildContext context) {
     final service = context.watch<InAppPurchaseService>();
     final cosmetics = context.watch<CosmeticManager>();
+    final settings = context.watch<SettingsService>();
+
 
     return DefaultTabController(
       length: 2,
@@ -319,8 +331,8 @@ class StoreScreenState extends State<StoreScreen> {
 
             return TabBarView(
               children: [
-                _buildCosmeticsTab(context, cosmetics),
-                _buildPremiumTab(context, service, cosmetics, products),
+                _buildCosmeticsTab(context, cosmetics, settings),
+                _buildPremiumTab(context, service, cosmetics, products, settings),
               ],
             );
           },
@@ -332,6 +344,7 @@ class StoreScreenState extends State<StoreScreen> {
   Widget _buildCosmeticsTab(
       BuildContext context,
       CosmeticManager cosmetics,
+      SettingsService settings,
       ) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -361,8 +374,11 @@ class StoreScreenState extends State<StoreScreen> {
           subtitle: 'Pick the soundtrack for moves and celebrations.',
           child: _SelectableList(
             options: _soundPackOptions,
-            selectedId: cosmetics.soundPack,
-            onChanged: (id) => cosmetics.setSkin('sound', id),
+            selectedId: settings.soundPack,
+            onChanged: (id) {
+              cosmetics.setSkin('sound', id);
+              unawaited(settings.updateSoundPack(id));
+            },
           ),
         ),
         const SizedBox(height: 16),
@@ -381,8 +397,11 @@ class StoreScreenState extends State<StoreScreen> {
           subtitle: 'Decide how free hints glow on the puzzle board.',
           child: _SelectableList(
             options: _freeHintEffectOptions,
-            selectedId: cosmetics.hintEffect,
-            onChanged: (id) => cosmetics.setSkin('hint', id),
+            selectedId: settings.hintEffect,
+            onChanged: (id) {
+              cosmetics.setSkin('hint', id);
+              unawaited(settings.updateHintEffect(id));
+            },
           ),
         ),
         const SizedBox(height: 16),
@@ -395,6 +414,7 @@ class StoreScreenState extends State<StoreScreen> {
       InAppPurchaseService service,
       CosmeticManager cosmetics,
       Map<String, ProductDetails> products,
+      SettingsService settings,
       ) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -412,7 +432,8 @@ class StoreScreenState extends State<StoreScreen> {
             itemCount: _borders.length,
             itemBuilder: (context, index) {
               final border = _borders[index];
-              final owned = service.isProductPurchased(border.id);
+              final owned = service.isProductPurchased(border.id) ||
+                  (kDebugMode && settings.devUnlockPremiumCosmetics);
               final product = products[border.id];
               return _StoreProductCard(
                 preview: _BorderPreview(border: border),
@@ -434,7 +455,8 @@ class StoreScreenState extends State<StoreScreen> {
             itemCount: _animations.length,
             itemBuilder: (context, index) {
               final animation = _animations[index];
-              final owned = service.isProductPurchased(animation.id);
+              final owned = service.isProductPurchased(animation.id) ||
+                  (kDebugMode && settings.devUnlockPremiumCosmetics);
               final product = products[animation.id];
               return _StoreProductCard(
                 preview: _AnimationPreview(product: animation),
@@ -452,11 +474,14 @@ class StoreScreenState extends State<StoreScreen> {
         _StoreSectionCard(
           title: 'Premium Hint Effects',
           subtitle:
-          'Unlock the aurora sweep highlight for purchased players.',
+          'Unlock the animated arrow bounce guidance.',
           child: _SelectableList(
             options: _premiumHintEffectOptions,
-            selectedId: cosmetics.hintEffect,
-            onChanged: (id) => cosmetics.setSkin('hint', id),
+            selectedId: settings.hintEffect,
+            onChanged: (id) {
+              cosmetics.setSkin('hint', id);
+              unawaited(settings.updateHintEffect(id));
+            },
           ),
         ),
         const SizedBox(height: 16),

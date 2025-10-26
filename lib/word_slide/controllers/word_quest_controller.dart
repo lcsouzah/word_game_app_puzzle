@@ -98,7 +98,7 @@ class WordQuestController extends ChangeNotifier {
     _updateLetter(index);
 
     moves.value = moves.value + 1;
-    unawaited(GameFeedbackService.move());
+    unawaited(GameFeedbackService.onTileMove());
     await _evaluateBoard();
   }
 
@@ -132,7 +132,7 @@ class WordQuestController extends ChangeNotifier {
     }
 
     isAnimating.value = false;
-    unawaited(GameFeedbackService.correctWord());
+    unawaited(GameFeedbackService.onCorrectWord());
   }
 
   Future<void> _animateSolvedWord(List<int> indices) async {
@@ -186,7 +186,7 @@ class WordQuestController extends ChangeNotifier {
     pulseTicker.value = pulseTicker.value + 1;
   }
 
-  Future<void> showHint() async {
+  Future<void> showHint({bool showTrail = true}) async {
     if (hintsRemaining.value <= 0 || isAnimating.value) {
       return;
     }
@@ -208,7 +208,8 @@ class WordQuestController extends ChangeNotifier {
     }
 
     _hintCompleter = Completer<void>();
-    for (final idx in indices) {
+    final highlightedIndices = showTrail ? indices : <int>[indices.first];
+    for (final idx in highlightedIndices) {
       final notifier = tiles[idx];
       notifier.value = notifier.value.copyWith(
         highlighted: true,
@@ -216,7 +217,7 @@ class WordQuestController extends ChangeNotifier {
       );
     }
     await Future.delayed(const Duration(milliseconds: 850));
-    for (final idx in indices) {
+    for (final idx in highlightedIndices) {
       final notifier = tiles[idx];
       notifier.value = notifier.value.copyWith(
         highlighted: false,

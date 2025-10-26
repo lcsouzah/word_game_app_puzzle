@@ -3,11 +3,15 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_game_controller.dart';
+import 'package:word_game_app/serpuzzle/serpuzzle_tunables.dart';
 import 'package:word_game_app/serpuzzle/widgets/portal_animation.dart';
 import 'package:word_game_app/serpuzzle/widgets/serpuzzle_snake_body.dart';
+import 'package:word_game_app/serpuzzle/widgets/serpuzzle_snake_head.dart';
 import 'package:word_game_app/serpuzzle/widgets/serpuzzle_tile.dart';
 import 'package:word_game_app/utils/direction_enum.dart';
 import 'package:word_game_app/utils/swipe_detector.dart';
@@ -25,16 +29,31 @@ class SerpuzzleGameScreen extends StatefulWidget {
   State<SerpuzzleGameScreen> createState() => _SerpuzzleGameScreenState();
 }
 
-class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
+class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen>
+    with TickerProviderStateMixin {
   final GlobalKey<PortalAnimationState> _portalKey =
   PortalAnimation.createKey();
   Listenable? _boardListenable;
   bool _handlingMatch = false;
   bool _handlingGameOver = false;
+  late final AnimationController _shakeController;
+  late final Ticker _frameTicker;
+  final GlobalKey<SerpuzzleSnakeHeadState> _headKey =
+  GlobalKey<SerpuzzleSnakeHeadState>();
+  final List<_BoardOverlayEntry> _floatingIndicators = [];
+  int _damageEventId = 0;
+  int _rewardEventId = 0;
+  bool _inputLocked = false;
+  Offset? _lastHeadPixel;
 
   @override
   void initState() {
     super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: impactShakeDuration,
+    );
+    _frameTicker = createTicker(_onFrame)..start();
     _attachController(widget.controller);
   }
 
@@ -50,6 +69,8 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   @override
   void dispose() {
     _detachController(widget.controller);
+    _frameTicker.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -59,14 +80,21 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
       controller.snakeListenable,
       controller.isMatchedListenable,
       controller.justEatenCell,
+      controller.headProgressListenable,
     ]);
+    _damageEventId = controller.damageListenable.value;
+    _rewardEventId = controller.rewardListenable.value;
     controller.isMatchedListenable.addListener(_handleMatchChanged);
     controller.isGameOverListenable.addListener(_handleGameOverChanged);
+    controller.damageListenable.addListener(_handleDamageEvent);
+    controller.rewardListenable.addListener(_handleRewardEvent);
   }
 
   void _detachController(SerpuzzleGameController controller) {
     controller.isMatchedListenable.removeListener(_handleMatchChanged);
     controller.isGameOverListenable.removeListener(_handleGameOverChanged);
+    controller.damageListenable.removeListener(_handleDamageEvent);
+    controller.rewardListenable.removeListener(_handleRewardEvent);
     _boardListenable = null;
   }
 
@@ -94,6 +122,100 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
     });
   }
 
+  void _onFrame(Duration elapsed) {
+    widget.controller.handleFrame(elapsed);
+  }
+
+  void _handleDamageEvent() {
+    if (!mounted) return;
+    final value = widget.controller.damageListenable.value;
+    if (value == _damageEventId) {
+      return;
+    }
+    _damageEventId = value;
+    if (value == 0) {
+      return;
+    }
+    _triggerDamageFeedback();
+  }
+
+  void _handleRewardEvent() {
+    if (!mounted) return;
+    final value = widget.controller.rewardListenable.value;
+    if (value == _rewardEventId) {
+      return;
+    }
+    _rewardEventId = value;
+    if (value == 0) {
+      return;
+    }
+    _triggerRewardFeedback();
+  }
+
+  void _triggerDamageFeedback() {
+    final head = _lastHeadPixel;
+    if (head != null) {
+      _showDamageIndicatorAt(head);
+    }
+    _shakeController
+      ..stop()
+      ..reset()
+      ..forward();
+    if (widget.controller.enableHaptics) {
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  void _triggerRewardFeedback() {
+    _headKey.currentState?.pulse();
+    final head = _lastHeadPixel;
+    if (head != null) {
+      final popup = widget.controller.scorePopup.value;
+      final text = popup != null ? '+${popup.points}' : '+1';
+      _showPointsIndicatorAt(head, text);
+    }
+    if (widget.controller.enableHaptics) {
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _addOverlayWidget(Widget child, Duration lifespan) {
+    if (!mounted) return;
+    final key = UniqueKey();
+    final entry = _BoardOverlayEntry(
+      key: key,
+      child: KeyedSubtree(key: key, child: child),
+    );
+    setState(() {
+      _floatingIndicators.add(entry);
+    });
+    Future.delayed(lifespan, () {
+      if (!mounted) return;
+      setState(() {
+        _floatingIndicators.removeWhere((element) => element.key == key);
+      });
+    });
+  }
+
+  void _showDamageIndicatorAt(Offset position) {
+    _addOverlayWidget(DamageIndicator(position: position), damageIndicatorDuration);
+  }
+
+  void _showPointsIndicatorAt(Offset position, String text) {
+    _addOverlayWidget(PointsIndicator(position: position, text: text), pointsFloatDuration);
+  }
+
+  Offset _computeShakeOffset() {
+    if (!_shakeController.isAnimating) {
+      return Offset.zero;
+    }
+    final progress = _shakeController.value;
+    final decay = 1 - Curves.easeOutQuad.transform(progress);
+    final dx = sin(progress * pi * 8) * impactShakeAmplitude * decay;
+    final dy = cos(progress * pi * 6) * (impactShakeAmplitude * 0.45) * decay;
+    return Offset(dx, dy);
+  }
+
   Future<void> _showGameOverDialog() async {
     final finalScore = widget.controller.score;
     await showDialog(
@@ -112,18 +234,27 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   }
 
   Future<void> _showLevelTransition() async {
+    setState(() {
+      _inputLocked = true;
+      _floatingIndicators.clear();
+    });
     final dialogFuture = showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => PortalAnimation(
         key: _portalKey,
         level: widget.controller.level,
+        onStarted: widget.controller.clearInputQueue,
       ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _portalKey.currentState?.play();
     });
     await dialogFuture;
+    if (!mounted) return;
+    setState(() {
+      _inputLocked = false;
+    });
   }
 
   void _onSwipe(Direction direction) {
@@ -170,6 +301,22 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
             final bannerText = hasLetters ? currentWord : 'Collect letters';
             final celebrating = widget.controller.isMatched && hasLetters;
             final boardRadius = BorderRadius.circular(14);
+            final headCurrentCell = widget.controller.currentHeadCellCenter;
+            final headNextCell = widget.controller.nextHeadCellCenter;
+            final headProgress = widget.controller.headProgress;
+            final tileSize = grid.cols == 0 ? 0.0 : boardExtent / grid.cols;
+            if (tileSize > 0) {
+              final headCurrentPixel = Offset(
+                headCurrentCell.dx * tileSize,
+                headCurrentCell.dy * tileSize,
+              );
+              final headNextPixel = Offset(
+                headNextCell.dx * tileSize,
+                headNextCell.dy * tileSize,
+              );
+              _lastHeadPixel = Offset.lerp(headCurrentPixel, headNextPixel, headProgress) ??
+                  headCurrentPixel;
+            }
 
             return Center(
               child: Column(
@@ -209,16 +356,36 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
                               .withOpacity(0.35),
                         ),
                       ),
-                      child: SwipeDetector(
-                        onSwipe: _onSwipe,
-                        child: SizedBox.square(
-                          dimension: boardExtent,
-                          child: _SerpuzzleBoard(
-                            boardExtent: boardExtent,
-                            grid: grid,
-                            snake: snake,
-                            isMatched: widget.controller.isMatched,
-                            controller: widget.controller,
+                      child: IgnorePointer(
+                        ignoring: _inputLocked,
+                        child: SwipeDetector(
+                          onSwipe: _onSwipe,
+                          child: AnimatedBuilder(
+                            animation: _shakeController,
+                            builder: (context, child) {
+                              final offset = _computeShakeOffset();
+                              return Transform.translate(
+                                offset: offset,
+                                child: child,
+                              );
+                            },
+                            child: SizedBox.square(
+                              dimension: boardExtent,
+                              child: _SerpuzzleBoard(
+                                boardExtent: boardExtent,
+                                grid: grid,
+                                snake: snake,
+                                isMatched: widget.controller.isMatched,
+                                controller: widget.controller,
+                                headKey: _headKey,
+                                headCurrentCell: headCurrentCell,
+                                headNextCell: headNextCell,
+                                headProgress: headProgress,
+                                overlayIndicators: _floatingIndicators
+                                    .map((entry) => entry.child)
+                                    .toList(growable: false),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -333,7 +500,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   void tickForTest() => widget.controller.tickForTest();
 
   @visibleForTesting
-  void cancelTimersForTest() => widget.controller.cancelTimersForTest();
+  void cancelTimersForTest() {
+    _frameTicker.stop();
+    widget.controller.cancelTimersForTest();
+  }
 
   @visibleForTesting
   Duration get moveDelayForTest => widget.controller.moveDelayForTest;
@@ -369,6 +539,82 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen> {
   int get livesForTest => widget.controller.livesForTest;
 }
 
+class _BoardOverlayEntry {
+  const _BoardOverlayEntry({required this.key, required this.child});
+
+  final Key key;
+  final Widget child;
+}
+
+class DamageIndicator extends StatelessWidget {
+  const DamageIndicator({super.key, required this.position});
+
+  final Offset position;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: damageIndicatorDuration,
+      curve: Curves.easeOutCubic,
+      builder: (_, value, __) {
+        final fade = (1 - value).clamp(0.0, 1.0);
+        return Positioned(
+          left: position.dx - 10,
+          top: position.dy - 20 - (value * 18),
+          child: Opacity(
+            opacity: fade,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.favorite, size: 20, color: Colors.redAccent),
+                SizedBox(width: 2),
+                Icon(Icons.remove, size: 18, color: Colors.redAccent),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class PointsIndicator extends StatelessWidget {
+  const PointsIndicator({super.key, required this.position, required this.text});
+
+  final Offset position;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.titleSmall ??
+        const TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: pointsFloatDuration,
+      curve: Curves.easeOutCubic,
+      builder: (_, value, __) {
+        final opacity = (1 - Curves.easeInQuad.transform(value)).clamp(0.0, 1.0);
+        return Positioned(
+          left: position.dx - 14,
+          top: position.dy - 28 - (value * 20),
+          child: Opacity(
+            opacity: opacity,
+            child: Text(
+              text,
+              style: baseStyle.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _SerpuzzleBoard extends StatelessWidget {
   const _SerpuzzleBoard({
     required this.boardExtent,
@@ -376,6 +622,11 @@ class _SerpuzzleBoard extends StatelessWidget {
     required this.snake,
     required this.isMatched,
     required this.controller,
+    required this.headKey,
+    required this.headCurrentCell,
+    required this.headNextCell,
+    required this.headProgress,
+    required this.overlayIndicators,
   });
 
   final double boardExtent;
@@ -383,12 +634,19 @@ class _SerpuzzleBoard extends StatelessWidget {
   final SerpuzzleSnake snake;
   final bool isMatched;
   final SerpuzzleGameController controller;
+  final GlobalKey<SerpuzzleSnakeHeadState> headKey;
+  final Offset headCurrentCell;
+  final Offset headNextCell;
+  final double headProgress;
+  final List<Widget> overlayIndicators;
 
 
   @override
   Widget build(BuildContext context) {
+    if (grid.cols == 0) {
+      return const SizedBox.shrink();
+    }
     final tileSize = boardExtent / grid.cols;
-    const segmentScale = 0.4;
     final snakePositions = snake.segments.toSet();
     final justEatenCell = controller.justEatenCell.value;
     final letters = snake.letters;
@@ -406,6 +664,14 @@ class _SerpuzzleBoard extends StatelessWidget {
       );
     }
 
+    final headCurrentPixel = Offset(
+      headCurrentCell.dx * tileSize,
+      headCurrentCell.dy * tileSize,
+    );
+    final headNextPixel = Offset(
+      headNextCell.dx * tileSize,
+      headNextCell.dy * tileSize,
+    );
     final theme = Theme.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -424,20 +690,22 @@ class _SerpuzzleBoard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CustomPaint(
-                painter: _SerpuzzleBoardBackdropPainter(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.colorScheme.surfaceVariant.withOpacity(0.28),
-                      theme.colorScheme.surface.withOpacity(0.4),
-                      theme.colorScheme.surfaceVariant.withOpacity(0.18),
-                    ],
-                    stops: const [0.0, 0.55, 1.0],
+              RepaintBoundary(
+                child: CustomPaint(
+                  painter: _SerpuzzleBoardBackdropPainter(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.colorScheme.surfaceVariant.withOpacity(0.28),
+                        theme.colorScheme.surface.withOpacity(0.4),
+                        theme.colorScheme.surfaceVariant.withOpacity(0.18),
+                      ],
+                      stops: const [0.0, 0.55, 1.0],
+                    ),
+                    fallbackColor:
+                    theme.colorScheme.surfaceVariant.withOpacity(0.24),
                   ),
-                  fallbackColor:
-                  theme.colorScheme.surfaceVariant.withOpacity(0.24),
                 ),
               ),
               GridView.builder(
@@ -464,8 +732,12 @@ class _SerpuzzleBoard extends StatelessWidget {
               SerpuzzleSnakeBody(
                 segments: segments,
                 tileSize: tileSize,
-                segmentScale: segmentScale,
+                headKey: headKey,
+                headCurrentPixel: headCurrentPixel,
+                headNextPixel: headNextPixel,
+                headProgress: headProgress,
               ),
+              ...overlayIndicators,
               ValueListenableBuilder<Object?>(
                 valueListenable: controller.scorePopup,
                 builder: (context, value, _) {
@@ -498,7 +770,7 @@ class _SerpuzzleBoard extends StatelessWidget {
                     child: TweenAnimationBuilder<double>(
                       key: ValueKey<Object>(popup),
                       tween: Tween<double>(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 650),
+                      duration: pointsFloatDuration,
                       curve: Curves.easeOutCubic,
                       onEnd: () {
                         if (identical(controller.scorePopup.value, popup)) {

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_grid.dart';
 import 'package:word_game_app/serpuzzle/models/serpuzzle_snake.dart';
+import 'package:word_game_app/serpuzzle/serpuzzle_tunables.dart';
 import 'package:word_game_app/utils/direction_enum.dart';
 
 class WordMatchEngine {
@@ -103,6 +105,13 @@ class SerpuzzleGameController extends ChangeNotifier {
   int _growSegments = 0;
   int _currentTiles = 0;
   bool _disposed = false;
+  double _subStep = 0;
+  Duration? _lastFrameTime;
+  GridPosition? _previousHeadTile;
+
+  final ValueNotifier<double> headProgressNotifier = ValueNotifier<double>(0);
+  final ValueNotifier<int> damageNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> rewardNotifier = ValueNotifier<int>(0);
 
   VoidCallback? onTimeExpired;
   VoidCallback? onGameOver;
@@ -123,6 +132,9 @@ class SerpuzzleGameController extends ChangeNotifier {
   ValueListenable<bool> get isGameOverListenable => isGameOverNotifier;
   ValueListenable<int> get gridListenable => gridNotifier;
   ValueListenable<int> get snakeListenable => snakeNotifier;
+  ValueListenable<double> get headProgressListenable => headProgressNotifier;
+  ValueListenable<int> get damageListenable => damageNotifier;
+  ValueListenable<int> get rewardListenable => rewardNotifier;
 
   Duration get remainingTime {
     final remaining = levelTimeLimit - _elapsed;
@@ -135,6 +147,24 @@ class SerpuzzleGameController extends ChangeNotifier {
     final seconds = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
+
+  double get headProgress {
+    if (!_isMovementReady || _isPaused || _isGameOver) {
+      return 0;
+    }
+    return headProgressNotifier.value;
+  }
+
+  GridPosition get headTile =>
+      _snake.segments.isNotEmpty ? _snake.segments.last : GridPosition(0, 0);
+
+  GridPosition get previousHeadTile => _previousHeadTile ?? headTile;
+
+  GridPosition get plannedNextHeadTile => _computeNextHeadTile();
+
+  Offset get currentHeadCellCenter => _cellCenterFor(headTile);
+
+  Offset get nextHeadCellCenter => _cellCenterFor(plannedNextHeadTile);
 
   void initializeGame() {
     _initBoard();
@@ -173,6 +203,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     _levelTimer?.cancel();
     _moveTimer?.cancel();
     _moveTimer = null;
+    _lastFrameTime = null;
     notifyListeners();
   }
 
@@ -180,6 +211,7 @@ class SerpuzzleGameController extends ChangeNotifier {
     if (!_isPaused || _isGameOver) return;
     _isPaused = false;
     isPausedNotifier.value = false;
+    _lastFrameTime = null;
     notifyListeners();
     startLevelTimer();
     _startMoveTimer();
@@ -235,6 +267,10 @@ class SerpuzzleGameController extends ChangeNotifier {
       _startMoveTimer();
     }
   }
+  void clearInputQueue() {
+    _pendingDirection = null;
+    _bufferedDirection = null;
+  }
 
   void prepareNextLevel() {
     if (!isMatched) return;
@@ -285,6 +321,41 @@ class SerpuzzleGameController extends ChangeNotifier {
     onGameOver?.call();
   }
 
+  void handleFrame(Duration timestamp) {
+    if (_disposed) return;
+    final last = _lastFrameTime;
+    _lastFrameTime = timestamp;
+    if (last == null) {
+      return;
+    }
+
+    final deltaMicros = (timestamp - last).inMicroseconds;
+    if (deltaMicros <= 0) {
+      return;
+    }
+
+    final deltaSeconds = deltaMicros / Duration.microsecondsPerSecond;
+
+    if (!_isMovementReady || _isPaused || isMatched || _isGameOver) {
+      _subStep = 0;
+      headProgressNotifier.value = 0;
+      return;
+    }
+
+    _subStep += _tilesPerSecond * deltaSeconds * kSubSteps;
+
+    while (_subStep >= kSubSteps) {
+      _subStep -= kSubSteps;
+      _advanceSnakeOnce();
+      if (_isPaused || isMatched || _isGameOver || !_isMovementReady) {
+        _subStep = 0;
+        break;
+      }
+    }
+
+    headProgressNotifier.value = (_subStep / kSubSteps).clamp(0.0, 1.0);
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -293,6 +364,9 @@ class SerpuzzleGameController extends ChangeNotifier {
     _resetTimer?.cancel();
     scorePopup.dispose();
     justEatenCell.dispose();
+    headProgressNotifier.dispose();
+    damageNotifier.dispose();
+    rewardNotifier.dispose();
     super.dispose();
   }
 
@@ -303,10 +377,15 @@ class SerpuzzleGameController extends ChangeNotifier {
       return;
     }
     _moveTimer?.cancel();
-    _moveTimer = Timer.periodic(moveDelay, (_) => _tick());
+    _moveTimer = null;
+    _subStep = 0;
+    _lastFrameTime = null;
+    headProgressNotifier.value = 0;
   }
 
-  void _tick() {
+  void _tick() => _advanceSnakeOnce();
+
+  void _advanceSnakeOnce() {
     if (_isPaused || isMatched || _isGameOver || !_isMovementReady || !_hasStartedInput) {
       return;
     }
@@ -330,7 +409,12 @@ class SerpuzzleGameController extends ChangeNotifier {
       return;
     }
 
+    if (_snake.segments.isEmpty) {
+      return;
+    }
+
     final head = _snake.segments.last;
+    _previousHeadTile = head;
     int row = head.row;
     int col = head.col;
     switch (_currentDirection) {
@@ -351,8 +435,12 @@ class SerpuzzleGameController extends ChangeNotifier {
     if (wrapAround) {
       final rows = _grid.rows;
       final cols = _grid.cols;
-      row = ((row % rows) + rows) % rows;
-      col = ((col % cols) + cols) % cols;
+      if (rows > 0) {
+        row = ((row % rows) + rows) % rows;
+      }
+      if (cols > 0) {
+        col = ((col % cols) + cols) % cols;
+      }
     }
 
     final newPos = GridPosition(row, col);
@@ -369,6 +457,7 @@ class SerpuzzleGameController extends ChangeNotifier {
         willDropTailBlank;
 
     if (!_grid.inBounds(newPos) || (collidesWithBody && !collidesWithTail)) {
+      _emitDamage();
       _handleCollision();
       return;
     }
@@ -385,9 +474,11 @@ class SerpuzzleGameController extends ChangeNotifier {
         gridY: newPos.row,
         isWord: false,
       );
+      _emitReward();
     }
     final potentialWord = _snake.word + letter;
     if (!_engine.hasPrefix(potentialWord)) {
+      _emitDamage();
       _resetTimer?.cancel();
       _resetTimer = null;
       if (!consumeLife()) {
@@ -401,6 +492,8 @@ class SerpuzzleGameController extends ChangeNotifier {
       _spawnRandomTiles(_tilesNeeded);
       snakeNotifier.value++;
       gridNotifier.value++;
+      _subStep = 0;
+      headProgressNotifier.value = 0;
       return;
     }
 
@@ -448,6 +541,9 @@ class SerpuzzleGameController extends ChangeNotifier {
     _resetTimer = null;
     _moveTimer?.cancel();
     _moveTimer = null;
+    _subStep = 0;
+    _lastFrameTime = null;
+    headProgressNotifier.value = 0;
     if (!consumeLife()) {
       markGameOver();
       return;
@@ -468,6 +564,7 @@ class SerpuzzleGameController extends ChangeNotifier {
         _moveTimer?.cancel();
         _moveTimer = null;
         addScore(letters.length);
+        _emitReward();
         final headPos = _snake.segments.last;
         scorePopup.value = _ScorePopup(
           points: letters.length,
@@ -503,6 +600,10 @@ class SerpuzzleGameController extends ChangeNotifier {
     _consumeSpawnOnNextTick = false;
     _isMovementReady = false;
     _hasStartedInput = false;
+    _previousHeadTile = startPos;
+    _subStep = 0;
+    _lastFrameTime = null;
+    headProgressNotifier.value = 0;
     isMatchedNotifier.value = false;
     scorePopup.value = null;
     _spawnRandomTiles(_tilesNeeded);
@@ -597,6 +698,65 @@ class SerpuzzleGameController extends ChangeNotifier {
       case Direction.right:
         return b == Direction.left;
     }
+  }
+
+  double get _tilesPerSecond {
+    final micros = moveDelay.inMicroseconds;
+    if (micros <= 0) {
+      return snakeTilesPerSecond;
+    }
+    return Duration.microsecondsPerSecond / micros;
+  }
+
+  GridPosition _computeNextHeadTile() {
+    if (_snake.segments.isEmpty) {
+      return GridPosition(0, 0);
+    }
+    final head = _snake.segments.last;
+    var nextDirection = _pendingDirection ?? _currentDirection;
+    var row = head.row;
+    var col = head.col;
+    switch (nextDirection) {
+      case Direction.up:
+        row -= 1;
+        break;
+      case Direction.down:
+        row += 1;
+        break;
+      case Direction.left:
+        col -= 1;
+        break;
+      case Direction.right:
+        col += 1;
+        break;
+    }
+    if (wrapAround) {
+      final rows = _grid.rows;
+      final cols = _grid.cols;
+      if (rows > 0) {
+        row = ((row % rows) + rows) % rows;
+      }
+      if (cols > 0) {
+        col = ((col % cols) + cols) % cols;
+      }
+    }
+    final candidate = GridPosition(row, col);
+    if (!_grid.inBounds(candidate)) {
+      return head;
+    }
+    return candidate;
+  }
+
+  Offset _cellCenterFor(GridPosition position) {
+    return Offset(position.col + 0.5, position.row + 0.5);
+  }
+
+  void _emitDamage() {
+    damageNotifier.value++;
+  }
+
+  void _emitReward() {
+    rewardNotifier.value++;
   }
 
   @visibleForTesting

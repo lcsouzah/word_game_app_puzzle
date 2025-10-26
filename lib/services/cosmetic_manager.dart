@@ -8,7 +8,7 @@ class CosmeticManager extends ChangeNotifier {
   String tileSkin = 'default';
   String soundPack = 'classic';
   String trailEffect = 'sparkle';
-  String hintEffect = 'pulse';
+  String hintEffect = 'ring';
   void setSkin(String type, String name) {
     switch (type) {
       case 'board':

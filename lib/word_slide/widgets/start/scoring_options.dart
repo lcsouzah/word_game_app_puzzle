@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:word_game_app/word_slide/models/alphabet_game.dart';
+import 'package:word_game_app/utils/text_format.dart';
+
 
 class ScoringOptions extends StatelessWidget {
   final ScoringOption groupValue;
@@ -17,7 +19,7 @@ class ScoringOptions extends StatelessWidget {
       options: ScoringOption.values,
       groupValue: groupValue,
       onChanged: onChanged,
-      labelBuilder: (option) => Text(option.name),
+      labelBuilder: (option) => Text(titleCaseFirstOnly(option.name)),
     );
   }
 }

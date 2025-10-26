@@ -13,6 +13,7 @@ import 'package:word_game_app/services/settings_screen.dart';
 import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/score_uploader.dart';
+import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/word_slide/controllers/word_quest_controller.dart';
 import 'package:word_game_app/word_slide/models/alphabet_game.dart';
 import 'package:word_game_app/word_slide/screens/game_screen.dart';
@@ -436,15 +437,6 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                           child: ChangeNotifierProvider.value(
                             value: controller,
                             child: GameScreen(
-                              onPauseToggle: () {
-                                if (pauseManager.isPaused &&
-                                    pauseManager.pauseReason ==
-                                        PauseReason.manual) {
-                                  pauseManager.resume(PauseReason.manual);
-                                } else {
-                                  pauseManager.pause(PauseReason.manual);
-                                }
-                              },
                               onRewardedAdRequest: _showRewardedAdForHints,
                               adUsesThisMatch: _adUsesThisMatch,
                               maxAdUsesPerMatch: _maxAdUsesPerMatch,
@@ -543,8 +535,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     if (!useTitleCase) {
       return word.toUpperCase();
     }
-    final lower = word.toLowerCase();
-    return lower[0].toUpperCase() + lower.substring(1);
+    return titleCaseFirstOnly(word);
   }
 }
 

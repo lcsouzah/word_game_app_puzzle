@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/utils/word_category.dart';
 
 class CategorySelector extends StatelessWidget {
@@ -62,7 +63,7 @@ class CategorySelector extends StatelessWidget {
                 return Row(
                   children: [
                     Text(
-                      category.name,
+                      titleCaseFirstOnly(category.name),
                       style: TextStyle(
                         color: unlocked ? Colors.cyanAccent : Colors.redAccent,
                       ),

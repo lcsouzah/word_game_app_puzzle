@@ -17,13 +17,13 @@ import 'package:word_game_app/word_slide/widgets/tile.dart';
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
-    required this.onPauseToggle,
+
     required this.onRewardedAdRequest,
     required this.adUsesThisMatch,
     required this.maxAdUsesPerMatch,
   });
 
-  final VoidCallback onPauseToggle;
+
   final VoidCallback onRewardedAdRequest;
   final int adUsesThisMatch;
   final int maxAdUsesPerMatch;
@@ -151,14 +151,77 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            const Spacer(),
-            IconButton(
-              tooltip: 'Pause',
-              onPressed: widget.onPauseToggle,
-              icon: const Icon(Icons.pause_circle_outline),
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHintControls(
+      BuildContext context,
+      WordQuestController controller,
+      ) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      child: ValueListenableBuilder<int>(
+        valueListenable: controller.hintsRemaining,
+        builder: (context, hints, _) {
+          final canUseHint = hints > 0;
+          final canUseAd = widget.adUsesThisMatch < widget.maxAdUsesPerMatch;
+          final String label;
+          final IconData icon;
+          if (canUseHint) {
+            label = 'Use hint';
+            icon = Icons.lightbulb_outline;
+          } else if (canUseAd) {
+            label = 'Get +3 hints';
+            icon = Icons.play_circle;
+          } else {
+            label = 'Hints unavailable';
+            icon = Icons.block;
+          }
+
+          final button = ScaleTransition(
+            scale: canUseHint
+                ? _hintButtonAnimation
+                : const AlwaysStoppedAnimation(1.0),
+            child: FilledButton.icon(
+              onPressed: (!canUseHint && !canUseAd)
+                  ? null
+                  : () {
+                if (canUseHint) {
+                  controller.showHint(
+                    showTrail: settings.showHintTrail,
+                  );
+                } else {
+                  widget.onRewardedAdRequest();
+                }
+              },
+              icon: Icon(icon),
+              label: Text(label),
+            ),
+          );
+
+          return Flex(
+            direction: Axis.horizontal,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                flex: 2,
+                child: Text(
+                  'Hints: $hints',
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(flex: 3, child: button),
+            ],
+          );
+        },
       ),
     );
   }
@@ -173,8 +236,11 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     GameFeedbackService.configure(
       soundEnabled: settings.soundEnabled,
       hapticsEnabled: settings.hapticsEnabled,
-      soundPack: cosmetics.soundPack,
+      soundPack: settings.soundPack,
+      moveHapticIntensity: settings.moveHapticIntensity,
+      successHapticIntensity: settings.successHapticIntensity,
     );
+
 
     final boardStyleDecoration = settings.boardStyle
         .buildDecoration(BoardStyleContext(theme: Theme.of(context)));
@@ -184,47 +250,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: ValueListenableBuilder<int>(
-        valueListenable: controller.hintsRemaining,
-        builder: (context, hints, _) {
-          final canUseHint = hints > 0;
-          final canUseAd =
-              widget.adUsesThisMatch < widget.maxAdUsesPerMatch;
-          final String label;
-          Icon icon;
-          if (canUseHint) {
-            label = 'Hint ($hints)';
-            icon = const Icon(Icons.lightbulb_outline);
-          } else if (canUseAd) {
-            label = 'Get +3 Hints';
-            icon = const Icon(Icons.play_circle);
-          } else {
-            label = 'No more hints';
-            icon = const Icon(Icons.block);
-          }
-
-          return ScaleTransition(
-            scale:
-            canUseHint ? _hintButtonAnimation : const AlwaysStoppedAnimation(1.0),
-            child: FloatingActionButton.extended(
-              heroTag: 'hintButton',
-              onPressed: (!canUseHint && !canUseAd)
-                  ? null
-                  : () {
-                if (canUseHint) {
-                  controller.showHint();
-                } else {
-                  widget.onRewardedAdRequest();
-                }
-              },
-              label: Text(label),
-              icon: icon,
-              backgroundColor: canUseHint ? Colors.amber : Colors.grey,
-            ),
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: TouchFeedbackOverlay(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -318,8 +343,11 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                         settings.borderStyle,
                                                         animationStyle: settings
                                                             .tileAnimationStyle,
-                                                        hintEffect:
-                                                        cosmetics.hintEffect,
+                                                          hintEffect:
+                                                          settings.hintEffect,
+                                                          idleShimmerEnabled:
+                                                          settings
+                                                              .idleShimmerEnabled
                                                       ),
                                                     );
                                                   },
@@ -448,7 +476,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                     ),
                                                   ),
                                                 );
-                                              },
+                                                  },
                                             ),
                                           ],
                                         );
@@ -463,6 +491,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                  _buildHintControls(context, controller),
                 ],
               );
             },
@@ -472,7 +501,6 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 }
-
 
 
 

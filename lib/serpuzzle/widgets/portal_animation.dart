@@ -3,8 +3,15 @@ import 'package:flutter/material.dart';
 /// A simple overlay animation shown when advancing to a new level.
 class PortalAnimation extends StatefulWidget {
   final int level;
+  final VoidCallback? onStarted;
+  final VoidCallback? onCompleted;
 
-  const PortalAnimation({super.key, required this.level});
+  const PortalAnimation({
+    super.key,
+    required this.level,
+    this.onStarted,
+    this.onCompleted,
+  });
 
   /// Convenience helper for callers that need a [GlobalKey].
   static GlobalKey<PortalAnimationState> createKey() =>
@@ -34,6 +41,9 @@ class PortalAnimationState extends State<PortalAnimation>
     _controller.stop();
     _controller.reset();
 
+    widget.onStarted?.call();
+
+
     try {
       await _controller.forward();
       if (reverse) {
@@ -45,6 +55,7 @@ class PortalAnimationState extends State<PortalAnimation>
     }
 
     if (!mounted) return;
+    widget.onCompleted?.call();
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();

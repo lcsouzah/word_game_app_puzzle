@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:word_game_app/word_slide/models/difficulty_level.dart';
 
+import '../../../utils/text_format.dart';
+
 class DifficultySelector extends StatelessWidget {
   final DifficultyLevel selectedDifficulty;
   final ValueChanged<DifficultyLevel> onSelected;
@@ -29,7 +31,7 @@ class DifficultySelector extends StatelessWidget {
           ),
           elevation: 15,
           labelPadding: const EdgeInsets.all(5),
-          label: Text(level.name),
+          label: Text(titleCaseFirstOnly(level.name)),
           selected: selectedDifficulty == level,
           onSelected: (isSelected) {
             if (isSelected) {

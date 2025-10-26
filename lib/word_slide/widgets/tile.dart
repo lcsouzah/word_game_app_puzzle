@@ -16,6 +16,7 @@ class TileWidget extends StatefulWidget {
   final TileAnimationStyle animationStyle;
   final TileHighlightKind? highlightKind;
   final String hintEffect;
+  final bool idleShimmerEnabled;
 
 
   TileWidget({
@@ -25,7 +26,8 @@ class TileWidget extends StatefulWidget {
     this.highlighted = false,
     this.disappearing = false,
     this.highlightKind = TileHighlightKind.none,
-    this.hintEffect = 'pulse',
+    this.hintEffect = 'ring',
+    this.idleShimmerEnabled = true,
     Color tileColor = Colors.blueGrey,
     Color? borderColor,
     TileBorderStyle? borderStyle,
@@ -74,7 +76,9 @@ class TileWidgetState extends State<TileWidget>
           _resolveIdleDuration(widget.animationStyle);
     }
 
-    if (styleChanged || oldWidget.letter != widget.letter) {
+    if (styleChanged ||
+        oldWidget.letter != widget.letter ||
+        oldWidget.idleShimmerEnabled != widget.idleShimmerEnabled) {
       _refreshIdleAnimation(restart: styleChanged);
     }
   }
@@ -95,6 +99,13 @@ class TileWidgetState extends State<TileWidget>
   }
 
   void _refreshIdleAnimation({bool restart = false}) {
+    if (!widget.idleShimmerEnabled) {
+      if (_idleController.isAnimating) {
+        _idleController.stop();
+      }
+      _idleOpacity = null;
+      return;
+    }
     final shouldAnimateBlink =
         widget.animationStyle.behavior == TileAnimationBehavior.blink &&
             widget.letter.trim().isNotEmpty;
@@ -366,25 +377,28 @@ class _HintEffectLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (effect) {
-      case 'aurora':
-      case 'premium':
-        return _PremiumHintAura(borderRadius: borderRadius);
+      case 'spotlight':
+        return _SpotlightHintEffect(borderRadius: borderRadius);
+      case 'arrow-bounce':
+        return _ArrowBounceHintEffect(borderRadius: borderRadius);
+      case 'ring':
       default:
-        return _FreeHintPulse(borderRadius: borderRadius);
+        return _RingHintEffect(borderRadius: borderRadius);
     }
   }
 }
 
-class _FreeHintPulse extends StatelessWidget {
-  final BorderRadius borderRadius;
+class _RingHintEffect extends StatelessWidget {
+  const _RingHintEffect({required this.borderRadius});
 
-  const _FreeHintPulse({required this.borderRadius});
+  final BorderRadius borderRadius;
 
   @override
   Widget build(BuildContext context) {
+    const ringColor = Color(0xFF64B5F6);
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.86, end: 1.0),
-      duration: const Duration(milliseconds: 320),
+      tween: Tween(begin: 0.82, end: 1.05),
+      duration: const Duration(milliseconds: 360),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Transform.scale(
@@ -393,14 +407,14 @@ class _FreeHintPulse extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: borderRadius,
               border: Border.all(
-                color: Colors.cyanAccent.withValues(alpha: 0.9),
+                color: ringColor.withOpacity(0.85),
                 width: 3,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.cyanAccent.withValues(alpha: 0.55 * value),
-                  blurRadius: 18 * value,
-                  spreadRadius: 1.4,
+                  color: ringColor.withOpacity(0.45),
+                  blurRadius: 22,
+                  spreadRadius: 1.6,
                 ),
               ],
             ),
@@ -411,57 +425,93 @@ class _FreeHintPulse extends StatelessWidget {
   }
 }
 
-class _PremiumHintAura extends StatelessWidget {
-  final BorderRadius borderRadius;
+class _SpotlightHintEffect extends StatelessWidget {
+  const _SpotlightHintEffect({required this.borderRadius});
 
-  const _PremiumHintAura({required this.borderRadius});
+  final BorderRadius borderRadius;
 
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.9, end: 1.0),
+      tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOut,
       builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: borderRadius,
-              border: Border.all(
-                width: 3.2,
-                color: const Color(0xFFBB86FC).withValues(alpha: 0.92),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFBB86FC).withValues(alpha: 0.7),
-                  blurRadius: 28,
-                  spreadRadius: 2.8,
-                ),
-                BoxShadow(
-                  color: const Color(0xFF64FFDA).withValues(alpha: 0.45),
-                  blurRadius: 34,
-                  spreadRadius: 4,
-                ),
+        final intensity = 0.2 + (0.55 * value);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 0.55 + value * 0.3,
+              colors: [
+                Colors.transparent,
+                Color(0xFFFFF59D).withOpacity(intensity),
+                const Color(0x99FFB74D),
               ],
-            ),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: borderRadius,
-                gradient: LinearGradient(
-                  colors: const [
-                    Color(0x4464FFDA),
-                    Color(0x44BB86FC),
-                    Color(0x44FF9AA2),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+              stops: const [0.0, 0.55, 1.0],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _ArrowBounceHintEffect extends StatelessWidget {
+  const _ArrowBounceHintEffect({required this.borderRadius});
+
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: -18, end: 0),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Stack(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Transform.translate(
+                    offset: Offset(value, 0),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xAAFF7043),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66FF7043),
+                            blurRadius: 16,
+                            spreadRadius: 1.2,
+                          ),
+                        ],
+                      ),
+                      child: const SizedBox(width: 20, height: 38),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Transform.translate(
+                    offset: Offset(value + 14, 0),
+                    child: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }

@@ -1,32 +1,81 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:word_game_app/services/game_feedback_service.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
 import 'package:word_game_app/services/settings_service.dart';
+import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/word_slide/models/board_style.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 import 'package:word_game_app/word_slide/screens/store_screen.dart';
+import 'package:word_game_app/word_slide/widgets/tile_preview.dart';
 
 const _availableTileColors = <Color>[
-  Colors.blueGrey, Colors.red, Colors.green, Colors.orange, Colors.purple, Colors.teal, Colors.brown, Colors.indigo,
-  Colors.lightBlue, Colors.pink, Colors.yellow, Colors.cyan, Colors.lime, Colors.amber, Colors.deepOrange,
-  Colors.deepPurple, Colors.grey, Colors.lightGreen, Colors.deepPurpleAccent, Colors.pinkAccent,
-  Color(0xFF7E57C2), // Deep lavender
-  Color(0xFF4CAF50), // Balanced emerald
+  Colors.blueGrey,
+  Colors.red,
+  Colors.green,
+  Colors.orange,
+  Colors.purple,
+  Colors.teal,
+  Colors.brown,
+  Colors.indigo,
+  Colors.lightBlue,
+  Colors.pink,
+  Colors.yellow,
+  Colors.cyan,
+  Colors.lime,
+  Colors.amber,
+  Colors.deepOrange,
+  Colors.deepPurple,
+  Colors.grey,
+  Colors.lightGreen,
+  Colors.deepPurpleAccent,
+  Colors.pinkAccent,
+  Color(0xFF7E57C2),
+  Color(0xFF4CAF50),
 ];
 
 const _availableBorderColors = <Color>[
-  Colors.blueGrey, Colors.white, Colors.white60, Colors.amber, Colors.deepPurpleAccent, Colors.pinkAccent, Colors.black87,
-  Colors.cyanAccent, Colors.redAccent, Colors.greenAccent, Colors.yellowAccent, Colors.blueAccent, Colors.orangeAccent,
-  Colors.purpleAccent, Colors.tealAccent, Colors.brown, Colors.indigo, Colors.lightBlue, Colors.pink, Colors.yellow,
-  Color(0xFFFFF59D), // Soft gold
-  Color(0xFFB0BEC5), // Frosted steel
-
+  Colors.blueGrey,
+  Colors.white,
+  Colors.white60,
+  Colors.amber,
+  Colors.deepPurpleAccent,
+  Colors.pinkAccent,
+  Colors.black87,
+  Colors.cyanAccent,
+  Colors.redAccent,
+  Colors.greenAccent,
+  Colors.yellowAccent,
+  Colors.blueAccent,
+  Colors.orangeAccent,
+  Colors.purpleAccent,
+  Colors.tealAccent,
+  Colors.brown,
+  Colors.indigo,
+  Colors.lightBlue,
+  Colors.pink,
+  Colors.yellow,
+  Color(0xFFFFF59D),
+  Color(0xFFB0BEC5),
 ];
 
-/// Screen allowing the player to customise tile colour and border image.
+const _soundPacks = <String, String>{
+  'classic': 'Classic',
+  'arcade': 'Arcade',
+  'zen': 'Zen',
+};
+
+const _hintEffectOptions = <String, String>{
+  'ring': 'Ring',
+  'spotlight': 'Spotlight',
+  'arrow-bounce': 'Arrow bounce',
+};
+
+/// Screen allowing the player to customise tile appearance and feedback.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -34,215 +83,399 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsService>();
     final purchaseService = context.watch<InAppPurchaseService>();
-
-    final selectedAnimationStyle = settings.tileAnimationStyle;
-    final freeStyles = TileBorderStyles.freeStyles.toList();
-    final premiumStyles = TileBorderStyles.premiumStyles.toList();
-    final freeBoardStyles = BoardStyles.freeStyles.toList();
-    final premiumBoardStyles = BoardStyles.premiumStyles.toList();
-    final freeAnimationStyles = TileAnimationStyles.freeStyles.toList();
-    final premiumAnimationStyles = TileAnimationStyles.premiumStyles.toList();
-    final purchasedProductIds = purchaseService.purchasedProductIds;
+    final purchasedIds = purchaseService.purchasedProductIds;
+    final theme = Theme.of(context);
+    final devUnlockActive = kDebugMode && settings.devUnlockPremiumCosmetics;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Sound Effects'),
-                  subtitle: const Text('Enable taps and celebration sounds'),
-                  value: settings.soundEnabled,
-                  onChanged: (value) =>
-                      unawaited(settings.updateSoundEnabled(value)),
-                ),
-                SwitchListTile(
-                  title: const Text('Haptic Feedback'),
-                  subtitle:
-                  const Text('Vibrate on tile moves and completed words'),
-                  value: settings.hapticsEnabled,
-                  onChanged: (value) =>
-                      unawaited(settings.updateHapticsEnabled(value)),
-                ),
-                SwitchListTile(
-                  title: const Text('Title Case Words'),
-                  subtitle: const Text(
-                    'Capitalize the first letter of solved words and tile labels',
-                  ),
-                  value: settings.useTitleCaseWords,
-                  onChanged: (value) =>
-                      unawaited(settings.updateUseTitleCaseWords(value)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Tile Colour',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _TileColorPalette(
-            colors: _availableTileColors,
-            selectedColor: settings.tileColor,
-            onColorSelected: settings.updateTileColor,
-          ),
-          const SizedBox(height: 24),
-
-          const Text(
-            'Border Colour',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _TileColorPalette(
-            colors: _availableBorderColors,
-            selectedColor: settings.borderColor,
-            onColorSelected: settings.updateBorderColor,
-          ),
-
-          const SizedBox(height: 24),
-          const Text(
-            'Free Borders',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _StyleGrid(
-            styles: freeStyles,
-            selectedStyleId: settings.borderStyle.id,
-            tileColor: settings.tileColor,
-            borderColor: settings.borderColor,
-            purchasedBorderIds: purchasedProductIds,
-            onStyleSelected: (style) =>
-                unawaited(settings.updateBorderStyle(style, allowPremium: true)),
-            onLockedTap: (style) => _openStore(context),
-          ),
-          if (premiumStyles.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Premium Borders',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _StyleGrid(
-              styles: premiumStyles,
-              selectedStyleId: settings.borderStyle.id,
-              tileColor: settings.tileColor,
-              borderColor: settings.borderColor,
-              purchasedBorderIds: purchasedProductIds,
-              onStyleSelected: (style) => unawaited(
-                settings.updateBorderStyle(
-                  style,
-                  allowPremium:
-                  !style.isPremium || purchasedProductIds.contains(style.id),
+          _SettingsSection(
+            title: titleCaseFirstOnly('audio'),
+            children: [
+              SwitchListTile(
+                title: const Text('Sound enabled'),
+                subtitle: const Text('Toggle all effects'),
+                value: settings.soundEnabled,
+                onChanged: (value) => unawaited(settings.updateSoundEnabled(value)),
+              ),
+              ListTile(
+                title: const Text('Sound pack'),
+                subtitle: const Text('Choose effect style'),
+                trailing: DropdownButton<String>(
+                  value: settings.soundPack,
+                  onChanged: (value) {
+                    if (value != null) {
+                      unawaited(settings.updateSoundPack(value));
+                    }
+                  },
+                  items: _soundPacks.entries
+                      .map(
+                        (entry) => DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                      .toList(),
                 ),
               ),
-              onLockedTap: (style) => _handleLockedStyleTap(context, style),
-            ),
-          ],
-          const SizedBox(height: 24),
-          const Text(
-            'Board Styles',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ],
           ),
-          const SizedBox(height: 12),
-          _BoardStyleGrid(
-            styles: freeBoardStyles,
-            selectedStyleId: settings.boardStyle.id,
-            purchasedProductIds: purchasedProductIds,
-            onStyleSelected: (style) => unawaited(
-              settings.updateBoardStyle(style, allowPremium: true),
-            ),
-            onLockedTap: (style) => _openStore(context),
-          ),
-          if (premiumBoardStyles.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Premium Boards',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _BoardStyleGrid(
-              styles: premiumBoardStyles,
-              selectedStyleId: settings.boardStyle.id,
-              purchasedProductIds: purchasedProductIds,
-              onStyleSelected: (style) => unawaited(
-                settings.updateBoardStyle(
-                  style,
-                  allowPremium: !style.isPremium ||
-                      purchasedProductIds.contains(style.id),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: titleCaseFirstOnly('haptics'),
+            children: [
+              SwitchListTile(
+                title: const Text('Haptics enabled'),
+                subtitle: const Text('Vibrate on moves and success'),
+                value: settings.hapticsEnabled,
+                onChanged: (value) => unawaited(settings.updateHapticsEnabled(value)),
+              ),
+              ListTile(
+                title: const Text('Move intensity'),
+                trailing: DropdownButton<MoveHapticIntensity>(
+                  value: settings.moveHapticIntensity,
+                  onChanged: (value) {
+                    if (value != null) {
+                      unawaited(settings.updateMoveHapticIntensity(value));
+                    }
+                  },
+                  items: MoveHapticIntensity.values
+                      .map(
+                        (value) => DropdownMenuItem<MoveHapticIntensity>(
+                      value: value,
+                      child: Text(switch (value) {
+                        MoveHapticIntensity.light => 'Light',
+                        MoveHapticIntensity.medium => 'Medium',
+                      }),
+                    ),
+                  )
+                      .toList(),
                 ),
               ),
-              onLockedTap: (style) => _handleLockedBoardStyleTap(context, style),
-            ),
-          ],
-          const SizedBox(height: 24),
-          const Text(
-            'Tile Animations',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _TileAnimationGrid(
-            styles: freeAnimationStyles,
-            selectedStyleId: selectedAnimationStyle.id,
-            purchasedProductIds: purchasedProductIds,
-            onStyleSelected: (style) => unawaited(
-              settings.updateTileAnimationStyle(
-                style,
-                allowPremium: true,
-              ),
-            ),
-            onLockedTap: (style) => _openStore(context),
-          ),
-          if (premiumAnimationStyles.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Premium Animations',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _TileAnimationGrid(
-              styles: premiumAnimationStyles,
-              selectedStyleId: selectedAnimationStyle.id,
-              purchasedProductIds: purchasedProductIds,
-              onStyleSelected: (style) => unawaited(
-                settings.updateTileAnimationStyle(
-                  style,
-                  allowPremium:
-                  !style.isPremium || purchasedProductIds.contains(style.id),
+              ListTile(
+                title: const Text('Success intensity'),
+                trailing: DropdownButton<SuccessHapticIntensity>(
+                  value: settings.successHapticIntensity,
+                  onChanged: (value) {
+                    if (value != null) {
+                      unawaited(settings.updateSuccessHapticIntensity(value));
+                    }
+                  },
+                  items: SuccessHapticIntensity.values
+                      .map(
+                        (value) => DropdownMenuItem<SuccessHapticIntensity>(
+                      value: value,
+                      child: Text(switch (value) {
+                        SuccessHapticIntensity.medium => 'Medium',
+                        SuccessHapticIntensity.heavy => 'Heavy',
+                      }),
+                    ),
+                  )
+                      .toList(),
                 ),
               ),
-              onLockedTap: (style) =>
-                  _handleLockedAnimationStyleTap(context, style),
-            ),
-          ],
-          const SizedBox(height: 24),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.storefront),
-              title: const Text('Border Store'),
-              subtitle: const Text('Browse and unlock new border styles'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: titleCaseFirstOnly('appearance / cosmetics'),
+            children: [
+              _SubHeader(text: titleCaseFirstOnly('tile colour')),
+              _TileColorPalette(
+                colors: _availableTileColors,
+                selectedColor: settings.tileColor,
+                onColorSelected: settings.updateTileColor,
+              ),
+              const SizedBox(height: 12),
+              _SubHeader(text: titleCaseFirstOnly('border colour')),
+              _TileColorPalette(
+                colors: _availableBorderColors,
+                selectedColor: settings.borderColor,
+                onColorSelected: settings.updateBorderColor,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                title: const Text('Tile border style'),
+                subtitle: Text(settings.borderStyle.displayName),
+                trailing: TilePreview(
+                  letter: 'A',
+                  tileColor: settings.tileColor,
+                  borderColor: settings.borderColor,
+                  borderStyle: settings.borderStyle,
+                  animationStyle: settings.tileAnimationStyle,
+                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                ),
+                onTap: () => _showBorderStyleSheet(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const StoreScreenProvider(),
-                  ),
-                );
-              },
-            ),
+                  settings,
+                  purchasedIds,
+                  devUnlockActive,
+                ),
+              ),
+              ListTile(
+                title: const Text('Tile animation style'),
+                subtitle: Text(settings.tileAnimationStyle.displayName),
+                trailing: TilePreview(
+                  letter: 'A',
+                  tileColor: settings.tileColor,
+                  borderColor: settings.borderColor,
+                  borderStyle: settings.borderStyle,
+                  animationStyle: settings.tileAnimationStyle,
+                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                ),
+                onTap: () => _showAnimationStyleSheet(
+                  context,
+                  settings,
+                  purchasedIds,
+                  devUnlockActive,
+                ),
+              ),
+              ListTile(
+                title: const Text('Board style'),
+                subtitle: Text(settings.boardStyle.displayName),
+                trailing: Icon(
+                  Icons.grid_on,
+                  color: theme.colorScheme.primary,
+                ),
+                onTap: () => _showBoardStyleSheet(
+                  context,
+                  settings,
+                  purchasedIds,
+                  devUnlockActive,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: titleCaseFirstOnly('hints'),
+            children: [
+              ListTile(
+                title: const Text('Hint effect'),
+                subtitle: Text(_hintEffectOptions[settings.hintEffect] ?? 'Ring'),
+                trailing: TilePreview(
+                  letter: 'A',
+                  tileColor: settings.tileColor,
+                  borderColor: settings.borderColor,
+                  borderStyle: settings.borderStyle,
+                  animationStyle: settings.tileAnimationStyle,
+                  hintEffect: settings.hintEffect,
+                  showHintEffect: true,
+                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                ),
+                onTap: () => _showHintEffectSheet(context, settings),
+              ),
+              SwitchListTile(
+                title: const Text('Show hint trail'),
+                subtitle: const Text('Display breadcrumb path'),
+                value: settings.showHintTrail,
+                onChanged: (value) => unawaited(settings.updateShowHintTrail(value)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: titleCaseFirstOnly('performance'),
+            children: [
+              SwitchListTile(
+                title: const Text('Animated background'),
+                subtitle: const Text('Enable start screen motion'),
+                value: settings.animatedBackgroundEnabled,
+                onChanged: (value) =>
+                    unawaited(settings.updateAnimatedBackgroundEnabled(value)),
+              ),
+              SwitchListTile(
+                title: const Text('Idle shimmer'),
+                subtitle: const Text('Enable subtle tile glow'),
+                value: settings.idleShimmerEnabled,
+                onChanged: (value) =>
+                    unawaited(settings.updateIdleShimmerEnabled(value)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _SettingsSection(
+            title: titleCaseFirstOnly('monetization / store'),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.storefront),
+                title: const Text('Open store'),
+                subtitle: const Text('Browse premium cosmetics'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const StoreScreenProvider(),
+                    ),
+                  );
+                },
+              ),
+              if (kDebugMode)
+                SwitchListTile(
+                  title: const Text('Dev unlock premium cosmetics'),
+                  subtitle: const Text('Bypass purchase checks (debug only)'),
+                  value: settings.devUnlockPremiumCosmetics,
+                  onChanged: (value) =>
+                      unawaited(settings.updateDevUnlockPremiumCosmetics(value)),
+                ),
+            ],
           ),
         ],
       ),
     );
   }
+
+  void _showBorderStyleSheet(
+      BuildContext context,
+      SettingsService settings,
+      Set<String> purchasedIds,
+      bool devUnlockActive,
+      ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: _StyleGrid(
+            styles: TileBorderStyles.all.toList(),
+            selectedStyleId: settings.borderStyle.id,
+            tileColor: settings.tileColor,
+            borderColor: settings.borderColor,
+            purchasedBorderIds: purchasedIds,
+            onStyleSelected: (style) {
+              Navigator.pop(context);
+              unawaited(
+                settings.updateBorderStyle(
+                  style,
+                  allowPremium: !style.isPremium ||
+                      purchasedIds.contains(style.id) ||
+                      devUnlockActive,
+                ),
+              );
+            },
+            onLockedTap: (style) => _handleLockedStyleTap(context, style),
+            allowDevUnlock: devUnlockActive,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAnimationStyleSheet(
+      BuildContext context,
+      SettingsService settings,
+      Set<String> purchasedIds,
+      bool devUnlockActive,
+      ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: _TileAnimationGrid(
+            styles: TileAnimationStyles.all.toList(),
+            selectedStyleId: settings.tileAnimationStyle.id,
+            purchasedProductIds: purchasedIds,
+            onStyleSelected: (style) {
+              Navigator.pop(context);
+              unawaited(
+                settings.updateTileAnimationStyle(
+                  style,
+                  allowPremium: !style.isPremium ||
+                      purchasedIds.contains(style.id) ||
+                      devUnlockActive,
+                ),
+              );
+            },
+            onLockedTap: (style) =>
+                _handleLockedAnimationStyleTap(context, style),
+            allowDevUnlock: devUnlockActive,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showBoardStyleSheet(
+      BuildContext context,
+      SettingsService settings,
+      Set<String> purchasedIds,
+      bool devUnlockActive,
+      ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: _BoardStyleGrid(
+            styles: BoardStyles.all.toList(),
+            selectedStyleId: settings.boardStyle.id,
+            purchasedProductIds: purchasedIds,
+            onStyleSelected: (style) {
+              Navigator.pop(context);
+              unawaited(
+                settings.updateBoardStyle(
+                  style,
+                  allowPremium: !style.isPremium ||
+                      purchasedIds.contains(style.id) ||
+                      devUnlockActive,
+                ),
+              );
+            },
+            onLockedTap: (style) => _handleLockedBoardStyleTap(context, style),
+            allowDevUnlock: devUnlockActive,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showHintEffectSheet(BuildContext context, SettingsService settings) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: _hintEffectOptions.entries.map((entry) {
+            final selected = entry.key == settings.hintEffect;
+            return RadioListTile<String>(
+              title: Text(entry.value),
+              value: entry.key,
+              groupValue: settings.hintEffect,
+              onChanged: (value) {
+                if (value != null) {
+                  unawaited(settings.updateHintEffect(value));
+                  Navigator.pop(context);
+                }
+              },
+              secondary: TilePreview(
+                letter: 'A',
+                tileColor: settings.tileColor,
+                borderColor: settings.borderColor,
+                borderStyle: settings.borderStyle,
+                animationStyle: settings.tileAnimationStyle,
+                hintEffect: entry.key,
+                showHintEffect: true,
+                idleShimmerEnabled: settings.idleShimmerEnabled,
+              ),
+              selected: selected,
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
   void _handleLockedStyleTap(BuildContext context, TileBorderStyle style) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${style.displayName} is a premium border. Visit the store to unlock it.'),
+        content: Text(
+          '${style.displayName} is a premium border. Visit the store to unlock it.',
+        ),
         action: SnackBarAction(
           label: 'Store',
           onPressed: () => _openStore(context),
@@ -254,7 +487,9 @@ class SettingsScreen extends StatelessWidget {
   void _handleLockedBoardStyleTap(BuildContext context, BoardStyle style) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${style.displayName} is a premium board. Visit the store to unlock it.'),
+        content: Text(
+          '${style.displayName} is a premium board. Visit the store to unlock it.',
+        ),
         action: SnackBarAction(
           label: 'Store',
           onPressed: () => _openStore(context),
@@ -264,11 +499,14 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _handleLockedAnimationStyleTap(
-      BuildContext context, TileAnimationStyle style) {
+      BuildContext context,
+      TileAnimationStyle style,
+      ) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            '${style.displayName} is a premium animation. Visit the store to unlock it.'),
+          '${style.displayName} is a premium animation. Visit the store to unlock it.',
+        ),
         action: SnackBarAction(
           label: 'Store',
           onPressed: () => _openStore(context),
@@ -287,16 +525,70 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _TileColorPalette extends StatelessWidget {
-  final List<Color> colors;
-  final Color selectedColor;
-  final Future<void> Function(Color color) onColorSelected;
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.title,
+    required this.children,
+  });
 
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubHeader extends StatelessWidget {
+  const _SubHeader({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _TileColorPalette extends StatelessWidget {
   const _TileColorPalette({
     required this.colors,
     required this.selectedColor,
     required this.onColorSelected,
   });
+
+  final List<Color> colors;
+  final Color selectedColor;
+  final Future<void> Function(Color color) onColorSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -308,9 +600,7 @@ class _TileColorPalette extends StatelessWidget {
           _TileColorSwatch(
             color: color,
             isSelected: color == selectedColor,
-            onTap: () {
-              unawaited(onColorSelected(color));
-            },
+            onTap: () => unawaited(onColorSelected(color)),
           ),
       ],
     );
@@ -318,15 +608,15 @@ class _TileColorPalette extends StatelessWidget {
 }
 
 class _TileColorSwatch extends StatelessWidget {
-  final Color color;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   const _TileColorSwatch({
     required this.color,
     required this.isSelected,
     required this.onTap,
   });
+
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -371,69 +661,22 @@ class _TileColorSwatch extends StatelessWidget {
   }
 }
 
-class _TilePreview extends StatelessWidget {
-  final TileBorderStyle style;
-  final Color tileColor;
-  final Color borderColor;
-  final TileBorderDecoration? decorationOverride;
-
-  const _TilePreview({
-    required this.style,
-    required this.tileColor,
-    required this.borderColor,
-    this.decorationOverride,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final styleDecoration = decorationOverride ?? style.buildDecoration(
-      tileColor: tileColor,
-      borderColor: borderColor,
-      highlighted: false,
-    );
-    final boxDecoration = BoxDecoration(
-      color: styleDecoration.gradient == null
-          ? styleDecoration.fillColor ?? tileColor
-          : null,
-      gradient: styleDecoration.gradient,
-      borderRadius:
-      styleDecoration.borderRadius ?? BorderRadius.circular(8),
-      border: styleDecoration.border,
-      boxShadow: styleDecoration.boxShadows,
-    );
-
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: boxDecoration,
-      foregroundDecoration: styleDecoration.foregroundDecoration,
-      alignment: Alignment.center,
-      child: const Text(
-        'A',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
-}
-
 class _BoardStyleGrid extends StatelessWidget {
-  final List<BoardStyle> styles;
-  final String selectedStyleId;
-  final Set<String> purchasedProductIds;
-  final void Function(BoardStyle style) onStyleSelected;
-  final void Function(BoardStyle style) onLockedTap;
-
   const _BoardStyleGrid({
     required this.styles,
     required this.selectedStyleId,
     required this.purchasedProductIds,
     required this.onStyleSelected,
     required this.onLockedTap,
+    this.allowDevUnlock = false,
   });
+
+  final List<BoardStyle> styles;
+  final String selectedStyleId;
+  final Set<String> purchasedProductIds;
+  final void Function(BoardStyle style) onStyleSelected;
+  final void Function(BoardStyle style) onLockedTap;
+  final bool allowDevUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -453,7 +696,9 @@ class _BoardStyleGrid extends StatelessWidget {
       itemCount: styles.length,
       itemBuilder: (context, index) {
         final style = styles[index];
-        final isLocked = style.isPremium && !purchasedProductIds.contains(style.id);
+        final isLocked = style.isPremium &&
+            !purchasedProductIds.contains(style.id) &&
+            !allowDevUnlock;
         final isSelected = selectedStyleId == style.id;
 
         final decoration = style.buildDecoration(
@@ -473,12 +718,6 @@ class _BoardStyleGrid extends StatelessWidget {
 }
 
 class _BoardStyleChip extends StatelessWidget {
-  final BoardStyle style;
-  final BoardStyleDecoration decoration;
-  final bool isLocked;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   const _BoardStyleChip({
     required this.style,
     required this.decoration,
@@ -486,6 +725,12 @@ class _BoardStyleChip extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
   });
+
+  final BoardStyle style;
+  final BoardStyleDecoration decoration;
+  final bool isLocked;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -524,7 +769,7 @@ class _BoardStyleChip extends StatelessWidget {
                       child: const Icon(
                         Icons.lock,
                         color: Colors.white,
-                        size: 30,
+                        size: 28,
                       ),
                     ),
                   ),
@@ -544,84 +789,30 @@ class _BoardStyleChip extends StatelessWidget {
 }
 
 class _BoardStylePreview extends StatelessWidget {
-  final BoardStyleDecoration decoration;
-
   const _BoardStylePreview({required this.decoration});
+
+  final BoardStyleDecoration decoration;
 
   @override
   Widget build(BuildContext context) {
-    final boxDecoration = BoxDecoration(
-      color: decoration.backgroundColor,
-      gradient: decoration.backgroundGradient,
-      borderRadius: decoration.borderRadius,
-      border: decoration.border,
-      boxShadow: decoration.boxShadows,
-      image: decoration.backgroundImage,
-    );
-
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        decoration: boxDecoration,
-        child: ClipRRect(
-          borderRadius: decoration.borderRadius,
-          child: Container(
-            padding: decoration.padding,
-            alignment: Alignment.center,
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: const _BoardPreviewTiles(),
-            ),
-          ),
-        ),
+    return Container(
+      width: 120,
+      height: 120,
+      decoration: BoxDecoration(
+        borderRadius: decoration.borderRadius,
+        gradient: decoration.backgroundGradient,
+        color: decoration.backgroundGradient == null
+            ? decoration.backgroundColor
+            : null,
+        border: decoration.border,
+        boxShadow: decoration.boxShadows,
+        image: decoration.backgroundImage,
       ),
     );
   }
 }
 
-class _BoardPreviewTiles extends StatelessWidget {
-  const _BoardPreviewTiles();
-
-  @override
-  Widget build(BuildContext context) {
-    const int dimension = 4;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (int row = 0; row < dimension; row++)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (int col = 0; col < dimension; col++)
-                Container(
-                  width: 16,
-                  height: 16,
-                  margin: const EdgeInsets.all(1.5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 0.6,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
 class _StyleGrid extends StatelessWidget {
-  final List<TileBorderStyle> styles;
-  final String selectedStyleId;
-  final Color tileColor;
-  final Color borderColor;
-  final Set<String> purchasedBorderIds;
-  final void Function(TileBorderStyle style) onStyleSelected;
-  final void Function(TileBorderStyle style) onLockedTap;
-
   const _StyleGrid({
     required this.styles,
     required this.selectedStyleId,
@@ -630,7 +821,17 @@ class _StyleGrid extends StatelessWidget {
     required this.purchasedBorderIds,
     required this.onStyleSelected,
     required this.onLockedTap,
+    this.allowDevUnlock = false,
   });
+
+  final List<TileBorderStyle> styles;
+  final String selectedStyleId;
+  final Color tileColor;
+  final Color borderColor;
+  final Set<String> purchasedBorderIds;
+  final void Function(TileBorderStyle style) onStyleSelected;
+  final void Function(TileBorderStyle style) onLockedTap;
+  final bool allowDevUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -642,10 +843,10 @@ class _StyleGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1,
       ),
       itemCount: styles.length,
       itemBuilder: (context, index) {
@@ -655,8 +856,9 @@ class _StyleGrid extends StatelessWidget {
           borderColor: borderColor,
           highlighted: false,
         );
-        final isLocked =
-            style.isPremium && !purchasedBorderIds.contains(style.id);
+        final isLocked = style.isPremium &&
+            !purchasedBorderIds.contains(style.id) &&
+            !allowDevUnlock;
         final isSelected = selectedStyleId == style.id;
 
         return _StyleChip(
@@ -666,9 +868,7 @@ class _StyleGrid extends StatelessWidget {
           borderColor: borderColor,
           isLocked: isLocked,
           isSelected: isSelected,
-          onTap: isLocked
-              ? () => onLockedTap(style)
-              : () => onStyleSelected(style),
+          onTap: isLocked ? () => onLockedTap(style) : () => onStyleSelected(style),
         );
       },
     );
@@ -676,14 +876,6 @@ class _StyleGrid extends StatelessWidget {
 }
 
 class _StyleChip extends StatelessWidget {
-  final TileBorderStyle style;
-  final TileBorderDecoration decoration;
-  final Color tileColor;
-  final Color borderColor;
-  final bool isLocked;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   const _StyleChip({
     required this.style,
     required this.decoration,
@@ -693,6 +885,14 @@ class _StyleChip extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
   });
+
+  final TileBorderStyle style;
+  final TileBorderDecoration decoration;
+  final Color tileColor;
+  final Color borderColor;
+  final bool isLocked;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -720,11 +920,13 @@ class _StyleChip extends StatelessWidget {
                       width: 3,
                     ),
                   ),
-                  child: _TilePreview(
-                    style: style,
+                  child: TilePreview(
+                    letter: 'A',
                     tileColor: tileColor,
                     borderColor: borderColor,
-                    decorationOverride: decoration,
+                    borderStyle: style,
+                    animationStyle: TileAnimationStyles.defaultStyle,
+                    idleShimmerEnabled: false,
                   ),
                 ),
                 if (isLocked)
@@ -757,19 +959,21 @@ class _StyleChip extends StatelessWidget {
 }
 
 class _TileAnimationGrid extends StatelessWidget {
-  final List<TileAnimationStyle> styles;
-  final String selectedStyleId;
-  final Set<String> purchasedProductIds;
-  final void Function(TileAnimationStyle style) onStyleSelected;
-  final void Function(TileAnimationStyle style) onLockedTap;
-
   const _TileAnimationGrid({
     required this.styles,
     required this.selectedStyleId,
     required this.purchasedProductIds,
     required this.onStyleSelected,
     required this.onLockedTap,
+    this.allowDevUnlock = false,
   });
+
+  final List<TileAnimationStyle> styles;
+  final String selectedStyleId;
+  final Set<String> purchasedProductIds;
+  final void Function(TileAnimationStyle style) onStyleSelected;
+  final void Function(TileAnimationStyle style) onLockedTap;
+  final bool allowDevUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -789,16 +993,16 @@ class _TileAnimationGrid extends StatelessWidget {
       itemCount: styles.length,
       itemBuilder: (context, index) {
         final style = styles[index];
-        final isLocked =
-            style.isPremium && !purchasedProductIds.contains(style.id);
+        final isLocked = style.isPremium &&
+            !purchasedProductIds.contains(style.id) &&
+            !allowDevUnlock;
         final isSelected = selectedStyleId == style.id;
 
         return _TileAnimationChip(
           style: style,
           isLocked: isLocked,
           isSelected: isSelected,
-          onTap:
-          isLocked ? () => onLockedTap(style) : () => onStyleSelected(style),
+          onTap: isLocked ? () => onLockedTap(style) : () => onStyleSelected(style),
         );
       },
     );
@@ -806,11 +1010,6 @@ class _TileAnimationGrid extends StatelessWidget {
 }
 
 class _TileAnimationChip extends StatelessWidget {
-  final TileAnimationStyle style;
-  final bool isLocked;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   const _TileAnimationChip({
     required this.style,
     required this.isLocked,
@@ -818,72 +1017,76 @@ class _TileAnimationChip extends StatelessWidget {
     required this.onTap,
   });
 
+  final TileAnimationStyle style;
+  final bool isLocked;
+  final bool isSelected;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final highlightColor = theme.colorScheme.secondary;
-    final borderColor = isSelected
-        ? highlightColor
-        : theme.dividerColor.withOpacity(0.6);
+    final highlightColor = Theme.of(context).colorScheme.secondary;
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: borderColor,
-              width: isSelected ? 2.4 : 1.2,
-            ),
-            color: theme.cardColor.withOpacity(isSelected ? 0.9 : 0.8),
-            boxShadow: [
-              if (isSelected)
-                BoxShadow(
-                  color: highlightColor.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? highlightColor : Colors.transparent,
+                      width: 3,
+                    ),
+                    color: Colors.grey.shade900.withOpacity(0.12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(style.icon, size: 28, color: highlightColor),
+                      const SizedBox(height: 8),
+                      Text(
+                        style.displayName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        style.description,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(style.icon, color: theme.colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      style.displayName,
-                      style: theme.textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
+                if (isLocked)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.black45,
+                      ),
+                      child: const Icon(
+                        Icons.lock,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                   ),
-                  if (isLocked)
-                    const Icon(
-                      Icons.lock,
-                      size: 18,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Text(
-                  style.description,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
