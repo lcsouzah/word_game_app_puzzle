@@ -36,6 +36,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late final AnimationController _hintButtonController;
   late final Animation<double> _hintButtonAnimation;
   late final AnimationController _introController;
+  PauseManager? _boundPauseManager;
+  CosmeticManager? _boundCosmetics;
 
   @override
   void initState() {
@@ -57,67 +59,34 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void dispose() {
     _hintButtonController.dispose();
     _introController.dispose();
+    _boundPauseManager?.removeListener(_handlePauseChanged);
     super.dispose();
   }
-
-  Color _resolveTileColor(Color fallback, String skin) {
-    switch (skin) {
-      case 'wood':
-        return const Color(0xFF8D6E63);
-      case 'neon':
-        return const Color(0xFF00F5D4);
-      case 'crystal':
-        return const Color(0xFF80DEEA);
-      default:
-        return fallback;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pauseManager = context.read<PauseManager>();
+    final cosmetics = context.read<CosmeticManager>();
+    if (_boundPauseManager != pauseManager) {
+      _boundPauseManager?.removeListener(_handlePauseChanged);
+      _boundPauseManager = pauseManager;
+      _boundPauseManager?.addListener(_handlePauseChanged);
+      _handlePauseChanged();
     }
+    if (_boundCosmetics != cosmetics) {
+      _boundCosmetics = cosmetics;
+      _handlePauseChanged();
+    }
+    final controller = context.read<WordQuestController>();
+    controller.attachCosmeticManager(cosmetics);
   }
 
-  BoxDecoration _resolveBoardDecoration(
-      BoardStyleDecoration base,
-      CosmeticManager cosmetics,
-      ) {
-    Gradient? gradient = base.backgroundGradient;
-    Color? backgroundColor = base.backgroundColor;
-
-    switch (cosmetics.boardSkin) {
-      case 'galaxy':
-        gradient = const LinearGradient(
-          colors: [
-            Color(0xFF1B2735),
-            Color(0xFF090A0F),
-            Color(0xFF3A1C71),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-        backgroundColor = null;
-        break;
-      case 'cyber':
-        gradient = const LinearGradient(
-          colors: [
-            Color(0xFF0F2027),
-            Color(0xFF203A43),
-            Color(0xFF2C5364),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        );
-        backgroundColor = null;
-        break;
-      case 'classic':
-      default:
-        break;
+  void _handlePauseChanged() {
+    final pauseManager = _boundPauseManager;
+    final cosmetics = _boundCosmetics;
+    if (pauseManager != null && cosmetics != null) {
+      cosmetics.setPaused(pauseManager.isPaused);
     }
-
-    return BoxDecoration(
-      color: gradient == null ? backgroundColor : null,
-      gradient: gradient,
-      borderRadius: base.borderRadius,
-      border: base.border,
-      boxShadow: base.boxShadows,
-      image: base.backgroundImage,
-    );
   }
 
   Widget _buildHeader(WordQuestController controller) {
@@ -162,6 +131,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       WordQuestController controller,
       ) {
     final theme = Theme.of(context);
+    final settings = context.watch<SettingsService>();
+
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -236,17 +207,24 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     GameFeedbackService.configure(
       soundEnabled: settings.soundEnabled,
       hapticsEnabled: settings.hapticsEnabled,
-      soundPack: settings.soundPack,
+      soundPack: cosmetics.soundPackId,
       moveHapticIntensity: settings.moveHapticIntensity,
       successHapticIntensity: settings.successHapticIntensity,
     );
 
-
-    final boardStyleDecoration = settings.boardStyle
+    final boardStyleDecoration = cosmetics.boardStyle
         .buildDecoration(BoardStyleContext(theme: Theme.of(context)));
-    final boardBoxDecoration =
-    _resolveBoardDecoration(boardStyleDecoration, cosmetics);
-    final tileColor = _resolveTileColor(settings.tileColor, cosmetics.tileSkin);
+    final boardBoxDecoration = BoxDecoration(
+      color: boardStyleDecoration.backgroundGradient == null
+          ? boardStyleDecoration.backgroundColor
+          : null,
+      gradient: boardStyleDecoration.backgroundGradient,
+      borderRadius: boardStyleDecoration.borderRadius,
+      border: boardStyleDecoration.border,
+      boxShadow: boardStyleDecoration.boxShadows,
+      image: boardStyleDecoration.backgroundImage,
+    );
+    final tileColor = cosmetics.tileColor;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -338,19 +316,24 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                             .transparent
                                                             : tileColor,
                                                         borderColor:
-                                                        settings.borderColor,
+                                                        cosmetics.borderColor,
                                                         borderStyle:
-                                                        settings.borderStyle,
-                                                        animationStyle: settings
+                                                        cosmetics
+                                                            .tileBorderStyle,
+                                                        animationStyle: cosmetics
                                                             .tileAnimationStyle,
-                                                          hintEffect:
-                                                          settings.hintEffect,
-                                                          idleShimmerEnabled:
-                                                          settings
-                                                              .idleShimmerEnabled
+                                                        hintEffect:
+                                                        cosmetics.hintEffectId,
+                                                        idleShimmerEnabled:
+                                                        cosmetics
+                                                            .idleShimmerEnabled,
+                                                        letterColor:
+                                                        cosmetics.letterColor,
+                                                        borderWidth:
+                                                        cosmetics.borderWidth,
                                                       ),
                                                     );
-                                                  },
+                                                      },
                                                 );
                                               },
                                             ),

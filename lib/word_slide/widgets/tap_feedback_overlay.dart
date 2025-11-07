@@ -32,26 +32,43 @@ class _TouchFeedbackOverlayState extends State<TouchFeedbackOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final ripples = _tapPositions
+        .map(
+          (pos) => Positioned(
+        left: pos.dx - 12,
+        top: pos.dy - 12,
+        child: IgnorePointer(
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.18),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    )
+        .toList();
+
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTapDown: _handleTapDown,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          widget.child,
-          ..._tapPositions.map((pos) => Positioned(
-            left: pos.dx - 15,
-            top: pos.dy - 15,
+          Positioned.fill(
             child: IgnorePointer(
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.cyanAccent.withValues(alpha: 0.3),
-                ),
-              ),
+              child: Stack(children: ripples),
             ),
-          )),
+          ),
+          widget.child,
         ],
       ),
     );

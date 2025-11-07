@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/cosmetic_manager.dart';
 import '../../services/game_feedback_service.dart';
 import '../models/alphabet_game.dart';
 import '../models/tile_highlight_kind.dart';
@@ -87,6 +88,11 @@ class WordQuestController extends ChangeNotifier {
   final ValueNotifier<bool> isAnimating = ValueNotifier<bool>(false);
 
   Completer<void>? _hintCompleter;
+  CosmeticManager? _cosmeticManager;
+
+  void attachCosmeticManager(CosmeticManager manager) {
+    _cosmeticManager = manager;
+  }
 
   Future<void> onTileTapped(int index) async {
     if (isAnimating.value) return;
@@ -209,23 +215,37 @@ class WordQuestController extends ChangeNotifier {
 
     _hintCompleter = Completer<void>();
     final highlightedIndices = showTrail ? indices : <int>[indices.first];
-    for (final idx in highlightedIndices) {
-      final notifier = tiles[idx];
-      notifier.value = notifier.value.copyWith(
-        highlighted: true,
-        highlightKind: TileHighlightKind.hint,
-      );
+    final cosmetics = _cosmeticManager;
+    if (cosmetics != null) {
+      final targets = highlightedIndices
+          .map((idx) => TileCoord(idx ~/ 4, idx % 4))
+          .toSet();
+      if (targets.isNotEmpty) {
+        cosmetics.beginHint(targets);
+      }
     }
-    await Future.delayed(const Duration(milliseconds: 850));
-    for (final idx in highlightedIndices) {
-      final notifier = tiles[idx];
-      notifier.value = notifier.value.copyWith(
-        highlighted: false,
-        highlightKind: TileHighlightKind.none,
-      );
+    try {
+      for (final idx in highlightedIndices) {
+        final notifier = tiles[idx];
+        notifier.value = notifier.value.copyWith(
+          highlighted: true,
+          highlightKind: TileHighlightKind.hint,
+        );
+      }
+      await Future.delayed(const Duration(milliseconds: 850));
+      for (final idx in highlightedIndices) {
+        final notifier = tiles[idx];
+        notifier.value = notifier.value.copyWith(
+          highlighted: false,
+          highlightKind: TileHighlightKind.none,
+        );
+      }
+    } finally {
+      _cosmeticManager?.endHint();
+      _hintCompleter?.complete();
     }
-    _hintCompleter?.complete();
   }
+
 
   void addHints(int amount) {
     hintsRemaining.value = hintsRemaining.value + amount;

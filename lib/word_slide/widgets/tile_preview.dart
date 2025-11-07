@@ -47,8 +47,17 @@ class TilePreview extends StatelessWidget {
           showHintEffect ? TileHighlightKind.hint : TileHighlightKind.none,
           hintEffect: hintEffect,
           idleShimmerEnabled: idleShimmerEnabled,
+          letterColor: Colors.white,
+          borderWidth: 2.0,
         ),
       ),
     );
   }
 }
+
+/// Test helper
+/// ```dart
+/// final manager = CosmeticManager()..restoreClassic();
+/// manager.beginHint({const TileCoord(0, 0)});
+/// manager.endHint();
+/// ```

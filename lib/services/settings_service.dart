@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:word_game_app/services/game_feedback_service.dart';
@@ -16,7 +19,7 @@ class SettingsService extends ChangeNotifier {
   static const _tileAnimationStyleKey = 'tileAnimationStyle';
   static const _soundEnabledKey = 'soundEnabled';
   static const _hapticsEnabledKey = 'hapticsEnabled';
-  static const _titleCaseKey = 'titleCaseWOrds';
+  static const _titleCaseKey = 'titleCaseWords';
   static const _soundPackKey = 'soundPack';
   static const _moveHapticIntensityKey = 'moveHapticIntensity';
   static const _successHapticIntensityKey = 'successHapticIntensity';
@@ -25,11 +28,26 @@ class SettingsService extends ChangeNotifier {
   static const _animatedBackgroundKey = 'animatedBackground';
   static const _idleShimmerKey = 'idleShimmer';
   static const _devUnlockPremiumKey = 'devUnlockPremiumCosmetics';
+  static const _activeCosmeticPresetKey = 'activeCosmeticPreset';
+  static const _enabledEffectsKey = 'enabledCosmeticEffects';
 
-  Color _tileColor = Colors.blueGrey;
-  Color _borderColor = Colors.blueGrey;
-  String _borderStyleId = TileBorderStyles.defaultStyle.id;
-  String _boardStyleId = BoardStyles.defaultStyle.id;
+  static const Map<String, bool> _baselineEffectFlags = <String, bool>{
+    'blink': false,
+    'glow': false,
+    'particles': false,
+    'animated_borders': false,
+    'animated_boards': false,
+    'teleport': false,
+    'puff': false,
+    'fancy_borders': false,
+    'letter_gradient': false,
+    'letter_glow': false,
+  };
+
+  Color _tileColor = const Color(0xFF6B4AE2);
+  Color _borderColor = Colors.white;
+  String _borderStyleId = TileBorderStyles.classicOutline.id;
+  String _boardStyleId = BoardStyles.classicNeutral.id;
   String _tileAnimationStyleId = TileAnimationStyles.defaultStyle.id;
   bool _soundEnabled = true;
   bool _hapticsEnabled = true;
@@ -38,11 +56,14 @@ class SettingsService extends ChangeNotifier {
   MoveHapticIntensity _moveHapticIntensity = MoveHapticIntensity.light;
   SuccessHapticIntensity _successHapticIntensity =
       SuccessHapticIntensity.medium;
-  String _hintEffect = 'ring';
-  bool _showHintTrail = true;
-  bool _animatedBackground = true;
-  bool _idleShimmer = true;
+  String _hintEffect = 'hint.inner_pulse';
+  bool _showHintTrail = false;
+  bool _animatedBackground = false;
+  bool _idleShimmer = false;
   bool _devUnlockPremiumCosmetics = false;
+  String _activePresetId = 'preset.classic';
+  Map<String, bool> _enabledEffects =
+  Map<String, bool>.from(_baselineEffectFlags);
 
   /// Current color used for puzzle tiles.
   Color get tileColor => _tileColor;
@@ -83,6 +104,11 @@ class SettingsService extends ChangeNotifier {
 
   bool get devUnlockPremiumCosmetics => _devUnlockPremiumCosmetics;
 
+  String get activePresetId => _activePresetId;
+
+  Map<String, bool> get enabledEffects =>
+      Map<String, bool>.unmodifiable(_enabledEffects);
+
   /// Loads previously saved settings from [SharedPreferences].
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -104,6 +130,8 @@ class SettingsService extends ChangeNotifier {
     prefs.getBool(_animatedBackgroundKey);
     final idleShimmerPref = prefs.getBool(_idleShimmerKey);
     final devUnlockPref = prefs.getBool(_devUnlockPremiumKey);
+    final presetPref = prefs.getString(_activeCosmeticPresetKey);
+    final enabledEffectsPref = prefs.getString(_enabledEffectsKey);
 
     if (colorValue != null) {
       _tileColor = Color(colorValue);
@@ -203,7 +231,9 @@ class SettingsService extends ChangeNotifier {
     }
 
     if (hintEffectPref != null && hintEffectPref.isNotEmpty) {
-      _hintEffect = hintEffectPref;
+      _hintEffect = hintEffectPref.startsWith('hint.')
+          ? hintEffectPref
+          : 'hint.inner_pulse';
     } else {
       await prefs.setString(_hintEffectKey, _hintEffect);
     }
@@ -232,6 +262,30 @@ class SettingsService extends ChangeNotifier {
       await prefs.setBool(
         _devUnlockPremiumKey,
         _devUnlockPremiumCosmetics,
+      );
+    }
+
+    if (presetPref != null && presetPref.isNotEmpty) {
+      _activePresetId = presetPref;
+    } else {
+      _activePresetId = 'preset.classic';
+      await prefs.setString(_activeCosmeticPresetKey, _activePresetId);
+    }
+
+    if (enabledEffectsPref != null && enabledEffectsPref.isNotEmpty) {
+      final Map<String, dynamic> decoded =
+      jsonDecode(enabledEffectsPref) as Map<String, dynamic>;
+      _enabledEffects = _baselineEffectFlags.map(
+            (key, value) => MapEntry(
+          key,
+          decoded.containsKey(key) ? decoded[key] == true : value,
+        ),
+      );
+    } else {
+      _enabledEffects = Map<String, bool>.from(_baselineEffectFlags);
+      await prefs.setString(
+        _enabledEffectsKey,
+        jsonEncode(_enabledEffects),
       );
     }
     notifyListeners();
@@ -373,6 +427,23 @@ class SettingsService extends ChangeNotifier {
     _useTitleCaseWords = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_titleCaseKey, value);
+    notifyListeners();
+  }
+
+  Future<void> persistCosmeticConfig({
+    required String presetId,
+    required Map<String, bool> enabledEffects,
+  }) async {
+    _activePresetId = presetId;
+    _enabledEffects = _baselineEffectFlags.map(
+          (key, value) => MapEntry(key, enabledEffects[key] ?? value),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeCosmeticPresetKey, _activePresetId);
+    await prefs.setString(
+      _enabledEffectsKey,
+      jsonEncode(_enabledEffects),
+    );
     notifyListeners();
   }
 }

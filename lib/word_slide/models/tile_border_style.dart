@@ -79,14 +79,14 @@ class TileBorderStyles {
     decorationBuilder: (context) => TileBorderDecoration(
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white,
         width: 2,
       ),
       boxShadows: const [
         BoxShadow(
-          color: Colors.black26,
-          blurRadius: 6,
-          offset: Offset(2, 2),
+          color: Color(0x33000000),
+          blurRadius: 10,
+          offset: Offset(0, 6),
         ),
       ],
     ),

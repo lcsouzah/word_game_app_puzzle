@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:word_game_app/services/game_feedback_service.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
+import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/word_slide/models/board_style.dart';
@@ -83,6 +84,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsService>();
     final purchaseService = context.watch<InAppPurchaseService>();
+    final cosmetics = context.watch<CosmeticManager>();
     final purchasedIds = purchaseService.purchasedProductIds;
     final theme = Theme.of(context);
     final devUnlockActive = kDebugMode && settings.devUnlockPremiumCosmetics;
@@ -92,6 +94,18 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          FilledButton.icon(
+            onPressed: () {
+              cosmetics.restoreClassic();
+              unawaited(cosmetics.persistTo(settings));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Classic preset restored.')),
+              );
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Restore Classic'),
+          ),
+          const SizedBox(height: 16),
           _SettingsSection(
             title: titleCaseFirstOnly('audio'),
             children: [
@@ -202,11 +216,12 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(settings.borderStyle.displayName),
                 trailing: TilePreview(
                   letter: 'A',
-                  tileColor: settings.tileColor,
-                  borderColor: settings.borderColor,
-                  borderStyle: settings.borderStyle,
-                  animationStyle: settings.tileAnimationStyle,
-                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                  tileColor: cosmetics.tileColor,
+                  borderColor: cosmetics.borderColor,
+                  borderStyle: cosmetics.tileBorderStyle,
+                  animationStyle: cosmetics.tileAnimationStyle,
+                  idleShimmerEnabled: cosmetics.idleShimmerEnabled,
+                  hintEffect: cosmetics.hintEffectId,
                 ),
                 onTap: () => _showBorderStyleSheet(
                   context,
@@ -220,11 +235,12 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(settings.tileAnimationStyle.displayName),
                 trailing: TilePreview(
                   letter: 'A',
-                  tileColor: settings.tileColor,
-                  borderColor: settings.borderColor,
-                  borderStyle: settings.borderStyle,
-                  animationStyle: settings.tileAnimationStyle,
-                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                  tileColor: cosmetics.tileColor,
+                  borderColor: cosmetics.borderColor,
+                  borderStyle: cosmetics.tileBorderStyle,
+                  animationStyle: cosmetics.tileAnimationStyle,
+                  idleShimmerEnabled: cosmetics.idleShimmerEnabled,
+                  hintEffect: cosmetics.hintEffectId,
                 ),
                 onTap: () => _showAnimationStyleSheet(
                   context,
@@ -258,13 +274,13 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(_hintEffectOptions[settings.hintEffect] ?? 'Ring'),
                 trailing: TilePreview(
                   letter: 'A',
-                  tileColor: settings.tileColor,
-                  borderColor: settings.borderColor,
-                  borderStyle: settings.borderStyle,
-                  animationStyle: settings.tileAnimationStyle,
-                  hintEffect: settings.hintEffect,
+                  tileColor: cosmetics.tileColor,
+                  borderColor: cosmetics.borderColor,
+                  borderStyle: cosmetics.tileBorderStyle,
+                  animationStyle: cosmetics.tileAnimationStyle,
+                  hintEffect: cosmetics.hintEffectId,
                   showHintEffect: true,
-                  idleShimmerEnabled: settings.idleShimmerEnabled,
+                  idleShimmerEnabled: cosmetics.idleShimmerEnabled,
                 ),
                 onTap: () => _showHintEffectSheet(context, settings),
               ),
@@ -438,6 +454,7 @@ class SettingsScreen extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       builder: (context) {
+        final cosmetics = context.read<CosmeticManager>();
         return ListView(
           shrinkWrap: true,
           children: _hintEffectOptions.entries.map((entry) {
@@ -454,13 +471,13 @@ class SettingsScreen extends StatelessWidget {
               },
               secondary: TilePreview(
                 letter: 'A',
-                tileColor: settings.tileColor,
-                borderColor: settings.borderColor,
-                borderStyle: settings.borderStyle,
-                animationStyle: settings.tileAnimationStyle,
+                tileColor: cosmetics.tileColor,
+                borderColor: cosmetics.borderColor,
+                borderStyle: cosmetics.tileBorderStyle,
+                animationStyle: cosmetics.tileAnimationStyle,
                 hintEffect: entry.key,
                 showHintEffect: true,
-                idleShimmerEnabled: settings.idleShimmerEnabled,
+                idleShimmerEnabled: cosmetics.idleShimmerEnabled,
               ),
               selected: selected,
             );

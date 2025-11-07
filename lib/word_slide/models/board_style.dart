@@ -51,6 +51,27 @@ class BoardStyle {
 
 /// Registry of built-in board styles for the puzzle grid container.
 class BoardStyles {
+  static final BoardStyle classicNeutral = BoardStyle(
+    id: 'board_classic_neutral',
+    displayName: 'Classic Neutral',
+    isPremium: false,
+    decorationBuilder: (context) => BoardStyleDecoration(
+      backgroundColor: const Color(0xFF211C33),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.14),
+        width: 1.4,
+      ),
+      boxShadows: const [
+        BoxShadow(
+          color: Color(0x33000000),
+          blurRadius: 24,
+          offset: Offset(0, 18),
+        ),
+      ],
+      padding: const EdgeInsets.all(16),
+    ),
+  );
   static final BoardStyle luminousSlate = BoardStyle(
     id: 'board_luminous_slate',
     displayName: 'Luminous Slate',
@@ -178,6 +199,7 @@ class BoardStyles {
 
   static final Map<String, BoardStyle> _stylesById = {
     for (final style in [
+      classicNeutral,
       luminousSlate,
       emeraldBloom,
       auroraVeil,
@@ -199,5 +221,5 @@ class BoardStyles {
   static Iterable<BoardStyle> get premiumStyles =>
       all.where((style) => style.isPremium);
 
-  static BoardStyle get defaultStyle => luminousSlate;
+  static BoardStyle get defaultStyle => classicNeutral;
 }

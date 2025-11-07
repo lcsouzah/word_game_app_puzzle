@@ -57,7 +57,14 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => PauseManager()),
         Provider(create: (_) => AdService()),
         ChangeNotifierProvider(create: (_) => SettingsService()..load()),
-        ChangeNotifierProvider(create: (_) => CosmeticManager()),
+        ChangeNotifierProxyProvider<SettingsService, CosmeticManager>(
+          create: (_) => CosmeticManager(),
+          update: (_, settings, manager) {
+            final CosmeticManager resolved = manager ?? CosmeticManager();
+            resolved.syncFromSettings(settings);
+            return resolved;
+          },
+        ),
         ChangeNotifierProvider(
           create: (_) => InAppPurchaseService()..initialize(),
         ),
