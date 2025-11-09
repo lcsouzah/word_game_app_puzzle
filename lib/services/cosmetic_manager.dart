@@ -43,11 +43,18 @@ class CosmeticManager extends ChangeNotifier {
   };
 
   String activePresetId = classicPresetId;
+  static const String _defaultTileSkinId = 'default';
+  static const String _defaultBoardSkinId = 'classic';
+  static const String _defaultTrailEffectId = 'sparkle';
+
   String boardStyleId = BoardStyles.classicNeutral.id;
   String tileBorderStyleId = TileBorderStyles.classicOutline.id;
   String tileAnimationStyleId = TileAnimationStyles.slide.id;
   String soundPackId = 'classic';
   String hintEffectId = 'hint.inner_pulse';
+  String _tileSkinId = _defaultTileSkinId;
+  String _boardSkinId = _defaultBoardSkinId;
+  String _trailEffectId = _defaultTrailEffectId;
 
   Color tileColor = const Color(0xFF6B4AE2);
   Color borderColor = Colors.white;
@@ -71,6 +78,9 @@ class CosmeticManager extends ChangeNotifier {
       TileBorderStyles.byId(tileBorderStyleId);
   TileAnimationStyle get tileAnimationStyle =>
       TileAnimationStyles.byId(tileAnimationStyleId);
+  String get tileSkin => _tileSkinId;
+  String get boardSkin => _boardSkinId;
+  String get trailEffect => _trailEffectId;
 
   void restoreClassic() {
     final bool hasChanged =
@@ -84,6 +94,9 @@ class CosmeticManager extends ChangeNotifier {
             letterColor.value != Colors.white.value ||
             soundPackId != 'classic' ||
             hintEffectId != 'hint.inner_pulse' ||
+            _tileSkinId != _defaultTileSkinId ||
+            _boardSkinId != _defaultBoardSkinId ||
+            _trailEffectId != _defaultTrailEffectId ||
             tapRippleMinimal != true ||
             idleShimmerEnabled != false ||
             isHintActive ||
@@ -99,6 +112,9 @@ class CosmeticManager extends ChangeNotifier {
     letterColor = Colors.white;
     soundPackId = 'classic';
     hintEffectId = 'hint.inner_pulse';
+    _tileSkinId = _defaultTileSkinId;
+    _boardSkinId = _defaultBoardSkinId;
+    _trailEffectId = _defaultTrailEffectId;
     tapRippleMinimal = true;
     idleShimmerEnabled = false;
     enabledEffects.updateAll((key, value) => false);
@@ -180,6 +196,52 @@ class CosmeticManager extends ChangeNotifier {
       suspensionLog.add('preset:$storedPreset not supported -> classic');
     }
     restoreClassic();
+  }
+
+  void setSkin(String category, String id) {
+    bool changed = false;
+    switch (category) {
+      case 'tile':
+        if (_tileSkinId != id) {
+          _tileSkinId = id;
+          changed = true;
+        }
+        break;
+      case 'board':
+        if (_boardSkinId != id) {
+          _boardSkinId = id;
+          changed = true;
+        }
+        break;
+      case 'trail':
+        if (_trailEffectId != id) {
+          _trailEffectId = id;
+          changed = true;
+        }
+        break;
+      case 'sound':
+        if (soundPackId != id) {
+          soundPackId = id;
+          changed = true;
+        }
+        break;
+      case 'hint':
+        if (hintEffectId != id) {
+          hintEffectId = id;
+          changed = true;
+        }
+        break;
+      default:
+        throw ArgumentError.value(
+          category,
+          'category',
+          'Unsupported cosmetic category',
+        );
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   Future<void> persistTo(SettingsService settings) {
