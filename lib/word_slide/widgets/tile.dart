@@ -47,7 +47,7 @@ class TileWidget extends StatefulWidget {
 }
 
 class TileWidgetState extends State<TileWidget>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   double _scale = 1.0;
   late final AnimationController _idleController;
   Animation<double>? _idleOpacity;

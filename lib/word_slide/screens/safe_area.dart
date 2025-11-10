@@ -48,6 +48,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
   bool _isGameOver = false;
+  late final PauseManager _pauseManager;
+
 
   @override
   void initState() {
@@ -55,8 +57,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     _loadRewardedAd();
     _initialisation = _prepareGame();
 
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-    pauseManager.addListener(_onPauseStateChanged);
+    _pauseManager = Provider.of<PauseManager>(context, listen: false);
+    _pauseManager.addListener(_onPauseStateChanged);
 
     _bannerAd = BannerAd(
       adUnitId: dotenv.env['BANNER_AD_UNIT_ID']!,
@@ -76,7 +78,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
 
     _remainingTime = widget.gameDuration;
 
-    if (pauseManager.isPaused) {
+    if (_pauseManager.isPaused) {
       _pauseTimer();
     } else {
       _startTimer();
@@ -98,9 +100,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _onPauseStateChanged() {
-    if(!mounted) return;
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-    if (pauseManager.isPaused) {
+    if (!mounted) return;
+    if (_pauseManager.isPaused) {
       _pauseTimer();
     } else {
       _resumeTimer();
@@ -108,8 +109,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _resetPauseState() {
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-    pauseManager.forceResume();
+    _pauseManager.forceResume();
   }
 
   void _loadRewardedAd() {
@@ -133,8 +133,6 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   }
 
   void _showRewardedAdForHints() {
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-
     if (_rewardedAd == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ad not ready. Try again later.')),
@@ -142,15 +140,15 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
       return;
     }
 
-    pauseManager.pause(PauseReason.ad);
-    pauseManager.pause(PauseReason.manual);
+    _pauseManager.pause(PauseReason.ad);
+    _pauseManager.pause(PauseReason.manual);
 
     _rewardedAd!.show(
       onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
         setState(() {
           _adUsesThisMatch++;
-          pauseManager.forceResume();
-          pauseManager.resume(PauseReason.ad);
+          _pauseManager.forceResume();
+          _pauseManager.resume(PauseReason.ad);
         });
 
         _controller?.addHints(3);
@@ -163,11 +161,11 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
 
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
-        pauseManager.resume(PauseReason.ad);
+        _pauseManager.resume(PauseReason.ad);
         _loadRewardedAd();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
-        pauseManager.resume(PauseReason.ad);
+        _pauseManager.resume(PauseReason.ad);
         ad.dispose();
       },
     );
@@ -189,6 +187,10 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     solvedWords.isEmpty ? 0 : (solvedWords.length * 1000) ~/ moveCount;
 
     submitScore(score: finalScore, difficulty: widget.difficulty);
+
+    if (!mounted) {
+      return;
+    }
 
     showDialog(
       context: context,
@@ -269,8 +271,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     if (_timer != null || _remainingTime <= 0 || _isGameOver) {
       return;
     }
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-    if (pauseManager.pauseReason != PauseReason.none) {
+    if (_pauseManager.pauseReason != PauseReason.none) {
       return;
     }
     _startTimer();
@@ -280,13 +281,17 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     if (_remainingTime <= 0 || _isGameOver) {
       return;
     }
-    final pauseManager = Provider.of<PauseManager>(context, listen: false);
-    if (pauseManager.pauseReason != PauseReason.none) {
+    if (_pauseManager.pauseReason != PauseReason.none) {
       _pauseTimer();
       return;
     }
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (!mounted) {
+        timer.cancel();
+        _timer = null;
+        return;
+      }
       if (_remainingTime > 0) {
         setState(() {
           _remainingTime--;
@@ -374,9 +379,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
               icon: const Icon(Icons.settings),
               tooltip: 'Settings',
               onPressed: () {
-                final pauseManager =
-                Provider.of<PauseManager>(context, listen: false);
-                pauseManager.pause(PauseReason.manual);
+                _pauseManager.pause(PauseReason.manual);
 
                 Navigator.push(
                   context,
@@ -385,7 +388,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                   ),
                 ).then((_) {
                   if (!mounted) return;
-                  pauseManager.resume(PauseReason.manual);
+                  _pauseManager.resume(PauseReason.manual);
                 });
               },
             ),
@@ -401,13 +404,11 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                   ? 'Resume'
                   : 'Pause',
               onPressed: () {
-                final pauseManager =
-                Provider.of<PauseManager>(context, listen: false);
-                if (pauseManager.isPaused &&
-                    pauseManager.pauseReason == PauseReason.manual) {
-                  pauseManager.resume(PauseReason.manual);
+                if (_pauseManager.isPaused &&
+                    _pauseManager.pauseReason == PauseReason.manual) {
+                  _pauseManager.resume(PauseReason.manual);
                 } else {
-                  pauseManager.pause(PauseReason.manual);
+                  _pauseManager.pause(PauseReason.manual);
                 }
               },
             ),
@@ -520,8 +521,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   @override
   void dispose() {
     _resetPauseState();
-    Provider.of<PauseManager>(context, listen: false)
-        .removeListener(_onPauseStateChanged);
+    _pauseManager.removeListener(_onPauseStateChanged);
     _timer?.cancel();
     _bannerAd.dispose();
     _controller?.dispose();

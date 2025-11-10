@@ -98,6 +98,17 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () {
               cosmetics.restoreClassic();
               unawaited(cosmetics.persistTo(settings));
+              // ADD these lines to push Classic values into SettingsService, too:
+              unawaited(settings.updateTileColor(const Color(0xFF6B4AE2)));
+              unawaited(settings.updateBorderColor(Colors.white));
+              unawaited(settings.updateBorderStyle(TileBorderStyles.classicOutline, allowPremium: true));
+              unawaited(settings.updateBoardStyle(BoardStyles.classicNeutral, allowPremium: true));
+              unawaited(settings.updateTileAnimationStyle(TileAnimationStyles.slide, allowPremium: true));
+              unawaited(settings.updateSoundPack('classic'));
+              unawaited(settings.updateIdleShimmerEnabled(false));
+
+              // (Optional) ensure hint effect is the classic one:
+              unawaited(settings.updateHintEffect('hint.inner_pulse'));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Classic preset restored.')),
               );

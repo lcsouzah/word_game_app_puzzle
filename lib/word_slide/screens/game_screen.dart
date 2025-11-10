@@ -224,78 +224,78 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       boxShadow: boardStyleDecoration.boxShadows,
       image: boardStyleDecoration.backgroundImage,
     );
-    final tileColor = cosmetics.tileColor;
+    final tileColor = settings.tileColor;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: TouchFeedbackOverlay(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final availableHeight =
-              max(260.0, constraints.maxHeight - 140.0);
-              final boardSize =
-              min(constraints.maxWidth, availableHeight);
-
-              return Column(
+        backgroundColor: Colors.transparent,
+        body: TouchFeedbackOverlay(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Column(
                 children: [
-                  _buildHeader(controller),
-                  Expanded(
-                    child: Center(
-                      child: SizedBox(
-                        width: boardSize,
-                        height: boardSize,
-                        child: Hero(
-                          tag: 'word-quest-board',
-                          child: FadeTransition(
-                            opacity: CurvedAnimation(
+                _buildHeader(controller),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, boardConstraints) {
+                  final boardSize = min(
+                    boardConstraints.maxWidth,
+                    boardConstraints.maxHeight,
+                  );
+
+                  return Center(
+                    child: SizedBox(
+                      width: boardSize,
+                      height: boardSize,
+                      child: Hero(
+                        tag: 'word-quest-board',
+                        child: FadeTransition(
+                          opacity: CurvedAnimation(
+                            parent: _introController,
+                            curve: Curves.easeOut,
+                          ),
+                          child: ScaleTransition(
+                            scale: CurvedAnimation(
                               parent: _introController,
-                              curve: Curves.easeOut,
+                              curve: Curves.easeOutBack,
                             ),
-                            child: ScaleTransition(
-                              scale: CurvedAnimation(
-                                parent: _introController,
-                                curve: Curves.easeOutBack,
-                              ),
-                              child: Container(
-                                decoration: boardBoxDecoration,
-                                child: ClipRRect(
-                                  borderRadius:
-                                  boardStyleDecoration.borderRadius,
-                                  child: Padding(
-                                    padding: boardStyleDecoration.padding,
-                                    child: LayoutBuilder(
-                                      builder: (context, boardConstraints) {
-                                        final cellSize =
-                                            boardConstraints.maxWidth / 4;
-                                        return Stack(
-                                          children: [
-                                            GridView.builder(
-                                              physics:
-                                              const NeverScrollableScrollPhysics(),
-                                              padding: EdgeInsets.zero,
-                                              itemCount: controller.tiles.length,
-                                              gridDelegate:
-                                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                                crossAxisCount: 4,
-                                              ),
-                                              itemBuilder: (context, index) {
-                                                return ValueListenableBuilder<
-                                                    TileVisualState>(
-                                                  valueListenable:
-                                                  controller.tiles[index],
-                                                  builder:
-                                                      (context, tile, __) {
-                                                    final displayLetter =
-                                                    settings.useTitleCaseWords
-                                                        ? tile.letter
-                                                        : tile.letter
-                                                        .toUpperCase();
-                                                    return IgnorePointer(
-                                                      ignoring:
-                                                      pauseManager.isPaused,
-                                                      child: TileWidget(
+                            child: Container(
+                              decoration: boardBoxDecoration,
+                              child: ClipRRect(
+                                borderRadius:
+                                boardStyleDecoration.borderRadius,
+                                child: Padding(
+                                  padding: boardStyleDecoration.padding,
+                                  child: LayoutBuilder(
+                                    builder: (context, boardConstraints) {
+                                      final cellSize =
+                                          boardConstraints.maxWidth / 4;
+                                      return Stack(
+                                        children: [
+                                          GridView.builder(
+                                            physics:
+                                            const NeverScrollableScrollPhysics(),
+                                            padding: EdgeInsets.zero,
+                                            itemCount: controller.tiles.length,
+                                            gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: 4,
+                                            ),
+                                            itemBuilder: (context, index) {
+                                              return ValueListenableBuilder<
+                                                  TileVisualState>(
+                                                valueListenable:
+                                                controller.tiles[index],
+                                                builder:
+                                                    (context, tile, __) {
+                                                  final displayLetter =
+                                                  settings.useTitleCaseWords
+                                                      ? tile.letter
+                                                      : tile.letter
+                                                      .toUpperCase();
+                                                  return IgnorePointer(
+                                                    ignoring:
+                                                    pauseManager.isPaused,
+                                                    child: TileWidget(
                                                         key:
                                                         ValueKey<int>(index),
                                                         letter: displayLetter,
@@ -316,171 +316,168 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                             .transparent
                                                             : tileColor,
                                                         borderColor:
-                                                        cosmetics.borderColor,
+                                                        settings.borderColor,
                                                         borderStyle:
-                                                        cosmetics
-                                                            .tileBorderStyle,
-                                                        animationStyle: cosmetics
+                                                        settings.borderStyle,
+                                                        animationStyle: settings
                                                             .tileAnimationStyle,
                                                         hintEffect:
-                                                        cosmetics.hintEffectId,
+                                                        settings.hintEffect,
                                                         idleShimmerEnabled:
-                                                        cosmetics
-                                                            .idleShimmerEnabled,
-                                                        letterColor:
-                                                        cosmetics.letterColor,
-                                                        borderWidth:
-                                                        cosmetics.borderWidth,
-                                                      ),
-                                                    );
-                                                      },
-                                                );
-                                              },
-                                            ),
-                                            ValueListenableBuilder<int>(
-                                              valueListenable:
-                                              controller.pulseTicker,
-                                              builder:
-                                                  (context, tick, __) {
-                                                if (tick == 0) {
-                                                  return const SizedBox
-                                                      .shrink();
-                                                }
-                                                return TweenAnimationBuilder<
-                                                    double>(
-                                                  key: ValueKey<int>(tick),
-                                                  tween: Tween(
-                                                    begin: 0.0,
-                                                    end: 1.0,
-                                                  ),
-                                                  duration: const Duration(
-                                                      milliseconds: 420),
-                                                  builder:
-                                                      (context, value, _) {
-                                                    final opacity =
-                                                    (1 - value)
-                                                        .clamp(0.0, 1.0);
-                                                    return IgnorePointer(
-                                                      child: Opacity(
-                                                        opacity: opacity,
-                                                        child:
-                                                        DecoratedBox(
-                                                          decoration:
-                                                          BoxDecoration(
-                                                            borderRadius:
-                                                            boardStyleDecoration
-                                                                .borderRadius,
-                                                            border: Border.all(
-                                                              color: Colors
-                                                                  .amberAccent
-                                                                  .withOpacity(
-                                                                  opacity),
-                                                              width: 8 *
-                                                                  (1 - value),
-                                                            ),
+                                                        settings
+                                                            .idleShimmerEnabled
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+                                          ValueListenableBuilder<int>(
+                                            valueListenable:
+                                            controller.pulseTicker,
+                                            builder:
+                                                (context, tick, __) {
+                                              if (tick == 0) {
+                                                return const SizedBox
+                                                    .shrink();
+                                              }
+                                              return TweenAnimationBuilder<
+                                                  double>(
+                                                key: ValueKey<int>(tick),
+                                                tween: Tween(
+                                                  begin: 0.0,
+                                                  end: 1.0,
+                                                ),
+                                                duration: const Duration(
+                                                    milliseconds: 420),
+                                                builder:
+                                                    (context, value, _) {
+                                                  final opacity =
+                                                  (1 - value)
+                                                      .clamp(0.0, 1.0);
+                                                  return IgnorePointer(
+                                                    child: Opacity(
+                                                      opacity: opacity,
+                                                      child:
+                                                      DecoratedBox(
+                                                        decoration:
+                                                        BoxDecoration(
+                                                          borderRadius:
+                                                          boardStyleDecoration
+                                                              .borderRadius,
+                                                          border: Border.all(
+                                                            color: Colors
+                                                                .amberAccent
+                                                                .withOpacity(
+                                                                opacity),
+                                                            width: 8 *
+                                                                (1 - value),
                                                           ),
                                                         ),
                                                       ),
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+                                          ValueListenableBuilder<ScorePopup?>(
+                                            valueListenable:
+                                            controller.scorePopup,
+                                            builder:
+                                                (context, popup, __) {
+                                              if (popup == null) {
+                                                return const SizedBox
+                                                    .shrink();
+                                              }
+                                              final left = popup.gridX *
+                                                  cellSize +
+                                                  (cellSize / 2) -
+                                                  16;
+                                              final top = popup.gridY *
+                                                  cellSize +
+                                                  (cellSize / 2) -
+                                                  16;
+                                              return Positioned(
+                                                left: left,
+                                                top: top,
+                                                child:
+                                                TweenAnimationBuilder<
+                                                    double>(
+                                                  key: ValueKey<int>(
+                                                      controller
+                                                          .pulseTicker
+                                                          .value),
+                                                  tween: Tween(
+                                                    begin: 0,
+                                                    end: -24,
+                                                  ),
+                                                  duration:
+                                                  const Duration(
+                                                      milliseconds:
+                                                      520),
+                                                  onEnd: () =>
+                                                  controller
+                                                      .scorePopup.value =
+                                                  null,
+                                                  builder: (context, dy,
+                                                      child) {
+                                                    final opacity = 1.0 -
+                                                        (dy.abs() / 24.0)
+                                                            .clamp(0.0, 1.0);
+                                                    return Opacity(
+                                                      opacity: opacity,
+                                                      child:
+                                                      Transform.translate(
+                                                        offset:
+                                                        Offset(0, dy),
+                                                        child: child,
+                                                      ),
                                                     );
                                                   },
-                                                );
-                                              },
-                                            ),
-                                            ValueListenableBuilder<ScorePopup?>(
-                                              valueListenable:
-                                              controller.scorePopup,
-                                              builder:
-                                                  (context, popup, __) {
-                                                if (popup == null) {
-                                                  return const SizedBox
-                                                      .shrink();
-                                                }
-                                                final left = popup.gridX *
-                                                    cellSize +
-                                                    (cellSize / 2) -
-                                                    16;
-                                                final top = popup.gridY *
-                                                    cellSize +
-                                                    (cellSize / 2) -
-                                                    16;
-                                                return Positioned(
-                                                  left: left,
-                                                  top: top,
-                                                  child:
-                                                  TweenAnimationBuilder<
-                                                      double>(
-                                                    key: ValueKey<int>(
-                                                        controller
-                                                            .pulseTicker
-                                                            .value),
-                                                    tween: Tween(
-                                                      begin: 0,
-                                                      end: -24,
-                                                    ),
-                                                    duration:
-                                                    const Duration(
-                                                        milliseconds:
-                                                        520),
-                                                    onEnd: () => controller
-                                                        .scorePopup.value =
-                                                    null,
-                                                    builder: (context, dy,
-                                                        child) {
-                                                      final opacity = 1.0 -
-                                                          (dy.abs() / 24.0)
-                                                              .clamp(0.0, 1.0);
-                                                      return Opacity(
-                                                        opacity: opacity,
-                                                        child:
-                                                        Transform.translate(
-                                                          offset:
-                                                          Offset(0, dy),
-                                                          child: child,
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: Text(
-                                                      popup.isWord
-                                                          ? '+${popup.points}!'
-                                                          : '+${popup.points}',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleSmall
-                                                          ?.copyWith(
-                                                        fontWeight:
-                                                        FontWeight
-                                                            .w800,
-                                                        shadows: const [
-                                                          Shadow(
-                                                            blurRadius: 8,
+                                                  child: Text(
+                                                    popup.isWord
+                                                        ? '+${popup.points}!'
+                                                        : '+${popup.points}',
+                                                    style: Theme
+                                                        .of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                      fontWeight:
+                                                      FontWeight
+                                                          .w800,
+                                                      shadows: const [
+                                                        Shadow(
+                                                          blurRadius: 8,
                                                           ),
                                                         ],
                                                       ),
                                                     ),
                                                   ),
                                                 );
-                                                  },
+                                              },
                                             ),
                                           ],
                                         );
-                                      },
+                                       },
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
+                             ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                   _buildHintControls(context, controller),
                 ],
-              );
-            },
+            ),
           ),
         ),
-      ),
     );
   }
 }
