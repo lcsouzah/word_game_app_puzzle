@@ -129,6 +129,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget _buildHintControls(
       BuildContext context,
       WordQuestController controller,
+      PauseManager pauseManager,
       ) {
     final theme = Theme.of(context);
     final settings = context.watch<SettingsService>();
@@ -161,11 +162,24 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: FilledButton.icon(
               onPressed: (!canUseHint && !canUseAd)
                   ? null
-                  : () {
+                  : () async {
+                if (pauseManager.isPaused) {
+                  return;
+                }
                 if (canUseHint) {
-                  controller.showHint(
+                  final didShowHint = await controller.showHint(
                     showTrail: settings.showHintTrail,
                   );
+                  if (!didShowHint && mounted) {
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('No combinations found'),
+                        duration: Duration(milliseconds: 1800),
+                      ),
+                    );
+                  }
                 } else {
                   widget.onRewardedAdRequest();
                 }
@@ -473,7 +487,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       },
                     ),
                   ),
-                  _buildHintControls(context, controller),
+                  _buildHintControls(context, controller,pauseManager),
                 ],
             ),
           ),

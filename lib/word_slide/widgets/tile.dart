@@ -104,7 +104,7 @@ class TileWidgetState extends State<TileWidget>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _hintScale = Tween<double>(begin: 0.96, end: 1.0)
+    _hintScale = Tween<double>(begin: 0.95, end: 1.02)
         .chain(CurveTween(curve: Curves.easeInOut))
         .animate(_hintPulse);
     _hintPulse.value = 1.0;

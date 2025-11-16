@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/cosmetic_manager.dart';
 import '../../services/game_feedback_service.dart';
@@ -192,15 +193,14 @@ class WordQuestController extends ChangeNotifier {
     pulseTicker.value = pulseTicker.value + 1;
   }
 
-  Future<void> showHint({bool showTrail = true}) async {
-    if (hintsRemaining.value <= 0 || isAnimating.value) {
-      return;
+  Future<bool> showHint({bool showTrail = true}) async {
+    if (isAnimating.value || hintsRemaining.value <= 0) {
+      return false;
     }
     if (_hintCompleter != null && !_hintCompleter!.isCompleted) {
-      return;
+      await _hintCompleter!.future;
     }
 
-    hintsRemaining.value = hintsRemaining.value - 1;
     final payload = _HintPayload(
       letters: List<String>.from(game.letters),
       dictionary: _dictionary,
@@ -210,8 +210,11 @@ class WordQuestController extends ChangeNotifier {
       payload,
     );
     if (indices.isEmpty) {
-      return;
+      _signalNoHintAvailable();
+      return false;
     }
+
+    hintsRemaining.value = hintsRemaining.value - 1;
 
     _hintCompleter = Completer<void>();
     final highlightedIndices = showTrail ? indices : <int>[indices.first];
@@ -240,9 +243,19 @@ class WordQuestController extends ChangeNotifier {
           highlightKind: TileHighlightKind.none,
         );
       }
+      return true;
     } finally {
       _cosmeticManager?.endHint();
       _hintCompleter?.complete();
+      _hintCompleter = null;
+    }
+  }
+
+  void _signalNoHintAvailable() {
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.fuchsia) {
+      unawaited(HapticFeedback.lightImpact());
     }
   }
 
