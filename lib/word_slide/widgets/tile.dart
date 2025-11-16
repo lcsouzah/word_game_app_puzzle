@@ -51,8 +51,8 @@ class TileWidgetState extends State<TileWidget>
   double _scale = 1.0;
   late final AnimationController _idleController;
   Animation<double>? _idleOpacity;
-  late final AnimationController _hintPulseController;
-  late final Animation<double> _hintPulse;
+  late final AnimationController _hintPulse;
+  late final Animation<double> _hintScale;
 
   @override
   void initState() {
@@ -62,15 +62,8 @@ class TileWidgetState extends State<TileWidget>
       duration: _resolveIdleDuration(widget.animationStyle),
     );
     _refreshIdleAnimation(restart: true);
-    _hintPulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _hintPulse = CurvedAnimation(
-      parent: _hintPulseController,
-      curve: Curves.easeInOut,
-    );
-    _updateHintAnimation(_shouldAnimateHint(widget));
+    _initHint();
+    _updateHintState(_isHintActive(widget));
   }
 
   @override
@@ -96,14 +89,25 @@ class TileWidgetState extends State<TileWidget>
       _refreshIdleAnimation(restart: styleChanged);
     }
 
-    _updateHintAnimation(_shouldAnimateHint(widget));
+    _updateHintState(_isHintActive(widget));
   }
 
   @override
   void dispose() {
     _idleController.dispose();
-    _hintPulseController.dispose();
+    _hintPulse.dispose();
     super.dispose();
+  }
+
+  void _initHint() {
+    _hintPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _hintScale = Tween<double>(begin: 0.96, end: 1.0)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_hintPulse);
+    _hintPulse.value = 1.0;
   }
 
   Duration _resolveIdleDuration(TileAnimationStyle style) {
@@ -151,20 +155,22 @@ class TileWidgetState extends State<TileWidget>
     }
   }
 
-  bool _shouldAnimateHint(TileWidget target) {
+  bool _isHintActive(TileWidget target) {
     return target.highlighted &&
         target.highlightKind == TileHighlightKind.hint &&
         target.letter.trim().isNotEmpty;
   }
 
-  void _updateHintAnimation(bool shouldAnimate) {
+  void _updateHintState(bool shouldAnimate) {
     if (shouldAnimate) {
-      if (!_hintPulseController.isAnimating) {
-        _hintPulseController.repeat(reverse: true);
+      if (!_hintPulse.isAnimating) {
+        _hintPulse.repeat(reverse: true);
       }
-    } else if (_hintPulseController.isAnimating) {
-      _hintPulseController.stop();
-      _hintPulseController.value = 0.0;
+    } else {
+      if (_hintPulse.isAnimating) {
+        _hintPulse.stop();
+      }
+      _hintPulse.value = 1.0;
     }
   }
 
@@ -298,7 +304,8 @@ class TileWidgetState extends State<TileWidget>
       borderColor: widget.borderColor,
       highlighted: widget.highlighted,
     );
-    final bool isHintHighlight = _shouldAnimateHint(widget);
+    final bool isHintActive = _isHintActive(widget);
+    _updateHintState(isHintActive);
     final bool isSolvedHighlight =
         widget.highlighted && widget.highlightKind == TileHighlightKind.solved;
     final BorderRadius borderRadius =
@@ -308,8 +315,6 @@ class TileWidgetState extends State<TileWidget>
         ? Colors.transparent
         : isSolvedHighlight
         ? Colors.orangeAccent.withOpacity(0.82)
-        : isHintHighlight
-        ? baseFillColor.withOpacity(0.92)
         : (_scale != 1.0
         ? baseFillColor.withOpacity(0.58)
         : baseFillColor);
@@ -329,15 +334,6 @@ class TileWidgetState extends State<TileWidget>
           spreadRadius: 3.0,
         ),
       ];
-    } else if (isHintHighlight) {
-      combinedShadows = <BoxShadow>[
-        BoxShadow(
-          color: Colors.white.withOpacity(0.28),
-          blurRadius: 20,
-          spreadRadius: 2.4,
-        ),
-        defaultShadow,
-      ];
     } else if (decorationParts.boxShadows.isNotEmpty) {
       combinedShadows = decorationParts.boxShadows;
     } else {
@@ -349,7 +345,7 @@ class TileWidgetState extends State<TileWidget>
       gradient: decorationParts.gradient,
       borderRadius: borderRadius,
       border: Border.all(
-        color: widget.borderColor.withOpacity(isHintHighlight ? 0.9 : 1.0),
+        color: widget.borderColor,
         width: widget.borderWidth,
       ),
       boxShadow: combinedShadows,
@@ -361,28 +357,65 @@ class TileWidgetState extends State<TileWidget>
       curve: style.switchInCurve,
       margin: const EdgeInsets.all(4),
       decoration: boxDecoration,
-      foregroundDecoration:
-      isHintHighlight ? null : decorationParts.foregroundDecoration,
+      foregroundDecoration: decorationParts.foregroundDecoration,
       child: const SizedBox.expand(),
     );
 
     final Widget letterWidget = isEmpty
         ? const SizedBox.shrink()
-        : _buildLetterWidget(isHintHighlight, isSolvedHighlight);
-    final Widget? hintOverlay =
-    _buildHintOverlay(borderRadius, isHintHighlight);
+        : _buildLetterWidget(isSolvedHighlight: isSolvedHighlight);
 
-    final Stack tileSurfaceWithOverlay = Stack(
+    final Widget baseTile = Stack(
       fit: StackFit.expand,
       clipBehavior: Clip.none,
       children: [
         background,
-        if (hintOverlay != null) Positioned.fill(child: hintOverlay),
         if (!isEmpty) Center(child: letterWidget),
       ],
     );
 
-    final Widget animatedTile = _applyActiveTransition(tileSurfaceWithOverlay);
+    Widget tileCore = baseTile;
+    if (isHintActive) {
+      tileCore = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: AnimatedOpacity(
+                opacity: 0.9,
+                duration: const Duration(milliseconds: 150),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        color: Colors.black.withOpacity(0.12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ScaleTransition(
+            scale: _hintScale,
+            child: baseTile,
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: CustomPaint(
+                painter: const _LetterStrokePainter(strokeWidth: 2.2),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final Widget animatedTile = _applyActiveTransition(tileCore);
     final Widget idleAnimatedTile = _wrapWithIdleAnimation(animatedTile);
 
     return GestureDetector(
@@ -398,42 +431,13 @@ class TileWidgetState extends State<TileWidget>
     );
   }
 
-  Widget _buildLetterWidget(bool isHintHighlight, bool isSolvedHighlight) {
+  Widget _buildLetterWidget({required bool isSolvedHighlight}) {
     final TextStyle baseStyle = TextStyle(
       fontSize: 28.0,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
       color: widget.letterColor,
     );
-
-    if (isHintHighlight) {
-      final TextStyle strokeStyle = TextStyle(
-        fontSize: 28.0,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.5,
-        foreground: Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.2
-          ..color = Colors.black.withOpacity(0.55),
-      );
-      final TextStyle fillStyle = baseStyle.copyWith(
-        color: Colors.white,
-        shadows: const [
-          Shadow(
-            color: Color(0x66000000),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      );
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(widget.letter, style: strokeStyle),
-          Text(widget.letter, style: fillStyle),
-        ],
-      );
-    }
 
     return Text(
       widget.letter,
@@ -450,68 +454,20 @@ class TileWidgetState extends State<TileWidget>
       ),
     );
   }
+}
 
-  Widget? _buildHintOverlay(BorderRadius borderRadius, bool isHintHighlight) {
-    if (!isHintHighlight) {
-      return null;
-    }
-    return AnimatedBuilder(
-      animation: _hintPulseController,
-      builder: (context, _) {
-        final double t =
-        _hintPulseController.isAnimating ? _hintPulse.value : 0.0;
-        final double innerFactor = 0.76 + (0.18 * t);
-        final double haloOpacity = 0.28 + (0.24 * t);
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ClipRRect(
-              borderRadius: borderRadius,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withOpacity(0.32 + 0.20 * t),
-                      Colors.white.withOpacity(0.06),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.6, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.center,
-              child: FractionallySizedBox(
-                widthFactor: innerFactor,
-                heightFactor: innerFactor,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: borderRadius,
-                    color: Colors.white.withOpacity(0.2 + 0.1 * (1 - t)),
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: borderRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(haloOpacity),
-                        blurRadius: 18 + 10 * t,
-                        spreadRadius: 1.2 + t,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+class _LetterStrokePainter extends CustomPainter {
+  final double strokeWidth;
+
+  const _LetterStrokePainter({this.strokeWidth = 2.2});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // No-op placeholder; letters are rendered via Text widgets.
+  }
+
+  @override
+  bool shouldRepaint(covariant _LetterStrokePainter oldDelegate) {
+    return oldDelegate.strokeWidth != strokeWidth;
   }
 }
