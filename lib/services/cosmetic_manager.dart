@@ -6,6 +6,25 @@ import 'package:word_game_app/word_slide/models/board_style.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 
+typedef HintLuminousComposer = void Function(Set<TileCoord> targets);
+typedef HintSizeComposer = void Function(Set<TileCoord> targets);
+
+@immutable
+class HintEffectConfig {
+  const HintEffectConfig({
+    this.luminousIds = const <String>[],
+    this.sizeIds = const <String>[],
+  });
+
+  final List<String> luminousIds;
+  final List<String> sizeIds;
+
+  static const HintEffectConfig classic = HintEffectConfig(
+    luminousIds: <String>['innerPulse', 'letterHighlight', 'haloSoft'],
+    sizeIds: <String>['scalePulse'],
+  );
+}
+
 @immutable
 class TileCoord {
   const TileCoord(this.row, this.column);
@@ -55,6 +74,29 @@ class CosmeticManager extends ChangeNotifier {
   String _tileSkinId = _defaultTileSkinId;
   String _boardSkinId = _defaultBoardSkinId;
   String _trailEffectId = _defaultTrailEffectId;
+  static const List<String> _defaultHintLuminousIds = <String>[
+    'innerPulse',
+    'letterHighlight',
+    'haloSoft',
+  ];
+  static const List<String> _defaultHintSizeIds = <String>['scalePulse'];
+
+  final Map<String, HintLuminousComposer> _hintLuminousRegistry =
+  <String, HintLuminousComposer>{
+    'innerPulse': _noopHintEffect,
+    'letterHighlight': _noopHintEffect,
+    'haloSoft': _noopHintEffect,
+  };
+
+  final Map<String, HintSizeComposer> _hintSizeRegistry =
+  <String, HintSizeComposer>{
+    'scalePulse': _noopHintEffect,
+    'microBounce': _noopHintEffect,
+  };
+
+  List<String> activeHintLuminousIds =
+  List<String>.from(_defaultHintLuminousIds);
+  List<String> activeHintSizeIds = List<String>.from(_defaultHintSizeIds);
 
   Color tileColor = const Color(0xFF6B4AE2);
   Color borderColor = Colors.white;
@@ -69,6 +111,12 @@ class CosmeticManager extends ChangeNotifier {
 
   Set<TileCoord> _hintTargets = <TileCoord>{};
   final List<String> suspensionLog = <String>[];
+  static const Set<String> _hintConflictEffectIds = <String>{
+    'glow',
+    'letter_glow',
+    'teleport',
+    'puff',
+  };
 
   UnmodifiableSetView<TileCoord> get hintTargets =>
       UnmodifiableSetView<TileCoord>(_hintTargets);
@@ -120,6 +168,8 @@ class CosmeticManager extends ChangeNotifier {
     enabledEffects.updateAll((key, value) => false);
     _hintTargets = <TileCoord>{};
     isHintActive = false;
+    activeHintLuminousIds = List<String>.from(_defaultHintLuminousIds);
+    activeHintSizeIds = List<String>.from(_defaultHintSizeIds);
     _clearSuspensions();
     if (hasChanged) {
       notifyListeners();
@@ -132,7 +182,10 @@ class CosmeticManager extends ChangeNotifier {
     }
     _hintTargets = targets;
     isHintActive = true;
-    _suspendConflictingEffects('hint');
+    _suspendConflictingEffects(
+      'hint',
+      effectIds: _hintConflictEffectIds,
+    );
     notifyListeners();
   }
 
@@ -144,6 +197,23 @@ class CosmeticManager extends ChangeNotifier {
     _hintTargets = <TileCoord>{};
     suspensionLog.add('resume:hint');
     notifyListeners();
+  }
+
+  HintEffectConfig getResolvedHintConfig() {
+    final List<String> luminous = activeHintLuminousIds
+        .where(_hintLuminousRegistry.containsKey)
+        .toList(growable: false);
+    final List<String> size = activeHintSizeIds
+        .where(_hintSizeRegistry.containsKey)
+        .toList(growable: false);
+    return HintEffectConfig(
+      luminousIds: luminous.isEmpty
+          ? _defaultHintLuminousIds
+          : List<String>.unmodifiable(luminous),
+      sizeIds: size.isEmpty
+          ? _defaultHintSizeIds
+          : List<String>.unmodifiable(size),
+    );
   }
 
   void setPaused(bool value, {String reason = 'pause'}) {
@@ -255,11 +325,21 @@ class CosmeticManager extends ChangeNotifier {
     suspensionLog.clear();
   }
 
-  void _suspendConflictingEffects(String reason) {
-    for (final MapEntry<String, bool> entry in enabledEffects.entries) {
+  void _suspendConflictingEffects(
+      String reason, {
+        Iterable<String>? effectIds,
+      }) {
+    final Iterable<MapEntry<String, bool>> entries = effectIds == null
+        ? enabledEffects.entries
+        : enabledEffects.entries.where(
+          (entry) => effectIds.contains(entry.key),
+    );
+    for (final MapEntry<String, bool> entry in entries) {
       if (entry.value) {
         suspensionLog.add('suspend:${entry.key}:$reason');
       }
     }
   }
+
+  static void _noopHintEffect(Set<TileCoord> _) {}
 }

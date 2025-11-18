@@ -1,6 +1,7 @@
 //Y:\word_game_app_puzzle\lib\widget\tile.dart
 
 import 'package:flutter/material.dart';
+import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
 import 'package:word_game_app/word_slide/models/tile_border_style.dart';
 import 'package:word_game_app/word_slide/models/tile_highlight_kind.dart';
@@ -16,6 +17,7 @@ class TileWidget extends StatefulWidget {
   final TileAnimationStyle animationStyle;
   final TileHighlightKind? highlightKind;
   final String hintEffect;
+  final HintEffectConfig hintEffectConfig;
   final bool idleShimmerEnabled;
   final Color letterColor;
   final double borderWidth;
@@ -35,12 +37,14 @@ class TileWidget extends StatefulWidget {
     Color? borderColor,
     TileBorderStyle? borderStyle,
     TileAnimationStyle? animationStyle,
+    HintEffectConfig? hintEffectConfig,
   })  : tileColor = tileColor,
         borderColor = borderColor ?? tileColor,
         borderStyle = borderStyle ?? TileBorderStyles.none,
         animationStyle = animationStyle ?? TileAnimationStyles.defaultStyle,
         letterColor = letterColor ?? Colors.white,
-        borderWidth = borderWidth;
+        borderWidth = borderWidth,
+        hintEffectConfig = hintEffectConfig ?? HintEffectConfig.classic;
 
   @override
   TileWidgetState createState() => TileWidgetState();
@@ -361,9 +365,16 @@ class TileWidgetState extends State<TileWidget>
       child: const SizedBox.expand(),
     );
 
+    final HintEffectConfig hintConfig = widget.hintEffectConfig;
+    final bool showHintLetterHighlight = isHintActive &&
+        hintConfig.luminousIds.contains('letterHighlight');
+
     final Widget letterWidget = isEmpty
         ? const SizedBox.shrink()
-        : _buildLetterWidget(isSolvedHighlight: isSolvedHighlight);
+        : _buildLetterWidget(
+      isSolvedHighlight: isSolvedHighlight,
+      showHintLetterHighlight: showHintLetterHighlight,
+    );
 
     final Widget baseTile = Stack(
       fit: StackFit.expand,
@@ -376,43 +387,23 @@ class TileWidgetState extends State<TileWidget>
 
     Widget tileCore = baseTile;
     if (isHintActive) {
-      tileCore = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: true,
-              child: AnimatedOpacity(
-                opacity: 0.9,
-                duration: const Duration(milliseconds: 150),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        color: Colors.black.withOpacity(0.12),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          ScaleTransition(
-            scale: _hintScale,
-            child: baseTile,
-          ),
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: true,
-              child: CustomPaint(
-                painter: const _LetterStrokePainter(strokeWidth: 2.2),
-              ),
-            ),
-          ),
-        ],
+      final Widget sizedTile =
+      _applyHintSizeEffects(baseTile, hintConfig.sizeIds);
+      final List<Widget> luminousLayers = _buildHintLuminousOverlays(
+        luminousIds: hintConfig.luminousIds,
+        borderRadius: borderRadius,
       );
+      if (luminousLayers.isEmpty) {
+        tileCore = sizedTile;
+      } else {
+        tileCore = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            sizedTile,
+            ...luminousLayers,
+          ],
+        );
+      }
     }
 
     final Widget animatedTile = _applyActiveTransition(tileCore);
@@ -431,7 +422,10 @@ class TileWidgetState extends State<TileWidget>
     );
   }
 
-  Widget _buildLetterWidget({required bool isSolvedHighlight}) {
+  Widget _buildLetterWidget({
+    required bool isSolvedHighlight,
+    required bool showHintLetterHighlight,
+  }) {
     final TextStyle baseStyle = TextStyle(
       fontSize: 28.0,
       fontWeight: FontWeight.w700,
@@ -439,35 +433,152 @@ class TileWidgetState extends State<TileWidget>
       color: widget.letterColor,
     );
 
+    if (showHintLetterHighlight) {
+      final Color glowColor =
+          Color.lerp(widget.letterColor, Colors.white, 0.4) ?? Colors.white;
+      final TextStyle strokeStyle = baseStyle.copyWith(
+        color: null,
+        foreground: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6
+          ..color = Colors.white.withOpacity(0.6),
+      );
+      final TextStyle glowStyle = baseStyle.copyWith(
+        color: glowColor,
+        shadows: [
+          Shadow(
+            color: const Color(0xFF93F9FF).withOpacity(0.9),
+            blurRadius: 18,
+          ),
+          Shadow(
+            color: Colors.white.withOpacity(0.45),
+            blurRadius: 26,
+          ),
+        ],
+      );
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(widget.letter, style: strokeStyle),
+          Text(widget.letter, style: glowStyle),
+        ],
+      );
+    }
+
+    final TextStyle resolvedStyle = baseStyle.copyWith(
+      shadows: isSolvedHighlight
+          ? const [
+        Shadow(
+          color: Color(0x66000000),
+          blurRadius: 6,
+          offset: Offset(0, 2),
+        ),
+      ]
+          : null,
+    );
+
     return Text(
       widget.letter,
-      style: baseStyle.copyWith(
-        shadows: isSolvedHighlight
-            ? const [
-          Shadow(
-            color: Color(0x66000000),
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ]
-            : null,
-      ),
+      style: resolvedStyle,
     );
   }
-}
 
-class _LetterStrokePainter extends CustomPainter {
-  final double strokeWidth;
-
-  const _LetterStrokePainter({this.strokeWidth = 2.2});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // No-op placeholder; letters are rendered via Text widgets.
+  Widget _applyHintSizeEffects(Widget child, List<String> sizeIds) {
+    Widget current = child;
+    for (final String effectId in sizeIds) {
+      switch (effectId) {
+        case 'scalePulse':
+          current = ScaleTransition(
+            scale: _hintScale,
+            child: current,
+          );
+          break;
+        case 'microBounce':
+          final Widget previous = current;
+          current = AnimatedBuilder(
+            animation: _hintPulse,
+            child: previous,
+            builder: (context, child) {
+              final double offset = (_hintPulse.value - 0.5) * 0.04;
+              return Transform.scale(
+                scale: 0.98 + offset,
+                child: child,
+              );
+            },
+          );
+          break;
+        default:
+          break;
+      }
+    }
+    return current;
   }
 
-  @override
-  bool shouldRepaint(covariant _LetterStrokePainter oldDelegate) {
-    return oldDelegate.strokeWidth != strokeWidth;
+  List<Widget> _buildHintLuminousOverlays({
+    required List<String> luminousIds,
+    required BorderRadius borderRadius,
+  }) {
+    final List<Widget> overlays = <Widget>[];
+    if (luminousIds.contains('innerPulse')) {
+      overlays.add(
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: true,
+            child: AnimatedBuilder(
+              animation: _hintPulse,
+              builder: (context, _) {
+                final double t = _hintPulse.value;
+                final double opacity = 0.2 + (1 - t) * 0.3;
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    gradient: RadialGradient(
+                      colors: <Color>[
+                        Colors.white.withOpacity(opacity),
+                        Colors.white.withOpacity(opacity * 0.25),
+                        Colors.transparent,
+                      ],
+                      stops: const <double>[0.0, 0.6, 1.0],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+    if (luminousIds.contains('haloSoft')) {
+      overlays.add(
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: true,
+            child: AnimatedBuilder(
+              animation: _hintPulse,
+              builder: (context, _) {
+                final double t = _hintPulse.value;
+                final double haloOpacity = 0.25 + (1 - t) * 0.35;
+                final double blurRadius = 18 + (1 - t) * 12;
+                final double spreadRadius = 1.0 + (1 - t) * 2.2;
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color:
+                        const Color(0xFF8BF0FF).withOpacity(haloOpacity),
+                        blurRadius: blurRadius,
+                        spreadRadius: spreadRadius,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+    return overlays;
   }
 }

@@ -163,20 +163,18 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               onPressed: (!canUseHint && !canUseAd)
                   ? null
                   : () async {
-                if (pauseManager.isPaused) {
+                if (!mounted || pauseManager.isPaused) {
                   return;
                 }
                 if (canUseHint) {
-                  final didShowHint = await controller.showHint(
-                    showTrail: settings.showHintTrail,
-                  );
-                  if (!didShowHint && mounted) {
+                  final didShowHint = await controller.showHint();
+                  if (!didShowHint) {
+                    if (!mounted) return;
                     final messenger = ScaffoldMessenger.of(context);
                     messenger.hideCurrentSnackBar();
                     messenger.showSnackBar(
                       const SnackBar(
                         content: Text('No combinations found'),
-                        duration: Duration(milliseconds: 1800),
                       ),
                     );
                   }
@@ -217,6 +215,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final settings = context.watch<SettingsService>();
     final cosmetics = context.watch<CosmeticManager>();
     final pauseManager = context.watch<PauseManager>();
+    final hintConfig = cosmetics.getResolvedHintConfig();
 
     GameFeedbackService.configure(
       soundEnabled: settings.soundEnabled,
@@ -337,6 +336,8 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                                             .tileAnimationStyle,
                                                         hintEffect:
                                                         settings.hintEffect,
+                                                        hintEffectConfig:
+                                                        hintConfig,
                                                         idleShimmerEnabled:
                                                         settings
                                                             .idleShimmerEnabled

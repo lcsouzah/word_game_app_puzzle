@@ -193,7 +193,9 @@ class WordQuestController extends ChangeNotifier {
     pulseTicker.value = pulseTicker.value + 1;
   }
 
-  Future<bool> showHint({bool showTrail = true}) async {
+  Future<bool> showHint({
+    Duration display = const Duration(milliseconds: 850),
+  }) async {
     if (isAnimating.value || hintsRemaining.value <= 0) {
       return false;
     }
@@ -217,26 +219,23 @@ class WordQuestController extends ChangeNotifier {
     hintsRemaining.value = hintsRemaining.value - 1;
 
     _hintCompleter = Completer<void>();
-    final highlightedIndices = showTrail ? indices : <int>[indices.first];
     final cosmetics = _cosmeticManager;
     if (cosmetics != null) {
-      final targets = highlightedIndices
-          .map((idx) => TileCoord(idx ~/ 4, idx % 4))
-          .toSet();
+      final targets = indices.map(_indexToCoord).toSet();
       if (targets.isNotEmpty) {
         cosmetics.beginHint(targets);
       }
     }
     try {
-      for (final idx in highlightedIndices) {
+      for (final idx in indices) {
         final notifier = tiles[idx];
         notifier.value = notifier.value.copyWith(
           highlighted: true,
           highlightKind: TileHighlightKind.hint,
         );
       }
-      await Future.delayed(const Duration(milliseconds: 850));
-      for (final idx in highlightedIndices) {
+      await Future.delayed(display);
+      for (final idx in indices) {
         final notifier = tiles[idx];
         notifier.value = notifier.value.copyWith(
           highlighted: false,
@@ -258,7 +257,6 @@ class WordQuestController extends ChangeNotifier {
       unawaited(HapticFeedback.lightImpact());
     }
   }
-
 
   void addHints(int amount) {
     hintsRemaining.value = hintsRemaining.value + amount;
@@ -399,6 +397,12 @@ List<int> _collectVerticalIndices(List<String> letters, String word) {
   }
   return indices.length == word.length ? indices : <int>[];
 }
+
+TileCoord _indexToCoord(int index) {
+  const gridSize = 4;
+  return TileCoord(index ~/ gridSize, index % gridSize);
+}
+
 
 class _HintPayload {
   const _HintPayload({
