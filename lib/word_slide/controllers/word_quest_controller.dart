@@ -233,10 +233,10 @@ class WordQuestController extends ChangeNotifier {
         break;
       case DifficultyLevel.moderate:
         final maxLen = indices.length;
-        final upperBound = max(1, maxLen - 1);
+        final cap = maxLen <= 2 ? maxLen : maxLen - 1;
         final hintLen = bestScore <= 0
             ? 0
-            : (bestScore + 1).clamp(1, upperBound);
+            : (bestScore + 1).clamp(1, cap);
         hintTargets =
         hintLen > 0 ? indices.take(hintLen).toList() : const <int>[];
         break;
@@ -461,51 +461,72 @@ class _HintResult {
 }
 
 _HintResult _findHintIndices(_HintPayload payload) {
-  final boardLetters = <String>[];
-  for (final letter in payload.letters) {
-    if (letter.trim().isEmpty) continue;
-    boardLetters.add(letter);
-  }
+  const gridSize = 4;
 
-  if (boardLetters.isEmpty) {
-    return const _HintResult(indices: <int>[], bestScore: 0);
-  }
+  _HintResult bestCandidate = const _HintResult(indices: <int>[], bestScore: 0);
 
-  final firstLetter = boardLetters.first;
-  final candidates = payload.dictionary.where(
-        (word) => word.isNotEmpty && word[0] == firstLetter,
-  );
+  _HintResult _evaluateLine(
+      List<String> lineLetters,
+      List<int> lineIndices,
+      ) {
+    int bestScore = 0;
+    List<int> bestIndices = const <int>[];
 
-  if (candidates.isEmpty) {
-    return const _HintResult(indices: <int>[], bestScore: 0);
-  }
+    for (final word in payload.dictionary) {
+      if (word.isEmpty || word.length > lineLetters.length) continue;
 
-  int bestScore = 0;
-  String? bestMatch;
-
-  for (final word in candidates) {
-    int score = 0;
-    for (int i = 0; i < word.length && i < boardLetters.length; i++) {
-      if (word[i] == boardLetters[i]) {
+      int score = 0;
+      for (int i = 0; i < word.length; i++) {
+        final letter = lineLetters[i];
+        if (letter.trim().isEmpty || word[i] != letter) {
+          break;
+        }
         score++;
-      } else {
-        break;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndices = lineIndices.take(word.length).toList();
       }
     }
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = word;
+
+    return _HintResult(
+      indices: bestIndices,
+      bestScore: bestScore,
+    );
+  }
+
+  for (int row = 0; row < gridSize; row++) {
+    final indices = <int>[];
+    final letters = <String>[];
+    for (int col = 0; col < gridSize; col++) {
+      final idx = row * gridSize + col;
+      indices.add(idx);
+      letters.add(payload.letters[idx]);
+    }
+    final candidate = _evaluateLine(letters, indices);
+    if (candidate.bestScore > bestCandidate.bestScore) {
+      bestCandidate = candidate;
     }
   }
 
-  if (bestMatch == null || bestScore == 0) {
+  for (int col = 0; col < gridSize; col++) {
+    final indices = <int>[];
+    final letters = <String>[];
+    for (int row = 0; row < gridSize; row++) {
+      final idx = row * gridSize + col;
+      indices.add(idx);
+      letters.add(payload.letters[idx]);
+    }
+    final candidate = _evaluateLine(letters, indices);
+    if (candidate.bestScore > bestCandidate.bestScore) {
+      bestCandidate = candidate;
+    }
+  }
+
+  if (bestCandidate.bestScore <= 0) {
     return const _HintResult(indices: <int>[], bestScore: 0);
   }
 
-  final indices = _collectHorizontalIndices(payload.letters, bestMatch);
-  if (indices.isEmpty) {
-    return const _HintResult(indices: <int>[], bestScore: 0);
-  }
-
-  return _HintResult(indices: indices, bestScore: bestScore);
+  return bestCandidate;
 }
