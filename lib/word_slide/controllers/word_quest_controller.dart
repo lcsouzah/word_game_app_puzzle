@@ -203,6 +203,7 @@ class WordQuestController extends ChangeNotifier {
       return false;
     }
     if (moves.value <= 0) {
+      // Don't consume hints before the player has interact with the board.
       _signalNoHintAvailable();
       return false;
     }
@@ -474,6 +475,10 @@ _HintResult _findHintIndices(_HintPayload payload) {
   final candidates = payload.dictionary.where(
         (word) => word.isNotEmpty && word[0] == firstLetter,
   );
+
+  if (candidates.isEmpty) {
+    return const _HintResult(indices: <int>[], bestScore: 0);
+  }
 
   int bestScore = 0;
   String? bestMatch;
