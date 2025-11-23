@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../services/cosmetic_manager.dart';
 import '../../services/game_feedback_service.dart';
 import '../models/alphabet_game.dart';
+import '../models/difficulty_level.dart';
 import '../models/tile_highlight_kind.dart';
 
 
@@ -59,6 +60,7 @@ class WordQuestController extends ChangeNotifier {
     required this.game,
     required List<String> dictionary,
     required this.scoringOption,
+    required this.difficulty,
     int initialHints = 3,
   })  : _dictionary = List.unmodifiable(dictionary),
         hintsRemaining = ValueNotifier<int>(initialHints),
@@ -75,6 +77,7 @@ class WordQuestController extends ChangeNotifier {
         );
 
   final AlphabetGame game;
+  final DifficultyLevel difficulty;
   final ScoringOption scoringOption;
   final List<String> _dictionary;
 
@@ -199,6 +202,10 @@ class WordQuestController extends ChangeNotifier {
     if (isAnimating.value || hintsRemaining.value <= 0) {
       return false;
     }
+    if (moves.value <= 0) {
+      _signalNoHintAvailable();
+      return false;
+    }
     if (_hintCompleter != null && !_hintCompleter!.isCompleted) {
       await _hintCompleter!.future;
     }
@@ -207,11 +214,41 @@ class WordQuestController extends ChangeNotifier {
       letters: List<String>.from(game.letters),
       dictionary: _dictionary,
     );
-    final indices = await compute<_HintPayload, List<int>>(
+    final hintResult = await compute<_HintPayload, _HintResult>(
       _findHintIndices,
       payload,
     );
+    final indices = hintResult.indices;
+    final bestScore = hintResult.bestScore;
     if (indices.isEmpty) {
+      _signalNoHintAvailable();
+      return false;
+    }
+
+    List<int> hintTargets = const <int>[];
+    switch (difficulty) {
+      case DifficultyLevel.easy:
+        hintTargets = indices;
+        break;
+      case DifficultyLevel.moderate:
+        final maxLen = indices.length;
+        final upperBound = max(1, maxLen - 1);
+        final hintLen = bestScore <= 0
+            ? 0
+            : (bestScore + 1).clamp(1, upperBound);
+        hintTargets =
+        hintLen > 0 ? indices.take(hintLen).toList() : const <int>[];
+        break;
+      case DifficultyLevel.hard:
+        if (bestScore <= 0 || bestScore >= indices.length) {
+          hintTargets = const <int>[];
+        } else {
+          hintTargets = <int>[indices[bestScore]];
+        }
+        break;
+    }
+
+    if (hintTargets.isEmpty) {
       _signalNoHintAvailable();
       return false;
     }
@@ -221,13 +258,13 @@ class WordQuestController extends ChangeNotifier {
     _hintCompleter = Completer<void>();
     final cosmetics = _cosmeticManager;
     if (cosmetics != null) {
-      final targets = indices.map(_indexToCoord).toSet();
+      final targets = hintTargets.map(_indexToCoord).toSet();
       if (targets.isNotEmpty) {
         cosmetics.beginHint(targets);
       }
     }
     try {
-      for (final idx in indices) {
+      for (final idx in hintTargets) {
         final notifier = tiles[idx];
         notifier.value = notifier.value.copyWith(
           highlighted: true,
@@ -235,7 +272,7 @@ class WordQuestController extends ChangeNotifier {
         );
       }
       await Future.delayed(display);
-      for (final idx in indices) {
+      for (final idx in hintTargets) {
         final notifier = tiles[idx];
         notifier.value = notifier.value.copyWith(
           highlighted: false,
@@ -257,6 +294,7 @@ class WordQuestController extends ChangeNotifier {
       unawaited(HapticFeedback.lightImpact());
     }
   }
+
 
   void addHints(int amount) {
     hintsRemaining.value = hintsRemaining.value + amount;
@@ -414,16 +452,33 @@ class _HintPayload {
   final List<String> dictionary;
 }
 
-List<int> _findHintIndices(_HintPayload payload) {
+class _HintResult {
+  const _HintResult({required this.indices, required this.bestScore});
+
+  final List<int> indices;
+  final int bestScore;
+}
+
+_HintResult _findHintIndices(_HintPayload payload) {
   final boardLetters = <String>[];
   for (final letter in payload.letters) {
     if (letter.trim().isEmpty) continue;
     boardLetters.add(letter);
   }
 
+  if (boardLetters.isEmpty) {
+    return const _HintResult(indices: <int>[], bestScore: 0);
+  }
+
+  final firstLetter = boardLetters.first;
+  final candidates = payload.dictionary.where(
+        (word) => word.isNotEmpty && word[0] == firstLetter,
+  );
+
   int bestScore = 0;
   String? bestMatch;
-  for (final word in payload.dictionary) {
+
+  for (final word in candidates) {
     int score = 0;
     for (int i = 0; i < word.length && i < boardLetters.length; i++) {
       if (word[i] == boardLetters[i]) {
@@ -432,18 +487,20 @@ List<int> _findHintIndices(_HintPayload payload) {
         break;
       }
     }
-    if (score > bestScore && score >= 2) {
+    if (score > bestScore) {
       bestScore = score;
       bestMatch = word;
     }
   }
 
-  if (bestMatch == null) {
-    return const <int>[];
+  if (bestMatch == null || bestScore == 0) {
+    return const _HintResult(indices: <int>[], bestScore: 0);
   }
+
   final indices = _collectHorizontalIndices(payload.letters, bestMatch);
-  if (indices.length > bestScore) {
-    return indices.sublist(0, bestScore);
+  if (indices.isEmpty) {
+    return const _HintResult(indices: <int>[], bestScore: 0);
   }
-  return indices;
+
+  return _HintResult(indices: indices, bestScore: bestScore);
 }

@@ -16,6 +16,7 @@ import 'package:word_game_app/utils/score_uploader.dart';
 import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/word_slide/controllers/word_quest_controller.dart';
 import 'package:word_game_app/word_slide/models/alphabet_game.dart';
+import 'package:word_game_app/word_slide/models/difficulty_level.dart';
 import 'package:word_game_app/word_slide/screens/game_screen.dart';
 
 class SafeAreaScreen extends StatefulWidget {
@@ -90,11 +91,16 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
       _filterDictionary,
       _DictionaryPayload(words: widget.wordList, difficulty: widget.difficulty),
     );
+    final parsedDifficulty = DifficultyLevel.values.firstWhere(
+          (level) => level.name == widget.difficulty,
+      orElse: () => DifficultyLevel.easy,
+    );
     final alphabetGame = AlphabetGame(filtered);
     _controller = WordQuestController(
       game: alphabetGame,
       dictionary: filtered,
       scoringOption: widget.scoringOption,
+      difficulty: parsedDifficulty,
       initialHints: 3,
     );
   }
