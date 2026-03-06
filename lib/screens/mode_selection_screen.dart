@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:word_game_app/services/category_loader.dart';
 import 'package:word_game_app/utils/word_category.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_config_screen.dart';
-import 'package:word_game_app/word_slide/screens/start_screen.dart';
-import 'package:word_game_app/word_slide/screens/store_screen.dart';
+import 'package:word_game_app/word_slide/ui/screens/start_screen.dart';
+import 'package:word_game_app/word_slide/ui/screens/store_screen.dart';
 
 class ModeSelectionScreen extends StatelessWidget {
   final VoidCallback toggleTheme;

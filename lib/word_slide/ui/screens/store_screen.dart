@@ -8,8 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/in_app_purchase_service.dart';
 import 'package:word_game_app/services/settings_service.dart';
-import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
-import 'package:word_game_app/word_slide/models/tile_border_style.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
 
 /// Simple data class that describes a border product available for purchase.
 class BorderProduct {

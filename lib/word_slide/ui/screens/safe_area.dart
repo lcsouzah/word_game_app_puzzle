@@ -14,10 +14,11 @@ import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/score_uploader.dart';
 import 'package:word_game_app/utils/text_format.dart';
-import 'package:word_game_app/word_slide/controllers/word_quest_controller.dart';
-import 'package:word_game_app/word_slide/models/alphabet_game.dart';
-import 'package:word_game_app/word_slide/models/difficulty_level.dart';
-import 'package:word_game_app/word_slide/screens/game_screen.dart';
+import 'package:word_game_app/word_slide/core/alphabet_game.dart';
+import 'package:word_game_app/word_slide/core/word_quest_controller.dart';
+import 'package:word_game_app/word_slide/ui/screens/game_screen.dart';
+
+import '../../core/game_config.dart';
 
 class SafeAreaScreen extends StatefulWidget {
   final ScoringOption scoringOption;

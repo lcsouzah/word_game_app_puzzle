@@ -1,0 +1,4 @@
+enum GameMode {
+  wordSlide,
+  serpuzzle,
+}

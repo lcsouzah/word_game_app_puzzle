@@ -4,9 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:word_game_app/services/game_feedback_service.dart';
-import 'package:word_game_app/word_slide/models/board_style.dart';
-import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
-import 'package:word_game_app/word_slide/models/tile_border_style.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
 
 /// Provides persisted user settings for tile appearance, feedback and
 /// performance behaviour across the puzzle experience.

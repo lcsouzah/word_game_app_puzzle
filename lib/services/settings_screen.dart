@@ -8,11 +8,10 @@ import 'package:word_game_app/services/in_app_purchase_service.dart';
 import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/text_format.dart';
-import 'package:word_game_app/word_slide/models/board_style.dart';
-import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
-import 'package:word_game_app/word_slide/models/tile_border_style.dart';
-import 'package:word_game_app/word_slide/screens/store_screen.dart';
-import 'package:word_game_app/word_slide/widgets/tile_preview.dart';
+import 'package:word_game_app/word_slide/ui/screens/store_screen.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
+import 'package:word_game_app/word_slide/ui/widgets/tiles.dart';
+
 
 const _availableTileColors = <Color>[
   Colors.blueGrey,

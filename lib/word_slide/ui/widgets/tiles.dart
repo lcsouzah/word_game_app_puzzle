@@ -2,9 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:word_game_app/services/cosmetic_manager.dart';
-import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
-import 'package:word_game_app/word_slide/models/tile_border_style.dart';
-import 'package:word_game_app/word_slide/models/tile_highlight_kind.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
 
 class TileWidget extends StatefulWidget {
   final String letter;
@@ -580,5 +578,117 @@ class TileWidgetState extends State<TileWidget>
       );
     }
     return overlays;
+  }
+}
+/// Lightweight preview widget that renders a single tile using the current
+/// cosmetic selections. This mirrors the runtime [TileWidget] behaviour to
+/// ensure settings previews match gameplay visuals.
+class TilePreview extends StatelessWidget {
+  const TilePreview({
+    super.key,
+    required this.letter,
+    required this.tileColor,
+    required this.borderColor,
+    required this.borderStyle,
+    required this.animationStyle,
+    this.hintEffect = 'ring',
+    this.showHintEffect = false,
+    this.idleShimmerEnabled = false,
+  });
+
+  final String letter;
+  final Color tileColor;
+  final Color borderColor;
+  final TileBorderStyle borderStyle;
+  final TileAnimationStyle animationStyle;
+  final String hintEffect;
+  final bool showHintEffect;
+  final bool idleShimmerEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: TileWidget(
+          letter: letter,
+          onTap: () {},
+          tileColor: tileColor,
+          borderColor: borderColor,
+          borderStyle: borderStyle,
+          animationStyle: animationStyle,
+          highlightKind:
+          showHintEffect ? TileHighlightKind.hint : TileHighlightKind.none,
+          idleShimmerEnabled: idleShimmerEnabled,
+          hintEffect: hintEffect,
+          hintEffectConfig:
+          showHintEffect ? HintEffectConfig.classic : HintEffectConfig.none,
+        ),
+      ),
+    );
+  }
+}
+
+class TouchFeedbackOverlay extends StatefulWidget {
+  final Widget child;
+
+  const TouchFeedbackOverlay({super.key, required this.child});
+
+  @override
+  State<TouchFeedbackOverlay> createState() => _TouchFeedbackOverlayState();
+}
+
+class _TouchFeedbackOverlayState extends State<TouchFeedbackOverlay> {
+  final List<Offset> _tapPositions = [];
+
+  void _handleTapDown(TapDownDetails details) {
+    setState(() {
+      _tapPositions.add(details.globalPosition);
+    });
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && _tapPositions.isNotEmpty) {
+        setState(() {
+          _tapPositions.removeAt(0);
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ripples = _tapPositions
+        .map(
+          (pos) => Positioned(
+        left: pos.dx - 12,
+        top: pos.dy - 12,
+        child: IgnorePointer(
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: 0.5,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+        ),
+      ),
+    )
+        .toList();
+
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      child: Stack(
+        children: [
+          widget.child,
+          ...ripples,
+        ],
+      ),
+    );
   }
 }

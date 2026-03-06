@@ -2,11 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 
-enum ScoringOption {
-  horizontal,
-  vertical,
-  both,
-}
+import 'game_config.dart';
+
 
 class AlphabetGame {
   List<String> letters = [];

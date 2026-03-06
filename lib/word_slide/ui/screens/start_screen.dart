@@ -15,9 +15,9 @@ import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/category_unlock_manager.dart';
 import 'package:word_game_app/utils/text_format.dart';
 import 'package:word_game_app/utils/word_category.dart';
-import 'package:word_game_app/word_slide/models/alphabet_game.dart';
-import 'package:word_game_app/word_slide/models/difficulty_level.dart';
-import 'package:word_game_app/word_slide/screens/safe_area.dart';
+import 'package:word_game_app/word_slide/core/alphabet_game.dart';
+import 'package:word_game_app/word_slide/core/game_config.dart';
+import 'package:word_game_app/word_slide/ui/screens/safe_area.dart';
 import 'package:word_game_app/services/ad_service.dart';
 
 class StartScreen extends StatefulWidget {

@@ -7,9 +7,9 @@ import 'package:flutter/services.dart';
 
 import '../../services/cosmetic_manager.dart';
 import '../../services/game_feedback_service.dart';
-import '../models/alphabet_game.dart';
-import '../models/difficulty_level.dart';
-import '../models/tile_highlight_kind.dart';
+import '../ui/theme/board_theme.dart';
+import 'alphabet_game.dart';
+import 'game_config.dart';
 
 
 class TileVisualState {
@@ -238,7 +238,7 @@ class WordQuestController extends ChangeNotifier {
             ? 0
             : (bestScore + 1).clamp(1, cap);
         hintTargets =
-        hintLen > 0 ? indices.take(hintLen).toList() : const <int>[];
+            hintLen > 0 ? indices.take(hintLen).toList() : const <int>[];
         break;
       case DifficultyLevel.hard:
         if (bestScore <= 0 || bestScore >= indices.length) {

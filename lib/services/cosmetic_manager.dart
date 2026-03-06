@@ -2,9 +2,8 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:word_game_app/services/settings_service.dart';
-import 'package:word_game_app/word_slide/models/board_style.dart';
-import 'package:word_game_app/word_slide/models/tile_animation_style.dart';
-import 'package:word_game_app/word_slide/models/tile_border_style.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
+
 
 typedef HintLuminousComposer = void Function(Set<TileCoord> targets);
 typedef HintSizeComposer = void Function(Set<TileCoord> targets);
@@ -23,6 +22,8 @@ class HintEffectConfig {
     luminousIds: <String>['innerPulse', 'letterHighlight', 'haloSoft'],
     sizeIds: <String>['scalePulse'],
   );
+
+  static Null get none => null;
 }
 
 @immutable

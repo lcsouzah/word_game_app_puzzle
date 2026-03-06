@@ -9,10 +9,9 @@ import 'package:word_game_app/services/cosmetic_manager.dart';
 import 'package:word_game_app/services/game_feedback_service.dart';
 import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
-import 'package:word_game_app/word_slide/controllers/word_quest_controller.dart';
-import 'package:word_game_app/word_slide/models/board_style.dart';
-import 'package:word_game_app/word_slide/widgets/tap_feedback_overlay.dart';
-import 'package:word_game_app/word_slide/widgets/tile.dart';
+import 'package:word_game_app/word_slide/core/word_quest_controller.dart';
+import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
+import 'package:word_game_app/word_slide/ui/widgets/tiles.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
