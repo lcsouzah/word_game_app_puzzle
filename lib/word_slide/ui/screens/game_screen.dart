@@ -1,518 +1,394 @@
 //Y:\word_game_app_puzzle\lib\screens\game_screen.dart
 
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:word_game_app/services/cosmetic_manager.dart';
-import 'package:word_game_app/services/game_feedback_service.dart';
-import 'package:word_game_app/services/settings_service.dart';
-import 'package:word_game_app/utils/pause_manager.dart';
-import 'package:word_game_app/word_slide/core/word_quest_controller.dart';
-import 'package:word_game_app/word_slide/ui/theme/board_theme.dart';
-import 'package:word_game_app/word_slide/ui/widgets/tiles.dart';
+import '../models/alphabet_game.dart';
+import '../utils/pause_manager.dart';
+import '../utils/sound_manager.dart';
+import '../widgets/tap_feedback_overlay.dart';
+import '../widgets/tile.dart';
 
 class GameScreen extends StatefulWidget {
+  final Function(String) onCorrectWord;
+  final AlphabetGame game;
+  final List<String> dictionary;
+  final ScoringOption scoringOption;
+  final VoidCallback onPauseToggle;
+  final void Function() onRewardedAdRequest;
+  final int maxHints;
+  final int adUsesThisMatch;
+  final int maxAdUsesPerMatch;
+
   const GameScreen({
     super.key,
-
+    required this.game,
+    required this.dictionary,
+    required this.onCorrectWord,
+    required this.scoringOption,
+    required this.onPauseToggle,
     required this.onRewardedAdRequest,
+    required this.maxHints,
     required this.adUsesThisMatch,
     required this.maxAdUsesPerMatch,
   });
 
-
-  final VoidCallback onRewardedAdRequest;
-  final int adUsesThisMatch;
-  final int maxAdUsesPerMatch;
-
   @override
-  State<GameScreen> createState() => GameScreenState();
+  GameScreenState createState() => GameScreenState();
 }
 
 class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  late final AnimationController _hintButtonController;
-  late final Animation<double> _hintButtonAnimation;
-  late final AnimationController _introController;
-  PauseManager? _boundPauseManager;
-  CosmeticManager? _boundCosmetics;
+  // Pulsing animation for hint button (when hints are available).
+  late AnimationController _hintButtonController;
+  late Animation<double> _hintButtonAnimation;
+
+  // Hint state tracked locally to keep it deterministic per match.
+  late int _hintsUsed;
+  late int _maxHints;
+
+  // Basic metrics.
+  int moveCounter = 0;
+
+  // Animation layers for tiles. Sets prevent duplicate indices.
+  final Set<int> _highlightedIndices = <int>{};
+  final Set<int> _disappearingIndices = <int>{};
+
+  // Concurrency guards: prevent overlapping animations from fighting each other.
+  bool _isHintAnimating = false;
+  bool _isResolvingCorrectWord = false;
+
+  // Cosmetic controls are intentionally isolated from gameplay states.
+  // Update these later without touching hint/correct-word logic.
+  static const Color _tileBorderColor = Color(0x66FFFFFF);
+  static const double _tileBorderWidth = 1.2;
 
   @override
   void initState() {
     super.initState();
+    _maxHints = widget.maxHints;
+    _hintsUsed = 0;
+
     _hintButtonController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
+
     _hintButtonAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(parent: _hintButtonController, curve: Curves.easeInOut),
     );
-    _introController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 480),
-    )..forward();
   }
 
   @override
   void dispose() {
     _hintButtonController.dispose();
-    _introController.dispose();
-    _boundPauseManager?.removeListener(_handlePauseChanged);
     super.dispose();
   }
+
+  void addHints(int amount) {
+    setState(() {
+      _maxHints += amount;
+
+      // If user had exhausted hints, restore just enough room to use new hints.
+      if (_hintsUsed >= _maxHints) {
+        _hintsUsed = _maxHints - amount;
+      }
+
+      _hintsUsed = _hintsUsed.clamp(0, _maxHints);
+      debugPrint('🧠 addHints called: maxHints=$_maxHints | hintsUsed=$_hintsUsed');
+    });
+  }
+
+  void _handleTileTap(int index) {
+    final pauseManager = Provider.of<PauseManager>(context, listen: false);
+
+    // Manual pause always blocks interaction.
+    if (pauseManager.isPaused && pauseManager.pauseReason == PauseReason.manual) {
+      return;
+    }
+
+    // Non-manual pause (e.g. transient state) auto-resumes on interaction.
+    if (pauseManager.isPaused && pauseManager.pauseReason != PauseReason.manual) {
+      pauseManager.forceResume();
+    }
+
+    // Ignore taps while a solved word is resolving to avoid state races.
+    if (_isResolvingCorrectWord) return;
+
+    final didMove = widget.game.moveTile(index);
+    if (!didMove) return;
+
+    SoundManager.playSound('tileMove');
+    moveCounter++;
+    setState(() {});
+
+    _checkWord();
+  }
+
+  String? _findClosestWord(List<String> boardLetters) {
+    int bestScore = 0;
+    String? bestMatch;
+
+    // NOTE: Current strategy is prefix-only matching.
+    // TODO(logic): Consider edit-distance or positional weighting later.
+    for (final word in widget.dictionary) {
+      int score = 0;
+      for (int i = 0; i < word.length && i < boardLetters.length; i++) {
+        if (word[i] == boardLetters[i]) {
+          score++;
+        } else {
+          break;
+        }
+      }
+
+      if (score > bestScore && score >= 2) {
+        bestScore = score;
+        bestMatch = word;
+      }
+    }
+
+    return bestMatch;
+  }
+
+  /// Returns tile indices that match [word] in board-read order.
+  List<int> _findMatchingIndices(String word, {bool vertical = false}) {
+    final List<int> indices = [];
+    final tiles = widget.game.letters;
+    int matchIndex = 0;
+
+    const int gridSize = 4;
+
+    if (vertical) {
+      for (int col = 0; col < gridSize && matchIndex < word.length; col++) {
+        for (int row = 0; row < gridSize && matchIndex < word.length; row++) {
+          final int i = row * gridSize + col;
+          if (tiles[i] == ' ') return indices;
+          if (tiles[i] == word[matchIndex]) {
+            indices.add(i);
+            matchIndex++;
+          }
+        }
+      }
+    } else {
+      for (int i = 0; i < tiles.length && matchIndex < word.length; i++) {
+        if (tiles[i] == ' ') break;
+        if (tiles[i] == word[matchIndex]) {
+          indices.add(i);
+          matchIndex++;
+        }
+      }
+    }
+
+    return indices;
+  }
+
+  Future<void> _showHint() async {
+    // Prevent hint animation overlap with itself or solved-word effects.
+    if (_isHintAnimating || _isResolvingCorrectWord) return;
+
+    debugPrint('💡 Requesting hint → hintsUsed: $_hintsUsed | maxHints: $_maxHints');
+
+    if (_hintsUsed >= _maxHints) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You have used all your hints.')),
+      );
+      return;
+    }
+
+    final List<String> boardLetters = <String>[];
+    for (final letter in widget.game.letters) {
+      if (letter != ' ') boardLetters.add(letter);
+    }
+
+    final String? hintWord = _findClosestWord(boardLetters);
+    if (hintWord == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No obvious hints available right now.')),
+      );
+      return;
+    }
+
+    _isHintAnimating = true;
+    _hintsUsed++;
+
+    final indices = _findMatchingIndices(hintWord);
+
+    if (!mounted) return;
+    setState(() {
+      _highlightedIndices
+        ..clear()
+        ..addAll(indices);
+    });
+
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (!mounted) return;
+    setState(() {
+      _highlightedIndices.clear();
+    });
+
+    _isHintAnimating = false;
+  }
+
+  Future<void> _checkWord() async {
+    if (_isResolvingCorrectWord) return;
+
+    // Collect formed words with orientation.
+    final List<Map<String, dynamic>> formedWords = [];
+
+    switch (widget.scoringOption) {
+      case ScoringOption.horizontal:
+        formedWords.add({'word': widget.game.getWord(), 'vertical': false});
+        break;
+      case ScoringOption.vertical:
+        formedWords.add({'word': widget.game.getWordVertical(), 'vertical': true});
+        break;
+      case ScoringOption.both:
+        formedWords.add({'word': widget.game.getWord(), 'vertical': false});
+        formedWords.add({'word': widget.game.getWordVertical(), 'vertical': true});
+        break;
+    }
+
+    for (final entry in formedWords) {
+      final String word = entry['word'] as String;
+      final bool vertical = entry['vertical'] as bool;
+
+      if (!widget.dictionary.contains(word)) continue;
+
+      _isResolvingCorrectWord = true;
+      widget.onCorrectWord(word);
+      debugPrint('🎉 Matched word: $word');
+
+      final indices = _findMatchingIndices(word, vertical: vertical);
+
+      // Sequential hint-like highlight.
+      for (int i = 0; i < indices.length; i++) {
+        await Future.delayed(Duration(milliseconds: 120 * i), () {
+          if (!mounted) return;
+          setState(() {
+            _highlightedIndices.add(indices[i]);
+          });
+        });
+      }
+
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // Sequential disappear animation.
+      for (int i = 0; i < indices.length; i++) {
+        await Future.delayed(Duration(milliseconds: 50 * i), () {
+          if (!mounted) return;
+          setState(() {
+            _highlightedIndices.remove(indices[i]);
+            _disappearingIndices.add(indices[i]);
+          });
+        });
+      }
+
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      if (!mounted) return;
+      setState(() {
+        _disappearingIndices.clear();
+        widget.game.clearWord();
+        widget.game.generateNewLetters();
+      });
+
+      _isResolvingCorrectWord = false;
+      return;
+    }
+
+    // No valid word formed.
+    debugPrint('The formed word is not correct. $formedWords');
+  }
+
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final pauseManager = context.read<PauseManager>();
-    final cosmetics = context.read<CosmeticManager>();
-    if (_boundPauseManager != pauseManager) {
-      _boundPauseManager?.removeListener(_handlePauseChanged);
-      _boundPauseManager = pauseManager;
-      _boundPauseManager?.addListener(_handlePauseChanged);
-      _handlePauseChanged();
-    }
-    if (_boundCosmetics != cosmetics) {
-      _boundCosmetics = cosmetics;
-      _handlePauseChanged();
-    }
-    final controller = context.read<WordQuestController>();
-    controller.attachCosmeticManager(cosmetics);
-  }
+  Widget build(BuildContext context) {
+    final pauseManager = Provider.of<PauseManager>(context);
 
-  void _handlePauseChanged() {
-    final pauseManager = _boundPauseManager;
-    final cosmetics = _boundCosmetics;
-    if (pauseManager != null && cosmetics != null) {
-      cosmetics.setPaused(pauseManager.isPaused);
-    }
-  }
+    final canUseHint = _hintsUsed < _maxHints;
+    final canUseAd = widget.adUsesThisMatch < widget.maxAdUsesPerMatch;
 
-  Widget _buildHeader(WordQuestController controller) {
-    return Card(
-      elevation: 6,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+    String label;
+    Icon icon;
+
+    if (canUseHint) {
+      label = 'Hint (${_maxHints - _hintsUsed})';
+      icon = const Icon(Icons.lightbulb_outline);
+    } else if (canUseAd) {
+      label = 'Get +3 Hints';
+      icon = const Icon(Icons.video_library);
+    } else {
+      label = 'No more hints';
+      icon = const Icon(Icons.block);
+    }
+
+    return TouchFeedbackOverlay(
+      child: Scaffold(
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ValueListenableBuilder<int>(
-              valueListenable: controller.moves,
-              builder: (context, moves, _) => AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Text(
-                  'Moves: $moves',
-                  key: ValueKey<int>(moves),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+            ScaleTransition(
+              scale: canUseHint
+                  ? _hintButtonAnimation
+                  : const AlwaysStoppedAnimation(1.0),
+              child: FloatingActionButton.extended(
+                onPressed: (!canUseHint && !canUseAd)
+                    ? null
+                    : () {
+                  if (canUseHint) {
+                    _showHint();
+                  } else {
+                    widget.onRewardedAdRequest();
+                    setState(() {});
+                  }
+                },
+                label: Text(label),
+                icon: icon,
+                backgroundColor: canUseHint ? Colors.amber : Colors.grey,
               ),
             ),
-            const SizedBox(width: 16),
-            ValueListenableBuilder<int>(
-              valueListenable: controller.hintsRemaining,
-              builder: (context, hints, _) => AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Text(
-                  'Hints: $hints',
-                  key: ValueKey<int>(hints),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text('Moves: $moveCounter'),
+        ),
+        body: Stack(
+          children: [
+            GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
               ),
+              itemCount: 16,
+              itemBuilder: (context, index) {
+                final letter = widget.game.letters[index];
+
+                return IgnorePointer(
+                  ignoring: pauseManager.isPaused,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(scale: animation, child: child);
+                    },
+                    child: TileWidget(
+                      key: ValueKey('$letter-$index'),
+                      letter: letter,
+                      onTap: () => _handleTileTap(index),
+                      highlighted: _highlightedIndices.contains(index),
+                      disappearing: _disappearingIndices.contains(index),
+                      borderColor: _tileBorderColor,
+                      borderWidth: _tileBorderWidth,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildHintControls(
-      BuildContext context,
-      WordQuestController controller,
-      PauseManager pauseManager,
-      ) {
-    final theme = Theme.of(context);
-    final settings = context.watch<SettingsService>();
-
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-      child: ValueListenableBuilder<int>(
-        valueListenable: controller.hintsRemaining,
-        builder: (context, hints, _) {
-          final canUseHint = hints > 0;
-          final canUseAd = widget.adUsesThisMatch < widget.maxAdUsesPerMatch;
-          final String label;
-          final IconData icon;
-          if (canUseHint) {
-            label = 'Use hint';
-            icon = Icons.lightbulb_outline;
-          } else if (canUseAd) {
-            label = 'Get +3 hints';
-            icon = Icons.play_circle;
-          } else {
-            label = 'Hints unavailable';
-            icon = Icons.block;
-          }
-
-          final button = ScaleTransition(
-            scale: canUseHint
-                ? _hintButtonAnimation
-                : const AlwaysStoppedAnimation(1.0),
-            child: FilledButton.icon(
-              onPressed: (!canUseHint && !canUseAd)
-                  ? null
-                  : () async {
-                if (!mounted || pauseManager.isPaused) {
-                  return;
-                }
-                if (canUseHint) {
-                  final didShowHint = await controller.showHint();
-                  if (!didShowHint) {
-                    if (!mounted) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    messenger.hideCurrentSnackBar();
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('No combinations found'),
-                      ),
-                    );
-                  }
-                } else {
-                  widget.onRewardedAdRequest();
-                }
-              },
-              icon: Icon(icon),
-              label: Text(label),
-            ),
-          );
-
-          return Flex(
-            direction: Axis.horizontal,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                flex: 2,
-                child: Text(
-                  'Hints: $hints',
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(flex: 3, child: button),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<WordQuestController>();
-    final settings = context.watch<SettingsService>();
-    final cosmetics = context.watch<CosmeticManager>();
-    final pauseManager = context.watch<PauseManager>();
-    final hintConfig = cosmetics.getResolvedHintConfig();
-
-    GameFeedbackService.configure(
-      soundEnabled: settings.soundEnabled,
-      hapticsEnabled: settings.hapticsEnabled,
-      soundPack: cosmetics.soundPackId,
-      moveHapticIntensity: settings.moveHapticIntensity,
-      successHapticIntensity: settings.successHapticIntensity,
-    );
-
-    final boardStyleDecoration = cosmetics.boardStyle
-        .buildDecoration(BoardStyleContext(theme: Theme.of(context)));
-    final boardBoxDecoration = BoxDecoration(
-      color: boardStyleDecoration.backgroundGradient == null
-          ? boardStyleDecoration.backgroundColor
-          : null,
-      gradient: boardStyleDecoration.backgroundGradient,
-      borderRadius: boardStyleDecoration.borderRadius,
-      border: boardStyleDecoration.border,
-      boxShadow: boardStyleDecoration.boxShadows,
-      image: boardStyleDecoration.backgroundImage,
-    );
-    final tileColor = settings.tileColor;
-
-    return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: TouchFeedbackOverlay(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Column(
-                children: [
-                _buildHeader(controller),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, boardConstraints) {
-                  final boardSize = min(
-                    boardConstraints.maxWidth,
-                    boardConstraints.maxHeight,
-                  );
-
-                  return Center(
-                    child: SizedBox(
-                      width: boardSize,
-                      height: boardSize,
-                      child: Hero(
-                        tag: 'word-quest-board',
-                        child: FadeTransition(
-                          opacity: CurvedAnimation(
-                            parent: _introController,
-                            curve: Curves.easeOut,
-                          ),
-                          child: ScaleTransition(
-                            scale: CurvedAnimation(
-                              parent: _introController,
-                              curve: Curves.easeOutBack,
-                            ),
-                            child: Container(
-                              decoration: boardBoxDecoration,
-                              child: ClipRRect(
-                                borderRadius:
-                                boardStyleDecoration.borderRadius,
-                                child: Padding(
-                                  padding: boardStyleDecoration.padding,
-                                  child: LayoutBuilder(
-                                    builder: (context, boardConstraints) {
-                                      final cellSize =
-                                          boardConstraints.maxWidth / 4;
-                                      return Stack(
-                                        children: [
-                                          GridView.builder(
-                                            physics:
-                                            const NeverScrollableScrollPhysics(),
-                                            padding: EdgeInsets.zero,
-                                            itemCount: controller.tiles.length,
-                                            gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 4,
-                                            ),
-                                            itemBuilder: (context, index) {
-                                              return ValueListenableBuilder<
-                                                  TileVisualState>(
-                                                valueListenable:
-                                                controller.tiles[index],
-                                                builder:
-                                                    (context, tile, __) {
-                                                  final displayLetter =
-                                                  settings.useTitleCaseWords
-                                                      ? tile.letter
-                                                      : tile.letter
-                                                      .toUpperCase();
-                                                  return IgnorePointer(
-                                                    ignoring:
-                                                    pauseManager.isPaused,
-                                                    child: TileWidget(
-                                                        key:
-                                                        ValueKey<int>(index),
-                                                        letter: displayLetter,
-                                                        onTap: () =>
-                                                            controller
-                                                                .onTileTapped(
-                                                                index),
-                                                        highlighted:
-                                                        tile.highlighted,
-                                                        disappearing:
-                                                        tile.disappearing,
-                                                        highlightKind:
-                                                        tile.highlightKind,
-                                                        tileColor: tile.letter
-                                                            .trim()
-                                                            .isEmpty
-                                                            ? Colors
-                                                            .transparent
-                                                            : tileColor,
-                                                        borderColor:
-                                                        settings.borderColor,
-                                                        borderStyle:
-                                                        settings.borderStyle,
-                                                        animationStyle: settings
-                                                            .tileAnimationStyle,
-                                                        hintEffect:
-                                                        settings.hintEffect,
-                                                        hintEffectConfig:
-                                                        hintConfig,
-                                                        idleShimmerEnabled:
-                                                        settings
-                                                            .idleShimmerEnabled
-                                                    ),
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          ),
-                                          ValueListenableBuilder<int>(
-                                            valueListenable:
-                                            controller.pulseTicker,
-                                            builder:
-                                                (context, tick, __) {
-                                              if (tick == 0) {
-                                                return const SizedBox
-                                                    .shrink();
-                                              }
-                                              return TweenAnimationBuilder<
-                                                  double>(
-                                                key: ValueKey<int>(tick),
-                                                tween: Tween(
-                                                  begin: 0.0,
-                                                  end: 1.0,
-                                                ),
-                                                duration: const Duration(
-                                                    milliseconds: 420),
-                                                builder:
-                                                    (context, value, _) {
-                                                  final opacity =
-                                                  (1 - value)
-                                                      .clamp(0.0, 1.0);
-                                                  return IgnorePointer(
-                                                    child: Opacity(
-                                                      opacity: opacity,
-                                                      child:
-                                                      DecoratedBox(
-                                                        decoration:
-                                                        BoxDecoration(
-                                                          borderRadius:
-                                                          boardStyleDecoration
-                                                              .borderRadius,
-                                                          border: Border.all(
-                                                            color: Colors
-                                                                .amberAccent
-                                                                .withOpacity(
-                                                                opacity),
-                                                            width: 8 *
-                                                                (1 - value),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          ),
-                                          ValueListenableBuilder<ScorePopup?>(
-                                            valueListenable:
-                                            controller.scorePopup,
-                                            builder:
-                                                (context, popup, __) {
-                                              if (popup == null) {
-                                                return const SizedBox
-                                                    .shrink();
-                                              }
-                                              final left = popup.gridX *
-                                                  cellSize +
-                                                  (cellSize / 2) -
-                                                  16;
-                                              final top = popup.gridY *
-                                                  cellSize +
-                                                  (cellSize / 2) -
-                                                  16;
-                                              return Positioned(
-                                                left: left,
-                                                top: top,
-                                                child:
-                                                TweenAnimationBuilder<
-                                                    double>(
-                                                  key: ValueKey<int>(
-                                                      controller
-                                                          .pulseTicker
-                                                          .value),
-                                                  tween: Tween(
-                                                    begin: 0,
-                                                    end: -24,
-                                                  ),
-                                                  duration:
-                                                  const Duration(
-                                                      milliseconds:
-                                                      520),
-                                                  onEnd: () =>
-                                                  controller
-                                                      .scorePopup.value =
-                                                  null,
-                                                  builder: (context, dy,
-                                                      child) {
-                                                    final opacity = 1.0 -
-                                                        (dy.abs() / 24.0)
-                                                            .clamp(0.0, 1.0);
-                                                    return Opacity(
-                                                      opacity: opacity,
-                                                      child:
-                                                      Transform.translate(
-                                                        offset:
-                                                        Offset(0, dy),
-                                                        child: child,
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text(
-                                                    popup.isWord
-                                                        ? '+${popup.points}!'
-                                                        : '+${popup.points}',
-                                                    style: Theme
-                                                        .of(context)
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                      fontWeight:
-                                                      FontWeight
-                                                          .w800,
-                                                      shadows: const [
-                                                        Shadow(
-                                                          blurRadius: 8,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ],
-                                        );
-                                       },
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                             ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  _buildHintControls(context, controller,pauseManager),
-                ],
-            ),
-          ),
-        ),
-    );
-  }
 }
-
-
-
-  //late SoundManager soundManager = SoundManager();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

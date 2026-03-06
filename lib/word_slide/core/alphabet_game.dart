@@ -1,10 +1,18 @@
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
-import 'game_config.dart';
+enum ScoringOption {
+  horizontal,
+  vertical,
+  both,
+}
 
-
+/// Core 4x4 tile model (1 blank + 15 letters).
+///
+/// NOTE(infrastructure): grid size is currently hardcoded to 4 in this model
+/// and the game screen. If you plan additional board sizes, centralize it as a
+/// shared constant/config before expanding modes.
 class AlphabetGame {
   List<String> letters = [];
   final List<String> _originalWordList;
@@ -18,25 +26,37 @@ class AlphabetGame {
     letters = _generateRandomLetters();
   }
 
+  /// Generates 16 tiles: one blank + 15 letters (word letters + random repeats).
+  ///
+  /// NOTE(safety): Throws [StateError] when the source list has no valid entries
+  /// (non-empty and <= 15 chars) after reset. This is intentional fail-fast behavior
+  /// to surface bad data pipeline issues early.
   List<String> _generateRandomLetters() {
     final Random random = Random();
 
-    // Filter for words up to 15 characters and not already used
+    // Filter for usable words up to 15 characters and not already used.
+    // Trim first so we don't accidentally pick whitespace-only entries.
     List<String> suitableWords = _availableWords
-        .where((word) => word.length <= 15 && !_usedWords.contains(word))
+        .map((word) => word.trim())
+        .where((word) => word.isNotEmpty && word.length <= 15 && !_usedWords.contains(word))
         .toList();
 
     if (suitableWords.isEmpty) {
       debugPrint("⚠️ No more unused suitable words found. Resetting...");
       resetWordPool();
       suitableWords = _availableWords
-          .where((word) => word.length <= 15 && !_usedWords.contains(word))
+          .map((word) => word.trim())
+          .where((word) => word.isNotEmpty && word.length <= 15 && !_usedWords.contains(word))
           .toList();
     }
 
-    String selectedWord = suitableWords[random.nextInt(suitableWords.length)].trim();
+    if (suitableWords.isEmpty) {
+      throw StateError('AlphabetGame requires at least one non-empty word up to 15 characters.');
+    }
+
+    String selectedWord = suitableWords[random.nextInt(suitableWords.length)];
     _usedWords.add(selectedWord);
-    _availableWords.remove(selectedWord);
+    _availableWords.removeWhere((word) => word.trim() == selectedWord);
 
     List<String> result = selectedWord.split('');
     while (result.length < 15) {
@@ -63,6 +83,8 @@ class AlphabetGame {
   }
 
   bool moveTile(int index) {
+    if (index < 0 || index >= letters.length) return false;
+
     if (_isValidMove(index)) {
       letters[emptyTileIndex] = letters[index];
       letters[index] = ' ';
@@ -73,7 +95,7 @@ class AlphabetGame {
   }
 
   bool _isValidMove(int index) {
-    if (letters[index] == letters[emptyTileIndex]) return false;
+    if (index == emptyTileIndex) return false;
 
     int rowDiff = (index ~/ 4) - (emptyTileIndex ~/ 4);
     int colDiff = (index % 4) - (emptyTileIndex % 4);
