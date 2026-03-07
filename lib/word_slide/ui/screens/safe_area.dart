@@ -14,7 +14,6 @@ import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/score_uploader.dart';
 import 'package:word_game_app/utils/text_format.dart';
-import 'package:word_game_app/word_slide/core/alphabet_game.dart';
 import 'package:word_game_app/word_slide/core/word_quest_controller.dart';
 import 'package:word_game_app/word_slide/ui/screens/game_screen.dart';
 
@@ -44,6 +43,9 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
   late BannerAd _bannerAd;
   bool _isAdLoaded = false;
   WordQuestController? _controller;
+  final GlobalKey<GameScreenState> _gameScreenKey = GlobalKey<GameScreenState>();
+  List<String> _filteredDictionary = const <String>[];
+  final List<String> _solvedWords = <String>[];
   late Future<void> _initialisation;
   late int _remainingTime;
   Timer? _timer;
@@ -92,6 +94,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
       _filterDictionary,
       _DictionaryPayload(words: widget.wordList, difficulty: widget.difficulty),
     );
+    _filteredDictionary = List<String>.from(filtered);
     final parsedDifficulty = DifficultyLevel.values.firstWhere(
           (level) => level.name == widget.difficulty,
       orElse: () => DifficultyLevel.easy,
@@ -158,7 +161,7 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
           _pauseManager.resume(PauseReason.ad);
         });
 
-        _controller?.addHints(3);
+        _gameScreenKey.currentState?.addHints(3);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('+3 hints unlocked')),
@@ -180,6 +183,15 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     _rewardedAd = null;
   }
 
+  void _handleCorrectWord(String word) {
+    if (_solvedWords.contains(word)) {
+      return;
+    }
+    setState(() {
+      _solvedWords.add(word);
+    });
+  }
+
   void _endGame() {
     if (_isGameOver) return;
 
@@ -188,8 +200,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     });
     _pauseTimer();
 
-    final solvedWords = List<String>.from(_controller?.solvedWords.value ?? []);
-    final moveCount = max(1, _controller?.moves.value ?? 1);
+    final solvedWords = List<String>.from(_solvedWords);
+    final moveCount = max(1, _gameScreenKey.currentState?.moveCounter ?? 1);
     final int finalScore =
     solvedWords.isEmpty ? 0 : (solvedWords.length * 1000) ~/ moveCount;
 
@@ -442,13 +454,17 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                         flex: 4,
                         child: IgnorePointer(
                           ignoring: pauseManager.isPaused || _isGameOver,
-                          child: ChangeNotifierProvider.value(
-                            value: controller,
-                            child: GameScreen(
-                              onRewardedAdRequest: _showRewardedAdForHints,
-                              adUsesThisMatch: _adUsesThisMatch,
-                              maxAdUsesPerMatch: _maxAdUsesPerMatch,
-                            ),
+                          child: GameScreen(
+                            key: _gameScreenKey,
+                            game: controller.game,
+                            dictionary: _filteredDictionary,
+                            onCorrectWord: _handleCorrectWord,
+                            scoringOption: widget.scoringOption,
+                            onPauseToggle: () {},
+                            onRewardedAdRequest: _showRewardedAdForHints,
+                            maxHints: 3,
+                            adUsesThisMatch: _adUsesThisMatch,
+                            maxAdUsesPerMatch: _maxAdUsesPerMatch,
                           ),
                         ),
                       ),
@@ -457,9 +473,9 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(2),
                           color: Colors.white60,
-                          child: ValueListenableBuilder<List<String>>(
-                            valueListenable: controller.solvedWords,
-                            builder: (context, words, _) {
+                          child: Builder(
+                            builder: (context) {
+                              final words = _solvedWords;
                               if (words.isEmpty) {
                                 return const Center(
                                   child: Text('Find words to fill your log!'),

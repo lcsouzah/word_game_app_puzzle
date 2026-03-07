@@ -2,11 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-enum ScoringOption {
-  horizontal,
-  vertical,
-  both,
-}
 
 /// Core 4x4 tile model (1 blank + 15 letters).
 ///
