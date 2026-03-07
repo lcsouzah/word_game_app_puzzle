@@ -14,6 +14,8 @@ class TileWidget extends StatefulWidget {
   final TileBorderStyle borderStyle;
   final TileAnimationStyle animationStyle;
   final TileHighlightKind? highlightKind;
+  // TODO(cleanup): `hintEffect` is legacy metadata and currently not used in
+  // rendering decisions. Keep until settings migration removes old references.
   final String hintEffect;
   final HintEffectConfig hintEffectConfig;
   final bool idleShimmerEnabled;
@@ -370,6 +372,7 @@ class TileWidgetState extends State<TileWidget>
       clipBehavior: Clip.none,
       children: [
         background,
+        // Solved state is additive only; do not mutate base border/fill channels
         if (isSolvedHighlight)
           Positioned.fill(
             child: IgnorePointer(
@@ -647,58 +650,4 @@ class TouchFeedbackOverlay extends StatefulWidget {
 
   @override
   State<TouchFeedbackOverlay> createState() => _TouchFeedbackOverlayState();
-}
-
-class _TouchFeedbackOverlayState extends State<TouchFeedbackOverlay> {
-  final List<Offset> _tapPositions = [];
-
-  void _handleTapDown(TapDownDetails details) {
-    setState(() {
-      _tapPositions.add(details.globalPosition);
-    });
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted && _tapPositions.isNotEmpty) {
-        setState(() {
-          _tapPositions.removeAt(0);
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ripples = _tapPositions
-        .map(
-          (pos) => Positioned(
-        left: pos.dx - 12,
-        top: pos.dy - 12,
-        child: IgnorePointer(
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: 0.5,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
-            ),
-          ),
-        ),
-      ),
-    )
-        .toList();
-
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      child: Stack(
-        children: [
-          widget.child,
-          ...ripples,
-        ],
-      ),
-    );
-  }
 }

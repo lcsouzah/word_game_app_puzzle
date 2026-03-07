@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/alphabet_game.dart';
-import '../utils/pause_manager.dart';
-import '../utils/sound_manager.dart';
+import 'package:word_game_app/word_slide/core/alphabet_game.dart';
+import 'package:word_game_app/utils/pause_manager.dart';
+import 'package:word_game_app/utils/sound_manager.dart';
 import '../widgets/tap_feedback_overlay.dart';
-import '../widgets/tile.dart';
+import 'package:word_game_app/word_slide/ui/widgets/tiles.dart';
 
 class GameScreen extends StatefulWidget {
   final Function(String) onCorrectWord;
@@ -38,6 +38,10 @@ class GameScreen extends StatefulWidget {
 }
 
 class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+  // MAINTENANCE NOTE:
+  // This screen still mixes gameplay, hint heuristics and effect timing.
+  // Consider extracting a MatchFlowController to isolate logic from UI and
+  // reduce side-effects when adding new cosmetic channels.
   // Pulsing animation for hint button (when hints are available).
   late AnimationController _hintButtonController;
   late Animation<double> _hintButtonAnimation;
@@ -130,6 +134,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     // NOTE: Current strategy is prefix-only matching.
     // TODO(logic): Consider edit-distance or positional weighting later.
+    // TODO(perf): Build an indexed hint dictionary for large word lists.
     for (final word in widget.dictionary) {
       int score = 0;
       for (int i = 0; i < word.length && i < boardLetters.length; i++) {
@@ -155,6 +160,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final tiles = widget.game.letters;
     int matchIndex = 0;
 
+    // TODO(logic): Derive grid size from game state instead of hard-coding 4.
     const int gridSize = 4;
 
     if (vertical) {

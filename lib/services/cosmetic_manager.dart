@@ -335,6 +335,10 @@ class CosmeticManager extends ChangeNotifier {
       String reason, {
         Iterable<String>? effectIds,
       }) {
+    // SAFETY NOTE:
+    // This currently records suspensions but does not flip `enabledEffects` to
+    // false. If effect toggles begin driving runtime rendering directly, add an
+    // explicit suspension layer to avoid stale enabled flags bleeding into UI.
     final Iterable<MapEntry<String, bool>> entries = effectIds == null
         ? enabledEffects.entries
         : enabledEffects.entries.where(

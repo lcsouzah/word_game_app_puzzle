@@ -39,9 +39,10 @@ Future<void> main() async {
     debugPrint('Error loading .env file: $e');
     dotenv.env.putIfAbsent('BANNER_AD_UNIT_ID', () => '');
     dotenv.env.putIfAbsent('REWARDED_AD_UNIT_ID', () => '');
-    dotenv.env.putIfAbsent('EASY_LEADERBOARD_ID', () => '');
-    dotenv.env.putIfAbsent('MODERATE_LEADERBOARD_ID', () => '');
-    dotenv.env.putIfAbsent('HARD_LEADERBOARD_ID', () => '');
+    // Keep fallback keys aligned with merge/load keys above to avoid silent lookup misses.
+    dotenv.env.putIfAbsent('LEADERBOARD_ID_EASY', () => '');
+    dotenv.env.putIfAbsent('LEADERBOARD_ID_MEDIUM', () => '');
+    dotenv.env.putIfAbsent('LEADERBOARD_ID_HARD', () => '');
   }
 
   try {
