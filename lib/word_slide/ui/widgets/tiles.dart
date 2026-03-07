@@ -315,8 +315,6 @@ class TileWidgetState extends State<TileWidget>
     final Color baseFillColor = decorationParts.fillColor ?? widget.tileColor;
     final Color resolvedFillColor = isEmpty
         ? Colors.transparent
-        : isSolvedHighlight
-        ? Colors.orangeAccent.withOpacity(0.82)
         : (_scale != 1.0
         ? baseFillColor.withOpacity(0.58)
         : baseFillColor);
@@ -327,20 +325,10 @@ class TileWidgetState extends State<TileWidget>
       blurRadius: 8,
       offset: const Offset(2, 2),
     );
-    final List<BoxShadow> combinedShadows;
-    if (isSolvedHighlight) {
-      combinedShadows = const <BoxShadow>[
-        BoxShadow(
-          color: Color(0xFFFFC766),
-          blurRadius: 22,
-          spreadRadius: 3.0,
-        ),
-      ];
-    } else if (decorationParts.boxShadows.isNotEmpty) {
-      combinedShadows = decorationParts.boxShadows;
-    } else {
-      combinedShadows = <BoxShadow>[defaultShadow];
-    }
+    final List<BoxShadow> combinedShadows =
+    decorationParts.boxShadows.isNotEmpty
+        ? decorationParts.boxShadows
+        : <BoxShadow>[defaultShadow];
 
     final Border? resolvedBorder = decorationParts.border ??
         Border.all(
@@ -382,6 +370,25 @@ class TileWidgetState extends State<TileWidget>
       clipBehavior: Clip.none,
       children: [
         background,
+        if (isSolvedHighlight)
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: borderRadius,
+                  color: Colors.orangeAccent.withOpacity(0.28),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x88FFC766),
+                      blurRadius: 22,
+                      spreadRadius: 2.5,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         if (!isEmpty) Center(child: letterWidget),
       ],
     );
