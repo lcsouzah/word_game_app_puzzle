@@ -23,8 +23,13 @@ class HintEffectConfig {
     sizeIds: <String>['scalePulse'],
   );
 
-  static Null get none => null;
+  /// Explicitly disables all hint visual effects.
+  ///
+  /// Using a concrete config instead of `null` prevents accidental fallback to
+  /// [classic] in call sites that pass this value through nullable parameters.
+  static const HintEffectConfig none = HintEffectConfig();
 }
+
 
 @immutable
 class TileCoord {

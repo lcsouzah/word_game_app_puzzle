@@ -342,14 +342,17 @@ class TileWidgetState extends State<TileWidget>
       combinedShadows = <BoxShadow>[defaultShadow];
     }
 
+    final Border? resolvedBorder = decorationParts.border ??
+        Border.all(
+          color: widget.borderColor,
+          width: widget.borderWidth,
+        );
+
     final BoxDecoration boxDecoration = BoxDecoration(
       color: decorationParts.gradient == null ? resolvedFillColor : null,
       gradient: decorationParts.gradient,
       borderRadius: borderRadius,
-      border: Border.all(
-        color: widget.borderColor,
-        width: widget.borderWidth,
-      ),
+      border: resolvedBorder,
       boxShadow: combinedShadows,
     );
 
