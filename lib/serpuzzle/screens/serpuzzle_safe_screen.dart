@@ -228,8 +228,8 @@ class _SerpuzzleSafeScreenState extends State<SerpuzzleSafeScreen> {
           ),
         ],
       ),
-      body: WillPopScope(
-        onWillPop: () async => !_isOverlayBlocking, // block back while overlay active
+      body: PopScope(
+        canPop: !_isOverlayBlocking,
         child: Stack(
           children: [
             // Game layer – blocked when overlay is active
@@ -335,7 +335,7 @@ class _StatusBadge extends StatelessWidget {
       avatar: Icon(icon, size: 14, color: color),
       label: Text(label, style: labelStyle),
       backgroundColor:
-      Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.75),
+      Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.75),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -355,7 +355,7 @@ class _Badge extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       avatar: Icon(icon, size: 14, color: theme.colorScheme.primary),
       label: Text(label, style: theme.textTheme.labelMedium),
-      backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.8),
+      backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }

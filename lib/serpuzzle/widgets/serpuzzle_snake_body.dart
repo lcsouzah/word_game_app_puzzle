@@ -131,8 +131,7 @@ class _SerpuzzleSnakeBodyState extends State<SerpuzzleSnakeBody> {
   }
 
   void _resetTrail() {
-    _trail
-      ..clear();
+    _trail.clear();
     if (widget.segments.isEmpty) {
       return;
     }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:word_game_app/serpuzzle/models/difficulty_level.dart';
 import 'package:word_game_app/serpuzzle/screens/serpuzzle_safe_screen.dart';
 

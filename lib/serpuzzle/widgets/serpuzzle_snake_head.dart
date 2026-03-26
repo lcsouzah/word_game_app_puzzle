@@ -65,22 +65,22 @@ class SerpuzzleSnakeHeadState extends State<SerpuzzleSnakeHead>
     final scheme = theme.colorScheme;
     final Color baseColor = widget.highlighted ? scheme.secondary : scheme.primary;
     final Color topEdge = Color.alphaBlend(
-      Colors.white.withOpacity(widget.highlighted ? 0.45 : 0.35),
+      Colors.white.withValues(alpha: widget.highlighted ? 0.45 : 0.35),
       baseColor,
     );
     final Color bottomEdge = Color.alphaBlend(
-      Colors.black.withOpacity(widget.highlighted ? 0.5 : 0.4),
+      Colors.black.withValues(alpha: widget.highlighted ? 0.5 : 0.4),
       baseColor,
     );
     final shadows = <BoxShadow>[
       BoxShadow(
-        color: bottomEdge.withOpacity(widget.highlighted ? 0.48 : 0.35),
+        color: bottomEdge.withValues(alpha: widget.highlighted ? 0.48 : 0.35),
         offset: const Offset(0, 2.6),
         blurRadius: widget.highlighted ? 10 : 6,
         spreadRadius: widget.highlighted ? 1.4 : 0.6,
       ),
       BoxShadow(
-        color: baseColor.withOpacity(widget.highlighted ? 0.4 : 0.28),
+        color: baseColor.withValues(alpha: widget.highlighted ? 0.4 : 0.28),
         blurRadius: widget.highlighted ? 26 : 18,
         spreadRadius: widget.highlighted ? 3.2 : 2,
       ),
@@ -110,7 +110,7 @@ class SerpuzzleSnakeHeadState extends State<SerpuzzleSnakeHead>
           widget.highlighted ? scheme.onSecondary : scheme.onPrimary,
           eyeColor: widget.highlighted ? scheme.onSecondary : scheme.onPrimary,
           tongueColor: widget.highlighted
-              ? scheme.onSecondary.withOpacity(0.9)
+              ? scheme.onSecondary.withValues(alpha: 0.9)
               : Colors.lightGreen,
         ),
       ),

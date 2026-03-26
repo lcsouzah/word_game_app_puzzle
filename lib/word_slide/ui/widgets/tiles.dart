@@ -22,7 +22,7 @@ class TileWidget extends StatefulWidget {
   final Color letterColor;
   final double borderWidth;
 
-  TileWidget({
+  const TileWidget({
     super.key,
     required this.letter,
     required this.onTap,
@@ -32,18 +32,16 @@ class TileWidget extends StatefulWidget {
     this.hintEffect = 'hint.inner_pulse',
     this.idleShimmerEnabled = true,
     Color? letterColor,
-    double borderWidth = 2.0,
-    Color tileColor = Colors.blueGrey,
+    this.borderWidth = 2.0,
+    this.tileColor = Colors.blueGrey,
     Color? borderColor,
     TileBorderStyle? borderStyle,
     TileAnimationStyle? animationStyle,
     HintEffectConfig? hintEffectConfig,
-  })  : tileColor = tileColor,
-        borderColor = borderColor ?? tileColor,
+  })  : borderColor = borderColor ?? tileColor,
         borderStyle = borderStyle ?? TileBorderStyles.none,
         animationStyle = animationStyle ?? TileAnimationStyles.defaultStyle,
         letterColor = letterColor ?? Colors.white,
-        borderWidth = borderWidth,
         hintEffectConfig = hintEffectConfig ?? HintEffectConfig.classic;
 
   @override
@@ -318,11 +316,11 @@ class TileWidgetState extends State<TileWidget>
     final Color resolvedFillColor = isEmpty
         ? Colors.transparent
         : (_scale != 1.0
-        ? baseFillColor.withOpacity(0.58)
+        ? baseFillColor.withValues(alpha: 0.58)
         : baseFillColor);
 
     final BoxShadow defaultShadow = BoxShadow(
-      color: Colors.black12.withOpacity(0.8),
+      color: Colors.black12.withValues(alpha: 0.8),
       spreadRadius: 2,
       blurRadius: 8,
       offset: const Offset(2, 2),
@@ -380,7 +378,7 @@ class TileWidgetState extends State<TileWidget>
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: borderRadius,
-                  color: Colors.orangeAccent.withOpacity(0.28),
+                  color: Colors.orangeAccent.withValues(alpha: 0.28),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
                       color: Color(0x88FFC766),
@@ -452,17 +450,17 @@ class TileWidgetState extends State<TileWidget>
         foreground: Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.6
-          ..color = Colors.white.withOpacity(0.6),
+          ..color = Colors.white.withValues(alpha: 0.6),
       );
       final TextStyle glowStyle = baseStyle.copyWith(
         color: glowColor,
         shadows: [
           Shadow(
-            color: const Color(0xFF93F9FF).withOpacity(0.9),
+            color: const Color(0xFF93F9FF).withValues(alpha: 0.9),
             blurRadius: 18,
           ),
           Shadow(
-            color: Colors.white.withOpacity(0.45),
+            color: Colors.white.withValues(alpha: 0.45),
             blurRadius: 26,
           ),
         ],
@@ -545,8 +543,8 @@ class TileWidgetState extends State<TileWidget>
                     borderRadius: borderRadius,
                     gradient: RadialGradient(
                       colors: <Color>[
-                        Colors.white.withOpacity(opacity),
-                        Colors.white.withOpacity(opacity * 0.25),
+                        Colors.white.withValues(alpha: opacity),
+                        Colors.white.withValues(alpha: opacity * 0.25),
                         Colors.transparent,
                       ],
                       stops: const <double>[0.0, 0.6, 1.0],
@@ -577,7 +575,7 @@ class TileWidgetState extends State<TileWidget>
                     boxShadow: <BoxShadow>[
                       BoxShadow(
                         color:
-                        const Color(0xFF8BF0FF).withOpacity(haloOpacity),
+                        const Color(0xFF8BF0FF).withValues(alpha: haloOpacity),
                         blurRadius: blurRadius,
                         spreadRadius: spreadRadius,
                       ),
@@ -650,4 +648,11 @@ class TouchFeedbackOverlay extends StatefulWidget {
 
   @override
   State<TouchFeedbackOverlay> createState() => _TouchFeedbackOverlayState();
+}
+
+class _TouchFeedbackOverlayState extends State<TouchFeedbackOverlay> {
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
 }

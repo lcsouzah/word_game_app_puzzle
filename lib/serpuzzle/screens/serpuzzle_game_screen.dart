@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -329,18 +328,18 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          theme.colorScheme.surface.withOpacity(0.75),
-                          theme.colorScheme.surfaceVariant.withOpacity(0.55),
+                          theme.colorScheme.surface.withValues(alpha: 0.75),
+                          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
                         ],
                       ),
                       border: Border.all(
                         color:
-                        theme.colorScheme.outlineVariant.withOpacity(0.55),
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
                         width: 1.6,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
+                          color: Colors.black.withValues(alpha: 0.18),
                           blurRadius: 20,
                           offset: const Offset(0, 14),
                         ),
@@ -350,10 +349,10 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen>
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         border: Border.all(
                           color: theme.colorScheme.outlineVariant
-                              .withOpacity(0.35),
+                              .withValues(alpha: 0.35),
                         ),
                       ),
                       child: IgnorePointer(
@@ -418,21 +417,21 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen>
                             colors: celebrating
                                 ? [
                               theme.colorScheme.primary
-                                  .withOpacity(0.95),
+                                  .withValues(alpha: 0.95),
                               theme.colorScheme.secondary
-                                  .withOpacity(0.85),
+                                  .withValues(alpha: 0.85),
                             ]
                                 : [
-                              theme.colorScheme.surface.withOpacity(0.78),
-                              theme.colorScheme.surfaceVariant
-                                  .withOpacity(0.56),
+                              theme.colorScheme.surface.withValues(alpha: 0.78),
+                              theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.56),
                             ],
                           ),
                           border: Border.all(
                             color: celebrating
-                                ? theme.colorScheme.onPrimary.withOpacity(0.4)
+                                ? theme.colorScheme.onPrimary.withValues(alpha: 0.4)
                                 : theme.colorScheme.onSurface
-                                .withOpacity(0.12),
+                                .withValues(alpha: 0.12),
                             width: 1.2,
                           ),
                           boxShadow: [
@@ -440,7 +439,7 @@ class _SerpuzzleGameScreenState extends State<SerpuzzleGameScreen>
                               color: (celebrating
                                   ? theme.colorScheme.primary
                                   : Colors.black)
-                                  .withOpacity(celebrating ? 0.35 : 0.18),
+                                  .withValues(alpha: celebrating ? 0.35 : 0.18),
                               blurRadius: celebrating ? 26 : 14,
                               offset: const Offset(0, 10),
                             ),
@@ -681,8 +680,8 @@ class _SerpuzzleBoard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              theme.colorScheme.surface.withOpacity(0.55),
-              theme.colorScheme.surfaceVariant.withOpacity(0.35),
+              theme.colorScheme.surface.withValues(alpha: 0.55),
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
             ],
           ),
         ),
@@ -697,14 +696,14 @@ class _SerpuzzleBoard extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        theme.colorScheme.surfaceVariant.withOpacity(0.28),
-                        theme.colorScheme.surface.withOpacity(0.4),
-                        theme.colorScheme.surfaceVariant.withOpacity(0.18),
+                        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
+                        theme.colorScheme.surface.withValues(alpha: 0.4),
+                        theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.18),
                       ],
                       stops: const [0.0, 0.55, 1.0],
                     ),
                     fallbackColor:
-                    theme.colorScheme.surfaceVariant.withOpacity(0.24),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.24),
                   ),
                 ),
               ),
@@ -738,13 +737,13 @@ class _SerpuzzleBoard extends StatelessWidget {
                 headProgress: headProgress,
               ),
               ...overlayIndicators,
-              ValueListenableBuilder<Object?>(
+              ValueListenableBuilder<SerpuzzleScorePopup?>(
                 valueListenable: controller.scorePopup,
                 builder: (context, value, _) {
                   if (value == null) {
                     return const SizedBox.shrink();
                   }
-                  final popup = value as dynamic;
+                  final popup = value;
                   final left = (popup.gridX as num) * tileSize;
                   final top = (popup.gridY as num) * tileSize;
                   final isWord = popup.isWord == true;
@@ -752,15 +751,15 @@ class _SerpuzzleBoard extends StatelessWidget {
                       ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurface;
                   final backgroundColor = isWord
-                      ? theme.colorScheme.primary.withOpacity(0.35)
-                      : theme.colorScheme.surface.withOpacity(0.65);
+                      ? theme.colorScheme.primary.withValues(alpha: 0.35)
+                      : theme.colorScheme.surface.withValues(alpha: 0.65);
                   final borderColor = isWord
-                      ? theme.colorScheme.onPrimary.withOpacity(0.45)
-                      : theme.colorScheme.onSurface.withOpacity(0.2);
+                      ? theme.colorScheme.onPrimary.withValues(alpha: 0.45)
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.2);
                   final shadowColor = (isWord
                       ? theme.colorScheme.primary
                       : Colors.black)
-                      .withOpacity(isWord ? 0.3 : 0.18);
+                      .withValues(alpha: isWord ? 0.3 : 0.18);
 
                   return Positioned(
                     left: left,
@@ -768,7 +767,7 @@ class _SerpuzzleBoard extends StatelessWidget {
                     width: tileSize,
                     height: tileSize,
                     child: TweenAnimationBuilder<double>(
-                      key: ValueKey<Object>(popup),
+                      key: ValueKey<SerpuzzleScorePopup>(popup),
                       tween: Tween<double>(begin: 0, end: 1),
                       duration: pointsFloatDuration,
                       curve: Curves.easeOutCubic,

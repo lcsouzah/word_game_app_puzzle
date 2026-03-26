@@ -70,7 +70,7 @@ class SerpuzzleGameController extends ChangeNotifier {
   final ValueNotifier<bool> isMatchedNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isPausedNotifier;
-  final ValueNotifier<_ScorePopup?> scorePopup = ValueNotifier<_ScorePopup?>(null);
+  final ValueNotifier<SerpuzzleScorePopup?> scorePopup = ValueNotifier<SerpuzzleScorePopup?>(null);
   final ValueNotifier<GridPosition?> justEatenCell =
   ValueNotifier<GridPosition?>(null);
 
@@ -468,7 +468,7 @@ class SerpuzzleGameController extends ChangeNotifier {
       _grid.placeLetter(newPos, '');
       _currentTiles--;
       justEatenCell.value = newPos;
-      scorePopup.value = _ScorePopup(
+      scorePopup.value = SerpuzzleScorePopup(
         points: 1,
         gridX: newPos.col,
         gridY: newPos.row,
@@ -566,7 +566,7 @@ class SerpuzzleGameController extends ChangeNotifier {
         addScore(letters.length);
         _emitReward();
         final headPos = _snake.segments.last;
-        scorePopup.value = _ScorePopup(
+        scorePopup.value = SerpuzzleScorePopup(
           points: letters.length,
           gridX: headPos.col,
           gridY: headPos.row,
@@ -823,8 +823,8 @@ class SerpuzzleGameController extends ChangeNotifier {
   int get livesForTest => _lives;
 }
 
-class _ScorePopup {
-  const _ScorePopup({
+class SerpuzzleScorePopup {
+  const SerpuzzleScorePopup({
     required this.points,
     required this.gridX,
     required this.gridY,

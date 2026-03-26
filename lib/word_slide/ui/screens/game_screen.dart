@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:word_game_app/word_slide/core/alphabet_game.dart';
+import 'package:word_game_app/word_slide/core/game_config.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/sound_manager.dart';
-import '../widgets/tap_feedback_overlay.dart';
+import '../widgets/tap_feedback_overlay.dart' as tap_overlay;
 import 'package:word_game_app/word_slide/ui/widgets/tiles.dart';
 
 class GameScreen extends StatefulWidget {
@@ -327,7 +328,7 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       icon = const Icon(Icons.block);
     }
 
-    return TouchFeedbackOverlay(
+    return tap_overlay.TouchFeedbackOverlay(
       child: Scaffold(
         floatingActionButton: Column(
           mainAxisSize: MainAxisSize.min,
@@ -395,7 +396,3 @@ class GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 }
-
-
-
-

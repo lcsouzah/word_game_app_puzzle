@@ -14,6 +14,7 @@ import 'package:word_game_app/services/settings_service.dart';
 import 'package:word_game_app/utils/pause_manager.dart';
 import 'package:word_game_app/utils/score_uploader.dart';
 import 'package:word_game_app/utils/text_format.dart';
+import 'package:word_game_app/word_slide/core/alphabet_game.dart';
 import 'package:word_game_app/word_slide/core/word_quest_controller.dart';
 import 'package:word_game_app/word_slide/ui/screens/game_screen.dart';
 
@@ -384,8 +385,8 @@ class SafeAreaScreenState extends State<SafeAreaScreen> {
     final settings = context.watch<SettingsService>();
 
 
-    return WillPopScope(
-      onWillPop: () async => !_isGameOver,
+    return PopScope(
+      canPop: !_isGameOver,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
